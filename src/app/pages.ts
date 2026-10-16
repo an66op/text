@@ -1,0 +1,55 @@
+import { lazy } from 'react';
+
+export const SocialPage = lazy(() => import('@/features/social/SocialPage'));
+export const SocialRoutePage = lazy(() => import('@/features/social/SocialRoutePage'));
+export const DiscoveryPage = lazy(() => import('@/features/discovery/DiscoveryPage'));
+export const MomentsPage = lazy(() => import('@/features/content/MomentsPage'));
+export const ContentPage = lazy(() => import('@/features/content/ContentPage'));
+export const ContentDetailPage = lazy(() => import('@/features/content/ContentDetailPage'));
+export const ContentRoutePage = lazy(() => import('@/features/content/ContentRoutePage'));
+export const ProfilePage = lazy(() => import('@/features/profile/ProfilePage'));
+export const EditProfilePage = lazy(() => import('@/features/profile/EditProfilePage'));
+export const SettingsPage = lazy(() => import('@/features/profile/SettingsPage'));
+export const SettingsRoutePage = lazy(() => import('@/features/profile/SettingsRoutePage'));
+export const WalletPage = lazy(() => import('@/features/wallet/WalletPage'));
+export const WalletRoutePage = lazy(() => import('@/features/wallet/WalletRoutePage'));
+export const WalletEarnPage = lazy(() => import('@/features/wallet/WalletEarnPage'));
+export const MatchingPage = lazy(() => import('@/features/matching/MatchingPage'));
+export const SocialChannelPage = lazy(() => import('@/features/social/SocialChannelPage'));
+export const ShopPage = lazy(() => import('@/features/shop/ShopPage'));
+export const AiPage = lazy(() => import('@/features/ai/AiPage'));
+export const CirclesPage = lazy(() => import('@/features/circles/CirclesPage'));
+export const CircleShell = lazy(() => import('@/features/circles/CircleShell'));
+export const CircleHomePage = lazy(() => import('@/features/circles/CircleHomePage'));
+export const CircleChannelPage = lazy(() => import('@/features/circles/ChannelPage'));
+export const CircleVoiceRoomPage = lazy(() => import('@/features/circles/VoiceRoomPage'));
+export const CirclePostPage = lazy(() =>
+  import('@/features/circles/PostPages').then((module) => ({ default: module.CirclePostPage })),
+);
+export const CircleComposePage = lazy(() =>
+  import('@/features/circles/PostPages').then((module) => ({ default: module.CircleComposePage })),
+);
+export const CircleCreatePage = lazy(() =>
+  import('@/features/circles/ManagePages').then((module) => ({ default: module.CircleCreatePage })),
+);
+export const CircleSettingsPage = lazy(() =>
+  import('@/features/circles/ManagePages').then((module) => ({
+    default: module.CircleSettingsPage,
+  })),
+);
+export const CircleMembersPage = lazy(() =>
+  import('@/features/circles/ManagePages').then((module) => ({
+    default: module.CircleMembersPage,
+  })),
+);
+export const CircleInvitePage = lazy(() =>
+  import('@/features/circles/ManagePages').then((module) => ({ default: module.CircleInvitePage })),
+);
+export const CircleJoinPage = lazy(() =>
+  import('@/features/circles/ManagePages').then((module) => ({ default: module.CircleJoinPage })),
+);
+export const CircleChannelEditPage = lazy(() =>
+  import('@/features/circles/ManagePages').then((module) => ({
+    default: module.CircleChannelEditPage,
+  })),
+);

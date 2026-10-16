@@ -1,0 +1,156 @@
+.moments-page {
+  width: 100%;
+  min-width: 0;
+  background: #fff;
+}
+
+.moments-page .im-moments {
+  width: 100%;
+  overflow: visible;
+  background: #fff;
+}
+
+.moments-page .im-moments-cover {
+  width: 100%;
+  max-width: none;
+  height: clamp(230px, 62vw, 320px);
+  margin: 0 0 36px;
+  background:
+    linear-gradient(180deg, #0000 55%, #0004),
+    url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=85')
+      center 53% / cover;
+}
+
+.moments-page .im-moments-self {
+  right: 16px;
+  bottom: -22px;
+  gap: 12px;
+}
+
+.moments-page .im-moments-self strong {
+  margin-bottom: 28px;
+  font-size: 16px;
+  text-shadow: 0 1px 4px #0007;
+}
+
+.moments-page .im-moments-self .im-avatar {
+  width: 72px;
+  height: 72px;
+  border: 2px solid #fff;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.moments-page :is(.im-moments-content, .messenger-moments) {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.moments-page .messenger-moments .post {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 18px 16px;
+  border: 0;
+  border-bottom: 1px solid #ededed;
+  border-radius: 0;
+  background: #fff;
+}
+
+.moments-page .post-head {
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.moments-page .post-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.moments-page .post-head strong {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.moments-page .post-head small {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.moments-page .messenger-moments .post-text {
+  margin: 8px 0 10px 52px;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.moments-page .messenger-moments .post-image {
+  width: min(240px, calc(100% - 52px));
+  min-width: 0;
+  max-width: calc(100% - 52px);
+  height: auto;
+  max-height: 220px;
+  aspect-ratio: 6 / 5;
+  margin-left: 52px;
+  border-radius: 2px;
+}
+
+.moments-page .post-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.moments-page .messenger-moments .post-foot {
+  margin-left: 52px;
+  padding: 13px 0 0;
+  gap: clamp(10px, 3vw, 22px);
+  flex-wrap: wrap;
+}
+
+.moments-page .post-foot button {
+  gap: 5px;
+  font-size: 11px;
+}
+
+.moments-page .messenger-moments .post:last-child {
+  padding-bottom: 24px;
+}
+.moments-cover-edit {
+  position: absolute;
+  inset: 0;
+}
+.moments-page .im-moments-self {
+  display: flex;
+  align-items: center;
+  color: #fff;
+  z-index: 1;
+}
+.moments-page .post-photo-grid {
+  margin-left: 52px;
+  width: min(280px, calc(100% - 52px));
+}
+.moments-page .post-location {
+  margin-left: 52px;
+  font-size: 11px;
+}
+.activity-own-link {
+  display: block;
+  padding: 25px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #8da091;
+}
+.moments-page .post-head > a.icon {
+  margin-left: 0;
+  color: #afb7b1;
+}
+.moments-page .post-foot a {
+  gap: 5px;
+  font-size: 11px;
+}

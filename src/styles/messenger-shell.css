@@ -1,0 +1,536 @@
+.messenger-app {
+  color: #24272b;
+  background: #f5f5f5;
+  min-height: 100dvh;
+}
+.messenger-app .sidebar {
+  background: #f7f7f7;
+  border-color: #e5e5e5;
+}
+.messenger-app .brand {
+  padding-bottom: 28px;
+}
+.messenger-app .brand-mark {
+  background: #07b75d;
+  border-radius: 12px;
+  font-size: 30px;
+}
+.messenger-app .brand small {
+  color: #9ba2a0;
+}
+.messenger-app .sidebar nav :is(button, a).selected {
+  background: #e5ece7;
+  color: #07a856;
+}
+.messenger-app .sidebar .nav-label {
+  color: #a0a5a2;
+  letter-spacing: 0;
+}
+
+.messenger-app .count {
+  background: #f05251;
+  border-radius: 12px;
+  padding: 0 5px;
+  line-height: 16px;
+}
+.messenger-app .primary {
+  background: #07b45c;
+}
+
+.social-screen .body {
+  display: block;
+  max-width: none;
+  padding: 0;
+}
+.social-screen .body > main {
+  width: 100%;
+}
+.messenger-moments {
+  max-width: 680px;
+  margin: auto;
+  padding: 20px 30px;
+}
+.messenger-moments .post {
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid #ededed;
+  padding: 20px 0;
+  margin: 0;
+  background: white;
+}
+.messenger-moments .avatar {
+  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+}
+.messenger-moments .post-head strong {
+  font-size: 14px;
+  color: #526b97;
+}
+.messenger-moments .post-head small {
+  font-size: 10px;
+}
+.messenger-moments .post-head .follow {
+  display: none;
+}
+.messenger-moments .post-text {
+  font-size: 14px;
+  color: #262a2d;
+  margin-left: 52px;
+}
+.messenger-moments .post-image {
+  margin-left: 52px;
+  width: calc(100% - 52px);
+  max-height: 290px;
+  border-radius: 3px;
+}
+
+.messenger-moments .post-foot {
+  margin-left: 52px;
+  padding-top: 15px;
+}
+.messenger-moments .post-foot button {
+  color: #6d7d91;
+}
+.messenger-moments .post-foot .liked {
+  color: #07b45c;
+}
+.discovery-page {
+  max-width: 660px;
+  margin: auto;
+}
+.discovery-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 2px 25px;
+}
+.discovery-heading h1 {
+  font-size: 25px;
+  color: #181c20;
+  letter-spacing: 0;
+}
+.discovery-heading > svg {
+  color: #737c83;
+}
+.discovery-group {
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid #eeeeee;
+}
+.discovery-label {
+  font-size: 11px;
+  color: #9b9fa3;
+  padding: 14px 19px 3px;
+}
+.discovery-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 19px;
+  width: 100%;
+  text-align: left;
+  position: relative;
+  min-height: 72px;
+}
+.discovery-row:not(:last-child):after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 67px;
+  right: 0;
+  height: 1px;
+  background: #f1f1f1;
+}
+.discovery-row > span:not(.discovery-icon) {
+  flex: 1;
+}
+.discovery-row strong {
+  font-size: 14px;
+  font-weight: 500;
+  display: block;
+}
+.discovery-row small {
+  display: block;
+  font-size: 11px;
+  color: #a6a9ad;
+  margin-top: 5px;
+}
+.discovery-row > svg {
+  color: #bbc0c3;
+  margin-left: auto;
+}
+.discovery-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #eff7f1;
+  color: #08b45b;
+}
+.discovery-icon.tone-1 {
+  background: #edf3ff;
+  color: #4384e9;
+}
+.discovery-icon.tone-2 {
+  background: #fff2e7;
+  color: #ed9b3c;
+}
+.discovery-icon.tone-3 {
+  background: #f4efff;
+  color: #8f75ce;
+}
+.discovery-icon.tone-4 {
+  background: #fff0ef;
+  color: #e87a73;
+}
+.discovery-icon.moments {
+  background: #07b45c;
+  color: white;
+}
+.discovery-row .discovery-new {
+  font-size: 11px;
+  color: #a0a6a2;
+  flex: 0 0 auto !important;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-left: auto;
+}
+.discovery-new i {
+  width: 7px;
+  height: 7px;
+  background: #f15f5b;
+  border-radius: 50%;
+}
+.discovery-end {
+  font-size: 11px;
+  color: #bbc0bd;
+  text-align: center;
+  margin: 25px 0;
+}
+.messenger-bottom .bottom-icon {
+  position: relative;
+}
+.messenger-bottom .bottom-dot {
+  position: absolute;
+  top: -2px;
+  right: -5px;
+  width: 7px;
+  height: 7px;
+  background: #f15b5b;
+  border: 1px solid #fff;
+  border-radius: 50%;
+}
+@media (min-width: 801px) {
+  .messenger-app .body {
+    background: #f5f5f5;
+  }
+  .messenger-app .workspace {
+    min-height: 100dvh;
+  }
+  .messenger-app .sidebar {
+    width: 200px;
+  }
+  .messenger-app .workspace {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+  }
+  .messenger-app:not(.social-screen) .body {
+    display: block;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px 36px;
+  }
+
+  .discovery-page {
+    min-width: 450px;
+  }
+}
+@media (max-width: 800px) {
+  .messenger-app .workspace {
+    margin-left: 0;
+    width: 100%;
+  }
+  .messenger-app .mobile-nav.messenger-bottom {
+    height: calc(62px + env(safe-area-inset-bottom));
+    padding: 8px 10px calc(7px + env(safe-area-inset-bottom));
+    background: #f8f8f8f5;
+    border-top: 1px solid #dedede;
+  }
+  .messenger-bottom :is(button, a) {
+    gap: 3px;
+    font-size: 10px;
+    color: #777;
+    flex: 1;
+  }
+  .messenger-bottom :is(button, a).active {
+    color: #07af58;
+  }
+
+  .social-screen .body {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+
+  .messenger-app:not(.social-screen) .body {
+    display: block;
+    padding: 0 0 calc(62px + env(safe-area-inset-bottom));
+  }
+  .messenger-app:not(.social-screen) .body main {
+    padding: 0;
+  }
+
+  .messenger-app .discovery-page {
+    margin: 0;
+    background: #ededed;
+  }
+  .discovery-heading {
+    padding: 22px 20px 17px;
+    background: #ededed;
+  }
+  .discovery-heading h1 {
+    font-size: 21px;
+    font-weight: 600;
+  }
+  .discovery-group {
+    border: 0;
+    border-radius: 0;
+    margin-bottom: 10px;
+  }
+  .discovery-label {
+    padding: 12px 20px 2px;
+    font-size: 10px;
+  }
+  .discovery-row {
+    min-height: 65px;
+    padding: 15px 20px;
+  }
+  .discovery-row strong {
+    font-size: 15px;
+  }
+  .discovery-row small {
+    font-size: 10px;
+  }
+  .messenger-moments {
+    padding: 0 18px;
+  }
+  .messenger-moments .post-head strong {
+    font-size: 13px;
+  }
+  .messenger-moments .post-image {
+    height: 235px;
+  }
+  .messenger-moments .post-text {
+    font-size: 13px;
+  }
+  .messenger-app .toast {
+    bottom: 82px;
+  }
+}
+
+.messenger-app {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.messenger-app .brand > span {
+  letter-spacing: 1px;
+}
+.messenger-app .account img {
+  border-radius: 6px;
+}
+
+.account-screen .profile {
+  background: white;
+  padding: 28px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  margin-bottom: 18px;
+}
+.account-screen .profile > img {
+  width: 62px;
+  height: 62px;
+  border: 0;
+  border-radius: 8px;
+  margin: 0 16px 15px 0;
+  float: left;
+}
+.account-screen .profile > .follow {
+  margin-top: 6px;
+}
+.account-screen .profile h1 {
+  font-size: 21px;
+  letter-spacing: 0;
+  margin-top: 4px;
+}
+
+.account-screen .profile p {
+  color: #999;
+}
+.account-screen .profile p:nth-of-type(2) {
+  clear: both;
+  padding-top: 8px;
+}
+
+.account-screen .profile-shortcuts {
+  grid-template-columns: 1fr;
+  gap: 0;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 10px 0 25px;
+}
+.account-screen .profile-shortcuts :is(button, a) {
+  flex-direction: row;
+  justify-content: flex-start;
+  border-radius: 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  padding: 19px 24px;
+  gap: 17px;
+  color: #3c434b;
+}
+.account-screen .profile-shortcuts svg {
+  color: #08b25c;
+}
+.account-screen .profile-shortcuts :is(button, a):after {
+  content: '›';
+  margin-left: auto;
+  font-size: 20px;
+  line-height: 14px;
+  color: #b4b8b6;
+}
+@media (max-width: 800px) {
+  .account-screen .profile {
+    border: 0;
+    border-radius: 0;
+    margin: 0 0 16px;
+    padding: 28px 22px 20px;
+  }
+  .account-screen .profile-shortcuts {
+    margin: 0 0 22px;
+    border-radius: 0;
+  }
+  .account-screen .profile-shortcuts :is(button, a) {
+    padding: 18px 24px;
+  }
+}
+@media (min-width: 801px) {
+  .social-screen .im-root {
+    height: 100dvh;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+.content-topbar {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e9e9e9;
+  position: sticky;
+  top: 0;
+  z-index: 25;
+}
+.content-topbar > strong {
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+  letter-spacing: 0;
+}
+.content-topbar > :is(button, a) {
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  color: #30373a;
+}
+.content-topbar.account-topbar {
+  margin-bottom: 10px;
+}
+.content-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #e9e9e9;
+  color: #929894;
+}
+.content-search input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  font-size: 13px;
+  color: #303a34;
+}
+.content-body {
+  padding-bottom: 24px;
+}
+.content-body > h3 {
+  font-size: 13px;
+  font-weight: 500;
+  color: #737d77;
+  margin: 22px 18px 12px;
+}
+.content-body .wallet-card {
+  margin: 18px 16px 24px;
+  border-radius: 9px;
+}
+.content-body .short-video {
+  border-radius: 0;
+}
+.content-body .empty {
+  border-radius: 0;
+}
+
+.messenger-app .discovery-heading {
+  padding: 20px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 10px;
+}
+.messenger-app .discovery-heading h1 {
+  font-size: 20px;
+  font-weight: 600;
+}
+.messenger-app .discovery-page {
+  min-width: 0;
+}
+.messenger-app .discovery-end {
+  display: none;
+}
+@media (min-width: 801px) {
+  .content-topbar {
+    height: 68px;
+    padding: 0 20px;
+  }
+  .content-topbar > strong {
+    font-size: 20px;
+  }
+  .content-body .short-video {
+    max-width: 420px;
+    margin: auto;
+    height: calc(100dvh - 100px);
+    max-height: 820px;
+  }
+  .business-screen .body > main {
+    min-height: 100dvh;
+  }
+  .account-screen .profile {
+    margin-top: 20px;
+  }
+  .messenger-app .discovery-page {
+    padding-bottom: 25px;
+  }
+  .messenger-app .discovery-heading {
+    margin-bottom: 16px;
+    height: 68px;
+    padding: 0 20px;
+  }
+}

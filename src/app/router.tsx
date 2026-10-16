@@ -1,0 +1,302 @@
+import type { ReactElement } from 'react';
+import {
+  Navigate,
+  createBrowserRouter,
+  type NonIndexRouteObject,
+  type RouteObject,
+} from 'react-router';
+import AppLayout from './AppLayout';
+import NotFoundPage from './NotFoundPage';
+import RouteErrorPage from './RouteErrorPage';
+import type { PageMeta, PrimarySection, Screen } from './types';
+import { paths } from '@/shared/config/paths';
+import { circlePaths } from '@/features/circles/routes';
+import LegacyCircleRedirect from '@/features/circles/LegacyCircleRedirect';
+import {
+  SocialPage,
+  SocialRoutePage,
+  DiscoveryPage,
+  MomentsPage,
+  ContentPage,
+  ContentDetailPage,
+  ContentRoutePage,
+  ProfilePage,
+  EditProfilePage,
+  SettingsPage,
+  SettingsRoutePage,
+  WalletPage,
+  WalletRoutePage,
+  WalletEarnPage,
+  MatchingPage,
+  SocialChannelPage,
+  ShopPage,
+  AiPage,
+  CirclesPage,
+  CircleShell,
+  CircleHomePage,
+  CircleChannelPage,
+  CircleVoiceRoomPage,
+  CirclePostPage,
+  CircleComposePage,
+  CircleCreatePage,
+  CircleSettingsPage,
+  CircleMembersPage,
+  CircleInvitePage,
+  CircleJoinPage,
+  CircleChannelEditPage,
+} from './pages';
+
+function page(
+  path: string,
+  element: ReactElement,
+  title: string,
+  section: PrimarySection = 'discover',
+  screen: Screen = 'business',
+  level: PageMeta['level'] = 'secondary',
+): NonIndexRouteObject {
+  const handle: PageMeta = { title, section, screen, level };
+  return { path, element, handle };
+}
+
+export const appRoutes: RouteObject[] = [
+  {
+    element: <AppLayout />,
+    errorElement: <RouteErrorPage />,
+    children: [
+      { index: true, element: <Navigate to={paths.social} replace /> },
+      page(paths.social, <SocialPage />, '社交', 'social', 'social', 'primary'),
+      page('/social/chat/:conversationId', <SocialPage />, '聊天', 'social', 'social'),
+      page(paths.channelCreate, <SocialChannelPage kind="create" />, '创建频道', 'social'),
+      page(
+        '/social/channels/:channelId',
+        <SocialChannelPage kind="detail" />,
+        '频道',
+        'social',
+        'social',
+      ),
+      page(
+        '/social/channels/:channelId/info',
+        <SocialChannelPage kind="info" />,
+        '频道资料',
+        'social',
+      ),
+      page(
+        '/social/channels/:channelId/posts/:postId/comments',
+        <SocialChannelPage kind="comments" />,
+        '频道评论',
+        'social',
+      ),
+      page(paths.contacts, <SocialPage view="通讯录" />, '通讯录', 'contacts', 'social', 'primary'),
+      ...(
+        [
+          ['/contacts/search', 'friendSearch', '添加朋友', 'contacts'],
+          ['/contacts/requests', 'friendRequests', '新的朋友', 'contacts'],
+          ['/contacts/add/:contactId', 'friendApply', '好友申请', 'contacts'],
+          ['/contacts/:contactId/edit', 'contactEdit', '备注与标签', 'contacts'],
+          ['/contacts/:contactId', 'contact', '联系人', 'contacts'],
+          ['/social/groups', 'groups', '群聊', 'social'],
+          ['/social/groups/new', 'groupCreate', '创建群聊', 'social'],
+          ['/social/chat/:conversationId/info', 'chatInfo', '聊天信息', 'social'],
+          ['/social/chat/:conversationId/members', 'groupMembers', '群成员', 'social'],
+          ['/social/chat/:conversationId/invite', 'groupInvite', '邀请成员', 'social'],
+          ['/social/chat/:conversationId/notice', 'groupNotice', '群公告', 'social'],
+          ['/social/chat/:conversationId/search', 'chatSearch', '聊天搜索', 'social'],
+          ['/social/chat/:conversationId/call/:callMode', 'call', '通话', 'social'],
+          ['/social/chat/:conversationId/message/:messageId', 'message', '消息详情', 'social'],
+          ['/contacts/tags', 'tags', '标签', 'contacts'],
+          ['/contacts/tags/new', 'tagCreate', '创建标签', 'contacts'],
+          ['/contacts/tags/:tagId', 'tagDetail', '标签成员', 'contacts'],
+        ] as const
+      ).map(([path, kind, title, section]) =>
+        page(path, <SocialRoutePage kind={kind} />, title, section),
+      ),
+      page(paths.discover, <DiscoveryPage />, '发现', 'discover', 'business', 'primary'),
+      page(paths.ai, <AiPage kind="home" />, 'AI', 'ai', 'ai', 'primary'),
+      page('/ai/chat/:sessionId', <AiPage kind="chat" />, 'AI 对话', 'ai', 'ai'),
+      page(paths.aiHistory, <AiPage kind="history" />, 'AI 历史', 'ai', 'ai'),
+      page(paths.shop, <ShopPage kind="catalog" />, '商城'),
+      page('/shop/products/:productId', <ShopPage kind="product" />, '商品详情'),
+      page(paths.shopCart, <ShopPage kind="cart" />, '购物车'),
+      page(paths.shopCheckout, <ShopPage kind="checkout" />, '确认订单'),
+      page(paths.shopOrders, <ShopPage kind="orders" />, '我的订单'),
+      page('/shop/orders/:orderId', <ShopPage kind="order" />, '订单详情'),
+      page(paths.matching, <MatchingPage />, '匹配'),
+      page(paths.matchPreferences, <MatchingPage kind="preferences" />, '匹配偏好'),
+      page(paths.matchConnections, <MatchingPage kind="connections" />, '我的连接'),
+      page('/match/profile/:profileId', <MatchingPage kind="profile" />, '资料详情'),
+      page(paths.activity, <MomentsPage />, '动态', 'discover', 'moments'),
+      { path: '/moments', element: <Navigate to={paths.activity} replace /> },
+      ...(
+        [
+          [paths.publish, 'compose', '发布动态', 'discover'],
+          ['/activity/cover', 'cover', '动态封面', 'discover'],
+          ['/people/:author', 'profile', '用户主页', 'discover'],
+          ['/world/posts/:postId/actions', 'post-actions', '动态管理', 'discover'],
+          ['/shorts/:contentId/comments', 'short-comments', '短视频评论', 'discover'],
+          ['/books/:contentId', 'book', '书籍详情', 'discover'],
+          ['/books/:contentId/chapters', 'chapters', '小说目录', 'discover'],
+          [paths.bookshelf, 'bookshelf', '书架', 'discover'],
+          ['/read/:contentId/settings', 'reading-settings', '阅读设置', 'discover'],
+          ['/games/:contentId/results', 'game-results', '游戏成绩', 'discover'],
+          ['/world/topics', 'topics', '世界话题', 'discover'],
+        ] as const
+      ).map(([path, kind, title, section]) =>
+        page(path, <ContentRoutePage kind={kind} />, title, section),
+      ),
+      page(paths.world, <ContentPage moduleName="世界" />, '世界'),
+      page('/world/posts/:postId', <ContentDetailPage kind="post" />, '动态详情'),
+      ...[
+        [paths.live, '直播'],
+        [paths.videos, '视频'],
+        [paths.shorts, '短视频'],
+        [paths.library, '小说'],
+        [paths.games, '游戏'],
+      ].map(([path, moduleName]) =>
+        page(
+          path,
+          <ContentPage moduleName={moduleName} />,
+          moduleName,
+          moduleName === '组织' ? 'me' : 'discover',
+        ),
+      ),
+      page('/watch/:contentId', <ContentDetailPage kind="watch" />, '播放'),
+      page('/read/:contentId', <ContentDetailPage kind="read" />, '阅读'),
+      page('/games/:contentId', <ContentDetailPage kind="game" />, '游戏'),
+      page(
+        paths.organizations,
+        <Navigate to={circlePaths.list} replace />,
+        '圈子',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/organizations/new',
+        <Navigate to={circlePaths.create} replace />,
+        '创建圈子',
+        'discover',
+        'circles',
+      ),
+      page('/organizations/:contentId', <LegacyCircleRedirect />, '圈子', 'discover', 'circles'),
+      page(
+        '/organizations/:contentId/manage',
+        <LegacyCircleRedirect kind="settings" />,
+        '圈子设置',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/organizations/:contentId/members',
+        <LegacyCircleRedirect kind="members" />,
+        '圈子成员',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/organizations/:contentId/events/:eventId',
+        <LegacyCircleRedirect kind="events" />,
+        '圈子活动',
+        'discover',
+        'circles',
+      ),
+      page(circlePaths.list, <CirclesPage />, '圈子', 'discover', 'circles'),
+      page(circlePaths.create, <CircleCreatePage />, '创建圈子', 'discover', 'circles'),
+      {
+        ...page('/circles/:circleId', <CircleShell />, '圈子', 'discover', 'circles'),
+        children: [
+          {
+            index: true,
+            element: <CircleHomePage />,
+            handle: {
+              title: '圈子',
+              section: 'discover',
+              screen: 'circles',
+              level: 'secondary',
+            } satisfies PageMeta,
+          },
+          page('channels/:channelId', <CircleChannelPage />, '圈子频道', 'discover', 'circles'),
+        ],
+      },
+      page(
+        '/circles/:circleId/posts/:postId',
+        <CirclePostPage />,
+        '圈子帖子',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/circles/:circleId/channels/:channelId/new',
+        <CircleComposePage />,
+        '发布帖子',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/circles/:circleId/voice/:channelId',
+        <CircleVoiceRoomPage />,
+        '语音房',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/circles/:circleId/settings',
+        <CircleSettingsPage />,
+        '圈子设置',
+        'discover',
+        'circles',
+      ),
+      page('/circles/:circleId/members', <CircleMembersPage />, '圈子成员', 'discover', 'circles'),
+      page('/circles/:circleId/invite', <CircleInvitePage />, '邀请朋友', 'discover', 'circles'),
+      page('/circles/:circleId/join', <CircleJoinPage />, '加入圈子', 'discover', 'circles'),
+      page(
+        '/circles/:circleId/channels/new',
+        <CircleChannelEditPage creating />,
+        '创建频道',
+        'discover',
+        'circles',
+      ),
+      page(
+        '/circles/:circleId/channels/:channelId/edit',
+        <CircleChannelEditPage />,
+        '频道设置',
+        'discover',
+        'circles',
+      ),
+      page(paths.me, <ProfilePage />, '我', 'me', 'account', 'primary'),
+      page(paths.editProfile, <EditProfilePage />, '编辑资料', 'me'),
+      page(paths.settings, <SettingsPage />, '设置', 'me'),
+      ...(
+        [
+          ['account', '账号信息'],
+          ['security', '账号安全'],
+          ['privacy', '隐私设置'],
+          ['notifications', '消息通知'],
+          ['content', '内容偏好'],
+          ['about', '关于共鸣'],
+          ['blocked', '黑名单'],
+          ['devices', '设备管理'],
+        ] as const
+      ).map(([kind, title]) =>
+        page(`/settings/${kind}`, <SettingsRoutePage kind={kind} />, title, 'me'),
+      ),
+      page(paths.wallet, <WalletPage />, '钱包', 'me'),
+      page(paths.walletEarn, <WalletEarnPage kind="catalog" />, '理财', 'me'),
+      page(paths.walletEarnPositions, <WalletEarnPage kind="positions" />, '理财持仓', 'me'),
+      page('/wallet/earn/products/:productId', <WalletEarnPage kind="product" />, '理财产品', 'me'),
+      ...(
+        [
+          ['/wallet/transfer', 'transfer', '转账'],
+          ['/wallet/transfer/review', 'review', '确认转账'],
+          ['/wallet/result/:transactionId', 'result', '交易结果'],
+          ['/wallet/receive', 'receive', '收款'],
+          ['/wallet/exchange', 'exchange', '兑换'],
+          ['/wallet/history', 'history', '交易记录'],
+          ['/wallet/transactions/:transactionId', 'transaction', '交易详情'],
+          ['/wallet/assets/:assetId', 'asset', '资产详情'],
+        ] as const
+      ).map(([path, kind, title]) => page(path, <WalletRoutePage kind={kind} />, title, 'me')),
+      page('*', <NotFoundPage />, '页面不存在'),
+    ],
+  },
+];
+
+export const router = createBrowserRouter(appRoutes);

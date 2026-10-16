@@ -1,0 +1,734 @@
+.ios-app .ai-page {
+  width: 100%;
+  max-width: 790px;
+  margin: 0 auto;
+  color: var(--text);
+}
+.ios-app .ai-home-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 58px);
+  min-height: 320px;
+}
+.ios-app .ai-home-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 81px;
+  padding: 12px 4px;
+  flex-shrink: 0;
+}
+.ios-app .ai-home-header > h1 {
+  flex: 1;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+.ios-app .ai-home-header > :is(button, a) {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  color: #817d99;
+  border: 1px solid #efedf4;
+}
+.ios-app .ai-home-header > button {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+.ios-app .ai-home-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.ios-app .ai-home-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding-bottom: 20px;
+}
+.ios-app .ai-welcome {
+  text-align: center;
+  padding: 44px 20px 31px;
+}
+.ios-app .ai-welcome > span {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  width: 73px;
+  height: 73px;
+  border-radius: 24px;
+  background: #edebfd;
+  margin: 0 auto 21px;
+  border: 1px solid #e4e1f9;
+}
+.ios-app .ai-welcome > h2 {
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.ios-app .ai-welcome > p {
+  font-size: 10px;
+  color: #aaa3ba;
+  margin-top: 10px;
+}
+.ios-app .ai-starters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+.ios-app .ai-starters > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 93px;
+  background: #fff;
+  border: 1px solid #ece9f2;
+  border-radius: 19px;
+  padding: 17px;
+  text-align: left;
+}
+.ios-app .ai-starters > button > span {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border-radius: 13px;
+  background: #f2effc;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.ios-app .ai-starters > button > div {
+  flex: 1;
+  min-width: 0;
+}
+.ios-app .ai-starters strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 550;
+}
+.ios-app .ai-starters small {
+  display: block;
+  margin-top: 7px;
+  color: #aaa2b8;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.ios-app .ai-starters > button > svg {
+  color: #c4bdd2;
+  flex-shrink: 0;
+}
+.ios-app .ai-starters > button:hover {
+  border-color: #d5cff7;
+  background: #fdfcff;
+}
+.ios-app .ai-recent {
+  margin-top: 29px;
+  margin-bottom: 20px;
+}
+.ios-app .ai-recent > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.ios-app .ai-recent h2 {
+  font-size: 13px;
+  font-weight: 550;
+  color: #8e859f;
+}
+.ios-app .ai-recent > div > a {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: #b3aabd;
+}
+.ios-app .ai-recent > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 13px 0;
+  border-bottom: 1px solid #ede9f3;
+  color: #91879f;
+  font-size: 12px;
+}
+.ios-app .ai-recent > a > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ios-app .ai-recent > a > svg {
+  color: #c1b8ce;
+  flex-shrink: 0;
+}
+.ios-app .ai-home-compose {
+  flex-shrink: 0;
+  padding-top: 16px;
+  background: transparent;
+}
+.ios-app .ai-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 11px 10px 17px;
+  min-height: 55px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  border-radius: 28px;
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow: var(--shadow-glass);
+}
+.ios-app .ai-composer > textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  resize: none;
+  outline: 0;
+  background: transparent;
+  padding: 5px 0;
+  line-height: 25px;
+  font-size: 15px;
+  color: var(--text);
+  max-height: 136px;
+  overflow-y: auto;
+  box-sizing: content-box;
+}
+.ios-app .ai-composer > button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: transparent;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+.ios-app .ai-composer > button:disabled {
+  background: transparent;
+  color: #b6b0c4;
+  opacity: 1;
+}
+.ios-app .ai-composer > .ai-stop-button {
+  background: transparent;
+  color: var(--accent);
+}
+.ios-app .ai-error {
+  color: #c84f68;
+  background: #fff0f3;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 10px 13px;
+  border-radius: 11px;
+  margin-bottom: 10px;
+}
+.ios-app .ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 430px;
+  text-align: center;
+  gap: 14px;
+  padding: 40px 20px;
+}
+.ios-app .ai-empty > svg {
+  color: #b5aac8;
+  margin-bottom: 7px;
+}
+.ios-app .ai-empty > h1 {
+  font-size: 19px;
+  font-weight: 600;
+}
+.ios-app .ai-empty > p {
+  font-size: 12px;
+  color: #b0a5bf;
+  line-height: 1.8;
+  margin-bottom: 10px;
+}
+.ios-app .ai-empty > :is(.primary, .secondary) {
+  min-width: 150px;
+  font-size: 13px;
+}
+.ios-app .ai-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--accent);
+  padding: 10px;
+  font-size: 12px;
+}
+.ios-app .ai-chat-page {
+  height: calc(100dvh - 58px);
+  display: flex;
+  flex-direction: column;
+  max-width: 840px;
+}
+.ios-app .ai-chat-page > .content-topbar {
+  flex-shrink: 0;
+}
+.ios-app .ai-chat-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px 15px;
+  gap: 16px;
+}
+.ios-app .ai-chat-title > span {
+  color: #aaa0b8;
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ios-app .ai-chat-title > small {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 9px;
+  color: #ada1be;
+  white-space: nowrap;
+}
+.ios-app .ai-chat-title i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  background: #a798ce;
+  border-radius: 50%;
+}
+.ios-app .ai-message-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 4px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: #d9d0e7 transparent;
+}
+.ios-app .ai-chat-welcome {
+  text-align: center;
+  padding: 75px 16px;
+}
+.ios-app .ai-chat-welcome > span {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+  width: 67px;
+  height: 67px;
+  border-radius: 22px;
+  margin: 0 auto 20px;
+}
+.ios-app .ai-chat-welcome h1 {
+  font-size: 18px;
+  font-weight: 550;
+}
+.ios-app .ai-chat-welcome p {
+  font-size: 11px;
+  color: #b4a7c2;
+  margin-top: 13px;
+}
+.ios-app .ai-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+.ios-app .ai-message > div {
+  min-width: 0;
+  max-width: calc(100% - 47px);
+}
+.ios-app .ai-message-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 33px;
+  height: 33px;
+  border-radius: 12px;
+  background: #eae5f8;
+  color: var(--accent);
+  margin-top: 2px;
+}
+.ios-app .ai-message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.95;
+  letter-spacing: -0.1px;
+  color: #686175;
+}
+.ios-app .ai-message-assistant .ai-message-text {
+  padding-top: 4px;
+}
+.ios-app .ai-message-user {
+  justify-content: flex-end;
+  margin-top: 7px;
+  margin-bottom: 29px;
+}
+.ios-app .ai-message-user > div {
+  max-width: 83%;
+}
+.ios-app .ai-message-user .ai-message-text {
+  background: #ebe7fc;
+  color: #695a96;
+  border: 1px solid #e1dbf6;
+  border-radius: 18px 18px 5px 18px;
+  padding: 12px 17px;
+  font-size: 14px;
+}
+.ios-app .ai-message-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin-top: 11px;
+}
+.ios-app .ai-message-tools > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #aaa0bb;
+  padding: 5px 0;
+}
+.ios-app .ai-message-tools > button:hover {
+  color: var(--accent);
+}
+.ios-app .ai-message-tools > span {
+  font-size: 10px;
+  color: #b3a2be;
+}
+.ios-app .ai-generating-text::after {
+  content: '';
+  display: inline-block;
+  vertical-align: middle;
+  width: 5px;
+  height: 14px;
+  margin-left: 4px;
+  border-radius: 2px;
+  background: #a592cb;
+  animation: ai-caret 1s ease-in-out infinite;
+}
+.ios-app .ai-interrupted {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #baaac7;
+  margin-bottom: 18px;
+}
+.ios-app .ai-interrupted > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 6px;
+}
+.ios-app .ai-copy-hint {
+  font-size: 10px;
+  color: var(--accent);
+  line-height: 1.8;
+  text-align: center;
+  margin-bottom: 17px;
+}
+.ios-app .ai-chat-composer {
+  flex-shrink: 0;
+  padding-top: 9px;
+  background: transparent;
+}
+.ios-app .ai-history-body {
+  padding-top: 2px;
+  padding-bottom: 35px;
+}
+.ios-app .ai-history-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  background: #eae5f0;
+  color: #ac9fbb;
+  border-radius: 14px;
+  padding: 0 14px;
+  margin-bottom: 20px;
+}
+.ios-app .ai-history-search > input {
+  min-height: 46px;
+  flex: 1;
+  min-width: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+.ios-app .ai-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.ios-app .ai-history-list > article {
+  background: #fff;
+  border: 1px solid #ebe5f2;
+  border-radius: 20px;
+  padding: 18px;
+}
+.ios-app .ai-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ios-app .ai-history-row > a {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.ios-app .ai-history-icon {
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+.ios-app .ai-history-row > a > div {
+  flex: 1;
+  min-width: 0;
+}
+.ios-app .ai-history-row h2 {
+  font-size: 14px;
+  font-weight: 550;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ios-app .ai-history-row p {
+  color: #aaa0b6;
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 8px 0;
+}
+.ios-app .ai-history-row small {
+  font-size: 9px;
+  color: #bcaec8;
+}
+.ios-app .ai-history-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ios-app .ai-history-tools > button {
+  padding: 5px;
+  color: #b9abc6;
+}
+.ios-app .ai-history-tools > button:hover {
+  color: var(--accent);
+}
+.ios-app .ai-history-inline {
+  border-top: 1px solid #f0ebf6;
+  padding-top: 17px;
+  margin-top: 16px;
+}
+.ios-app .ai-history-inline > p {
+  font-size: 12px;
+  color: #a798b7;
+  margin-bottom: 16px;
+}
+.ios-app .ai-history-inline > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ios-app .ai-history-inline .field {
+  font-size: 14px;
+  margin-bottom: 13px;
+}
+.ios-app .ai-history-inline :is(.primary, .secondary) {
+  min-height: 38px;
+  font-size: 12px;
+  border-radius: 12px;
+  padding: 9px 15px;
+}
+.ios-app .ai-danger-button {
+  color: #cb5674;
+  background: #fff0f4;
+  border-radius: 12px;
+  padding: 9px 15px;
+  font-size: 12px;
+}
+.ios-app .ai-delete-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid #ded5f1;
+  background: #f0eafb;
+  border-radius: 13px;
+  margin-bottom: 17px;
+}
+.ios-app .ai-delete-undo > span {
+  color: #a18eb5;
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ios-app .ai-delete-undo > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+@keyframes ai-caret {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (max-width: 800px) {
+  .ios-app .ai-home-page {
+    height: calc(100dvh - var(--nav-clearance) - env(safe-area-inset-bottom));
+  }
+  .ios-app .ai-home-header {
+    min-height: 79px;
+    padding: 14px 20px 9px;
+  }
+  .ios-app .ai-home-header > h1 {
+    font-size: 27px;
+  }
+  .ios-app .ai-home-body {
+    padding: 0 20px;
+  }
+  .ios-app .ai-welcome {
+    padding: 35px 10px 28px;
+  }
+  .ios-app .ai-welcome > span {
+    width: 67px;
+    height: 67px;
+    border-radius: 22px;
+    margin-bottom: 19px;
+  }
+  .ios-app .ai-welcome > h2 {
+    font-size: 21px;
+  }
+  .ios-app .ai-starters {
+    gap: 10px;
+  }
+  .ios-app .ai-starters > button {
+    min-height: 98px;
+    padding: 14px 12px;
+    border-radius: 18px;
+    gap: 9px;
+    flex-wrap: wrap;
+    align-content: center;
+  }
+  .ios-app .ai-starters > button > span {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+  }
+  .ios-app .ai-starters > button > div {
+    min-width: 71px;
+  }
+  .ios-app .ai-starters > button > svg {
+    display: none;
+  }
+  .ios-app .ai-starters small {
+    font-size: 9px;
+    margin-top: 6px;
+    white-space: nowrap;
+  }
+  .ios-app .ai-starters strong {
+    font-size: 13px;
+  }
+  .ios-app .ai-home-compose {
+    padding-block: 12px 10px;
+  }
+  .ios-app .ai-recent {
+    margin-top: 25px;
+  }
+  .ios-app .ai-chat-page {
+    height: calc(100dvh - env(safe-area-inset-bottom));
+  }
+  .ios-app .ai-chat-title {
+    padding: 0 20px 14px;
+  }
+  .ios-app .ai-message-list {
+    padding: 6px 20px 20px;
+  }
+  .ios-app .ai-message {
+    gap: 9px;
+  }
+  .ios-app .ai-message-avatar {
+    width: 29px;
+    height: 29px;
+    border-radius: 10px;
+  }
+  .ios-app .ai-message > div {
+    max-width: calc(100% - 38px);
+  }
+  .ios-app .ai-message-user > div {
+    max-width: 87%;
+  }
+  .ios-app .ai-message-text {
+    font-size: 13px;
+    line-height: 1.95;
+  }
+  .ios-app .ai-message-user .ai-message-text {
+    font-size: 13px;
+    padding: 11px 14px;
+  }
+  .ios-app .ai-chat-composer {
+    padding: 10px 16px 12px;
+  }
+  .ios-app .ai-history-body {
+    padding: 2px 20px 35px;
+  }
+  .ios-app .ai-history-list > article {
+    padding: 17px;
+  }
+}
+@media (max-width: 360px) {
+  .ios-app .ai-home-body {
+    padding-inline: 16px;
+  }
+  .ios-app .ai-starters > button {
+    min-height: 111px;
+    gap: 9px;
+  }
+  .ios-app .ai-starters > button > div {
+    flex-basis: 100%;
+  }
+  .ios-app .ai-welcome {
+    padding-top: 27px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ios-app .ai-composer {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ios-app .ai-generating-text::after {
+    animation: none;
+  }
+}

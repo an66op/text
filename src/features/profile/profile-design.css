@@ -1,0 +1,580 @@
+.ios-app .profile-home {
+  min-height: calc(100dvh - var(--nav-clearance));
+  background: var(--canvas);
+}
+.ios-app .profile-home .account-topbar {
+  justify-content: space-between;
+  height: 100px;
+  align-items: center;
+  padding: 20px 24px 14px;
+}
+.ios-app .profile-home .account-topbar > strong {
+  font-size: 34px;
+  font-weight: 750;
+  letter-spacing: -1.2px;
+}
+.ios-app .profile-home-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 20px 24px;
+}
+.ios-app .profile-identity {
+  padding: 25px 24px 0;
+  border: 1px solid #fff;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.ios-app .profile-identity-heading {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  min-width: 0;
+}
+.ios-app .profile-identity-heading > img {
+  flex: 0 0 74px;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 5px #f7f6fd;
+}
+.ios-app .profile-identity-heading > div {
+  min-width: 0;
+}
+.ios-app .profile-identity-heading h1 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+  overflow-wrap: anywhere;
+}
+.ios-app .profile-identity-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.ios-app .profile-identity-bio {
+  margin: 23px 0 21px;
+  color: #676777;
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ios-app .profile-identity-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 61px;
+  border-top: 1px solid var(--line);
+}
+.ios-app .profile-identity-footer > span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.ios-app .profile-identity-footer > span svg {
+  flex-shrink: 0;
+}
+.ios-app .profile-identity-footer > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 44px;
+  gap: 4px;
+  white-space: nowrap;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ios-app .profile-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 32px 3px 15px;
+}
+.ios-app .profile-section-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.ios-app .profile-section-heading > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.ios-app .profile-service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.ios-app .profile-service {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 19px;
+  border: 1px solid #fff;
+  border-radius: 25px;
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+}
+.ios-app .profile-service:hover {
+  box-shadow: 0 7px 28px #403e6810;
+  transform: translateY(-2px);
+}
+.ios-app .profile-service-icon {
+  display: grid;
+  place-items: center;
+  width: 47px;
+  height: 47px;
+  margin-bottom: 19px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ios-app .profile-service-coral .profile-service-icon {
+  background: #fff0ed;
+  color: #e98070;
+}
+.ios-app .profile-service-amber .profile-service-icon {
+  background: #fff5de;
+  color: #d5a24f;
+}
+.ios-app .profile-service-blue .profile-service-icon {
+  background: #edf3fe;
+  color: #688edd;
+}
+.ios-app .profile-service-arrow {
+  position: absolute;
+  top: 23px;
+  right: 18px;
+  color: #c6c5d2;
+}
+.ios-app .profile-service > strong {
+  margin: 0 0 7px;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--text);
+}
+.ios-app .profile-service > small {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.ios-app .profile-home-signature {
+  margin: 30px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.ios-app :is(.settings-page, .profile-edit-page) {
+  background: var(--canvas);
+  min-height: 100dvh;
+}
+.ios-app .settings-page .settings-content,
+.ios-app .profile-edit-page .profile-edit-form {
+  max-width: 680px;
+  padding: 20px 20px 40px;
+}
+.ios-app .settings-group {
+  margin-bottom: 28px;
+}
+.ios-app .settings-page .settings-group > h2 {
+  margin: 0 0 11px 17px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+}
+.ios-app :is(.settings-card, .profile-edit-fields) {
+  border: 1px solid #fff;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+}
+.ios-app .settings-page .settings-row,
+.ios-app .settings-nav-row {
+  gap: 14px;
+  min-height: 80px;
+  padding: 17px 18px;
+}
+.ios-app .settings-nav-row:hover {
+  background: #f8f8fd;
+}
+.ios-app .settings-row-copy {
+  gap: 6px;
+}
+.ios-app .settings-page .settings-row-copy strong {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 550;
+}
+.ios-app .settings-page .settings-row-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+.ios-app
+  .settings-page
+  :is(
+    .settings-row,
+    .settings-nav-row,
+    .settings-static-row,
+    .settings-device-row,
+    .settings-blocked-row
+  )
+  + :is(
+    .settings-row,
+    .settings-nav-row,
+    .settings-static-row,
+    .settings-device-row,
+    .settings-blocked-row
+  ) {
+  border-color: #f0eff6;
+}
+.ios-app .settings-nav-row > svg {
+  width: 16px;
+  color: #c1c0cf;
+}
+.ios-app .settings-nav-icon {
+  flex: 0 0 39px;
+  width: 39px;
+  height: 39px;
+  border-radius: 13px;
+  color: #7370d9;
+  background: #eeedfc;
+}
+.ios-app .settings-nav-row:nth-child(2) .settings-nav-icon {
+  color: #6397ba;
+  background: #edf5fc;
+}
+.ios-app .settings-nav-row:nth-child(3) .settings-nav-icon {
+  color: #d39274;
+  background: #fff2e9;
+}
+.ios-app .settings-nav-row:nth-child(4) .settings-nav-icon {
+  color: #cf8daf;
+  background: #fff0f7;
+}
+.ios-app .settings-nav-row:nth-child(5) .settings-nav-icon {
+  color: #94a565;
+  background: #f1f5e6;
+}
+.ios-app .settings-nav-row:nth-child(6) .settings-nav-icon {
+  color: #8d93a6;
+  background: #f0f1f7;
+}
+.ios-app .settings-page .preference-switch {
+  flex-basis: 50px;
+  width: 50px;
+  height: 30px;
+  background: #e7e6ee;
+}
+.ios-app .settings-page .preference-switch::before {
+  width: 24px;
+  height: 24px;
+  box-shadow: 0 2px 4px #24223c14;
+}
+.ios-app .settings-page .preference-switch:checked {
+  background: var(--accent);
+}
+.ios-app .settings-page .preference-switch:checked::before {
+  transform: translateX(20px);
+}
+.ios-app .settings-page .preference-switch:focus-visible {
+  outline-color: var(--accent);
+}
+.ios-app .settings-page .settings-hint,
+.ios-app .profile-edit-page .settings-hint {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.ios-app .settings-static-row {
+  min-height: 64px;
+  padding: 17px 19px;
+  font-size: 14px;
+}
+.ios-app .settings-static-row > span {
+  color: var(--muted);
+}
+.ios-app .settings-static-row > strong {
+  min-width: 0;
+  color: #555565;
+  font-size: 13px;
+}
+.ios-app .settings-green {
+  color: var(--accent) !important;
+}
+.ios-app .settings-form-fields {
+  padding: 23px 20px;
+}
+.ios-app .settings-form-fields > label {
+  gap: 12px;
+  color: #666575;
+  font-size: 13px;
+}
+.ios-app .settings-page .field,
+.ios-app .profile-edit-page .field {
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #f8f8fc;
+  color: var(--text);
+  font-size: 16px;
+  caret-color: var(--accent);
+}
+.ios-app .settings-page .field:focus,
+.ios-app .profile-edit-page .field:focus {
+  border-color: #9794f0;
+}
+.ios-app .settings-row select,
+.ios-app .settings-static-row input[type='time'] {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f4f3fb;
+  color: var(--accent);
+  font-size: 13px;
+}
+.ios-app .settings-security-banner {
+  padding: 23px 20px;
+  margin-bottom: 27px;
+  gap: 16px;
+  border-radius: 23px;
+  color: var(--accent);
+  background: #eeedfb;
+}
+.ios-app .settings-security-banner strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.ios-app .settings-security-banner small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.ios-app :is(.settings-page-intro, .settings-inline-confirm p) {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.ios-app .settings-inline-confirm {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 23px;
+}
+.ios-app .settings-inline-confirm button {
+  min-height: 44px;
+  padding: 10px 18px;
+}
+.ios-app
+  :is(
+    .settings-outline-button,
+    .settings-device-row button,
+    .settings-blocked-row button,
+    .profile-edit-page .profile-edit-avatar > .profile-reset-avatar
+  ) {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 12px;
+}
+.ios-app .settings-current-device {
+  padding: 7px 9px;
+  border-radius: 9px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.ios-app .settings-device-icon,
+.ios-app .settings-empty > svg {
+  color: #9995c8;
+}
+.ios-app .settings-blocked-row img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+.ios-app .settings-success {
+  border-radius: 15px;
+  color: #6662b8;
+  background: var(--accent-soft);
+  font-size: 12px;
+}
+.ios-app .settings-search {
+  min-height: 50px;
+  padding: 12px 15px;
+  gap: 10px;
+  border: 0;
+  border-radius: 16px;
+  color: #9290a8;
+  background: #ecebf4;
+}
+.ios-app .settings-search input {
+  color: var(--text);
+  background: transparent;
+  font-size: 15px;
+}
+.ios-app .settings-about-brand > span {
+  width: 80px;
+  height: 80px;
+  border-radius: 25px;
+  background: var(--accent);
+  box-shadow:
+    inset 0 1px 1px #ffffff45,
+    0 8px 24px #6260e827;
+}
+.ios-app .settings-about-brand h1 {
+  font-size: 28px;
+  letter-spacing: -0.9px;
+}
+.ios-app .settings-about-brand p,
+.ios-app .settings-about-brand small {
+  color: var(--muted);
+}
+.ios-app .settings-empty {
+  padding: 38px 20px;
+}
+.ios-app .settings-empty > strong {
+  color: #727088;
+}
+.ios-app .settings-empty p {
+  color: var(--muted);
+}
+.ios-app .settings-text-button {
+  min-height: 44px;
+  padding: 14px 5px;
+  color: var(--muted);
+}
+.ios-app .profile-edit-page .profile-edit-avatar > button:not(.profile-reset-avatar),
+.ios-app .profile-edit-page .profile-edit-avatar img {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+}
+.ios-app .profile-edit-page .profile-edit-avatar button > span {
+  width: 30px;
+  height: 30px;
+  right: -2px;
+  bottom: -2px;
+  border: 3px solid var(--canvas);
+  background: var(--accent);
+}
+.ios-app .profile-edit-page .profile-edit-avatar p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ios-app .profile-edit-page .profile-edit-fields {
+  padding: 24px 20px;
+}
+.ios-app .profile-edit-page .profile-field-heading {
+  margin-bottom: 12px;
+}
+.ios-app .profile-edit-page .profile-field-heading label {
+  font-size: 14px;
+  color: #696779;
+}
+.ios-app .profile-edit-page .profile-field-heading small,
+.ios-app .profile-field-hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+.ios-app .profile-edit-page textarea.field {
+  min-height: 126px;
+}
+.ios-app .profile-error {
+  border-radius: 15px;
+  color: #bc5f66;
+  background: #fff0f2;
+}
+@media (min-width: 801px) {
+  .ios-app .profile-home .account-topbar {
+    padding-inline: 4px;
+    height: 108px;
+  }
+  .ios-app .profile-home-content {
+    max-width: 760px;
+    padding: 12px 8px 40px;
+  }
+  .ios-app .profile-identity {
+    padding-inline: 30px;
+    padding-top: 30px;
+  }
+  .ios-app .profile-service {
+    padding: 25px;
+  }
+  .ios-app .profile-service-arrow {
+    top: 28px;
+    right: 24px;
+  }
+}
+@media (max-width: 374px) {
+  .ios-app .profile-home-content {
+    padding-inline: 16px;
+  }
+  .ios-app .profile-identity {
+    padding-inline: 20px;
+  }
+  .ios-app .profile-service-grid {
+    gap: 12px;
+  }
+  .ios-app .profile-service {
+    padding: 17px;
+  }
+  .ios-app .profile-identity-heading > img {
+    flex-basis: 65px;
+    width: 65px;
+    height: 65px;
+  }
+  .ios-app .profile-identity-heading h1 {
+    font-size: 23px;
+  }
+  .ios-app .settings-page .settings-content,
+  .ios-app .profile-edit-page .profile-edit-form {
+    padding-inline: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ios-app .profile-service:hover {
+    transform: none;
+  }
+  .ios-app .settings-page .preference-switch,
+  .ios-app .settings-page .preference-switch::before {
+    transition: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .ios-app
+    :is(
+      .profile-identity-bio,
+      .profile-service > small,
+      .profile-home-signature,
+      .settings-page .settings-row-copy small,
+      .settings-page .settings-hint,
+      .profile-edit-page .settings-hint
+    ) {
+    color: var(--muted);
+  }
+  .ios-app :is(.profile-identity, .profile-service, .settings-card, .profile-edit-fields) {
+    border-color: var(--line);
+  }
+}

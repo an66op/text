@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+public
+package-lock.json
+*.tsbuildinfo
+*.jpg
+*.png
+*.webp
