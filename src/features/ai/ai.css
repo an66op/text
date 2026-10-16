@@ -5,41 +5,24 @@
   color: var(--text);
 }
 .ios-app .ai-home-page {
+  --ai-home-header-clearance: 78px;
+  position: relative;
   display: flex;
   flex-direction: column;
   height: calc(100dvh - 58px);
   min-height: 320px;
 }
-.ios-app .ai-home-header {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 81px;
-  padding: 12px 4px;
+.ios-app .ai-home-page header.app-topbar.ai-home-header {
+  position: absolute;
+  top: 14px;
+  right: 0;
+  left: 0;
+  z-index: 10;
+  margin: 0;
   flex-shrink: 0;
 }
-.ios-app .ai-home-header > h1 {
-  flex: 1;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.8px;
-}
-.ios-app .ai-home-header > :is(button, a) {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #fff;
-  color: #817d99;
-  border: 1px solid #efedf4;
-}
-.ios-app .ai-home-header > button {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: transparent;
-}
 .ios-app .ai-home-body {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -48,10 +31,13 @@
 .ios-app .ai-home-content {
   flex: 1;
   min-height: 0;
+  padding-top: var(--ai-home-header-clearance);
+  scroll-padding-top: var(--ai-home-header-clearance);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  padding-bottom: 20px;
+  padding-bottom: var(--ai-composer-clearance, 96px);
+  scroll-padding-bottom: var(--ai-composer-clearance, 96px);
 }
 .ios-app .ai-welcome {
   text-align: center;
@@ -170,8 +156,12 @@
   flex-shrink: 0;
 }
 .ios-app .ai-home-compose {
-  flex-shrink: 0;
-  padding-top: 16px;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  padding: 0;
   background: transparent;
 }
 .ios-app .ai-composer {
@@ -180,9 +170,18 @@
   gap: 10px;
   padding: 10px 11px 10px 17px;
   min-height: 55px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass);
+  border: 1px solid #ffffff9e;
+  background: #ffffff3d;
   border-radius: 28px;
+  -webkit-backdrop-filter: blur(24px) saturate(1.45);
+  backdrop-filter: blur(24px) saturate(1.45);
+  box-shadow:
+    0 7px 24px #39345f0a,
+    inset 0 1px 0 #ffffff80;
+}
+.ios-app .ai-home-page .ai-composer {
+  border-color: var(--glass-border);
+  background: var(--glass);
   -webkit-backdrop-filter: blur(28px) saturate(1.6);
   backdrop-filter: blur(28px) saturate(1.6);
   box-shadow: var(--shadow-glass);
@@ -269,13 +268,19 @@
   font-size: 12px;
 }
 .ios-app .ai-chat-page {
+  position: relative;
   height: calc(100dvh - 58px);
   display: flex;
   flex-direction: column;
   max-width: 840px;
 }
-.ios-app .ai-chat-page > .content-topbar {
-  flex-shrink: 0;
+.ios-app .ai-chat-controls {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  background: transparent;
 }
 .ios-app .ai-chat-title {
   display: flex;
@@ -311,7 +316,9 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 6px 4px 22px;
+  padding: var(--ai-chat-header-clearance, 110px) 4px var(--ai-chat-composer-clearance, 96px);
+  scroll-padding-top: var(--ai-chat-header-clearance, 110px);
+  scroll-padding-bottom: var(--ai-chat-composer-clearance, 96px);
   scrollbar-width: thin;
   scrollbar-color: #d9d0e7 transparent;
 }
@@ -444,6 +451,11 @@
   margin-bottom: 17px;
 }
 .ios-app .ai-chat-composer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 11;
   flex-shrink: 0;
   padding-top: 9px;
   background: transparent;
@@ -605,14 +617,13 @@
 }
 @media (max-width: 800px) {
   .ios-app .ai-home-page {
+    --ai-home-header-clearance: calc(max(14px, env(safe-area-inset-top)) + 64px);
     height: calc(100dvh - var(--nav-clearance) - env(safe-area-inset-bottom));
   }
-  .ios-app .ai-home-header {
-    min-height: 79px;
-    padding: 14px 20px 9px;
-  }
-  .ios-app .ai-home-header > h1 {
-    font-size: 27px;
+  .ios-app .ai-home-page header.app-topbar.ai-home-header {
+    top: max(14px, env(safe-area-inset-top));
+    right: 16px;
+    left: 16px;
   }
   .ios-app .ai-home-body {
     padding: 0 20px;
@@ -660,7 +671,9 @@
     font-size: 13px;
   }
   .ios-app .ai-home-compose {
-    padding-block: 12px 10px;
+    right: 20px;
+    bottom: 10px;
+    left: 20px;
   }
   .ios-app .ai-recent {
     margin-top: 25px;
@@ -672,7 +685,7 @@
     padding: 0 20px 14px;
   }
   .ios-app .ai-message-list {
-    padding: 6px 20px 20px;
+    padding: var(--ai-chat-header-clearance, 110px) 20px var(--ai-chat-composer-clearance, 96px);
   }
   .ios-app .ai-message {
     gap: 9px;
@@ -710,6 +723,10 @@
   .ios-app .ai-home-body {
     padding-inline: 16px;
   }
+  .ios-app .ai-home-compose {
+    right: 16px;
+    left: 16px;
+  }
   .ios-app .ai-starters > button {
     min-height: 111px;
     gap: 9px;
@@ -722,7 +739,18 @@
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .ios-app .ai-composer {
+  .ios-app .ai-composer,
+  .ios-app .ai-home-page .ai-composer {
+    background: #fafaff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .ios-app .ai-composer,
+  .ios-app .ai-home-page .ai-composer {
+    background: #fff;
+    border-color: #858598;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

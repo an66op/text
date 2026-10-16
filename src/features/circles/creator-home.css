@@ -319,14 +319,15 @@
 }
 .ios-app .creator-feed-controls {
   position: sticky;
-  top: 0;
+  top: var(--circle-mobile-bar-height, 0px);
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fffffff2;
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--line);
+  background: transparent;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
   padding: 0 28px;
   gap: 15px;
 }
@@ -600,10 +601,10 @@
     display: none;
   }
   .ios-app .creator-workspace .circle-mobile-bar {
-    height: 62px;
-    flex-basis: 62px;
-    padding: 8px 14px;
-    background: #fff;
+    height: var(--circle-mobile-bar-height);
+    flex-basis: var(--circle-mobile-bar-height);
+    padding: env(safe-area-inset-top) 12px 0;
+    background: transparent;
   }
   .ios-app .creator-hero {
     height: 166px;

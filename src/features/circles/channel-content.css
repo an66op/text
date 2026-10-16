@@ -22,37 +22,50 @@
   border: 0;
 }
 .circle-content-header {
+  position: sticky;
+  top: var(--circle-mobile-bar-height, 0px);
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 26px 30px 22px;
-  border-bottom: 1px solid var(--line);
-  background: var(--glass);
-  backdrop-filter: blur(18px);
+  gap: 9px;
+  min-height: 56px;
+  padding: 6px 20px;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
   flex-shrink: 0;
 }
 .circle-content-channel-icon {
-  width: 46px;
-  height: 46px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   color: var(--accent);
   border-radius: 15px;
-  background: var(--accent-soft);
+  background: transparent;
   flex-shrink: 0;
 }
 .circle-content-header > div {
   min-width: 0;
+  flex: 1;
 }
 .circle-content-header h1 {
-  font-size: 21px;
-  letter-spacing: -0.6px;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .circle-content-header p {
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 10px;
+  line-height: 1.3;
   color: var(--muted);
-  margin-top: 5px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .circle-content-publish {
   display: inline-flex;
@@ -82,6 +95,15 @@
 }
 .circle-content-settings + .circle-content-publish {
   margin-left: 0;
+}
+.circle-content-header :is(.circle-content-publish, .circle-content-settings) {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 .circle-content-body {
   padding: 22px 30px 35px;
@@ -1035,7 +1057,7 @@
 }
 @media (max-width: 1100px) {
   .circle-content-header {
-    padding: 23px;
+    padding-inline: 16px;
   }
   .circle-content-body,
   .circle-message-list {
@@ -1056,20 +1078,20 @@
 }
 @media (max-width: 700px) {
   .circle-content-header {
-    padding: 20px;
-    gap: 11px;
+    padding: 6px 12px;
+    gap: 8px;
   }
   .circle-content-channel-icon {
-    width: 42px;
-    height: 42px;
+    width: 34px;
+    height: 34px;
     border-radius: 14px;
   }
   .circle-content-header h1 {
-    font-size: 20px;
+    font-size: 15px;
   }
   .circle-content-header p {
     max-width: 235px;
-    font-size: 11px;
+    font-size: 10px;
   }
   .circle-content-publish {
     width: 37px;

@@ -21,6 +21,102 @@
   background: #fff;
   box-shadow: 0 2px 8px #35306309;
 }
+.im-overview-controls {
+  display: contents;
+}
+.ios-app .im-overview-scroll {
+  --social-controls-top: 14px;
+  display: block;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-top: calc(var(--social-controls-top) + 192px);
+  scroll-padding-bottom: calc(var(--nav-clearance, 100px) + env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+  scrollbar-color: #deddea transparent;
+  isolation: isolate;
+}
+.ios-app .im-overview-scroll .im-overview-controls {
+  position: sticky;
+  top: var(--social-controls-top);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: var(--social-controls-top) 16px 12px;
+  background: transparent;
+}
+.ios-app .im-overview-scroll :is(.im-search-wrap, .social-message-tabs) {
+  margin: 0;
+  border: 1px solid var(--glass-border);
+  background: #ffffff73;
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow: var(--shadow-glass);
+}
+.ios-app .im-overview-controls > .app-topbar {
+  margin: 0;
+}
+.ios-app .im-overview-scroll:not(.im-overview-messages) {
+  scroll-padding-top: calc(var(--social-controls-top) + 122px);
+}
+.ios-app .im-contact-index-anchor {
+  position: sticky;
+  top: 50%;
+  height: 0;
+  z-index: 8;
+}
+.ios-app .im-contact-index-anchor .im-contact-index {
+  top: 0;
+  transform: translateY(-50%);
+}
+.ios-app header.app-topbar.app-topbar.im-topbar > .app-topbar-title {
+  overflow: visible;
+}
+.ios-app .social-topbar-title {
+  position: relative;
+}
+.ios-app .social-topbar-title > span:not(:empty) {
+  position: absolute;
+  left: calc(100% + 7px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 18px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+}
+.ios-app .im-topbar .im-plus-wrap > button:not(.im-menu-dismiss) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.ios-app .im-overview-scroll .im-search-wrap {
+  border-radius: 25px;
+}
+.ios-app .im-overview-messages .social-message-tabs {
+  border-radius: 25px;
+}
+.ios-app .im-overview-messages .social-message-tabs > button {
+  border-radius: 20px;
+}
+.ios-app .im-overview-messages .social-message-tabs > button[aria-selected='true'] {
+  background: #eae8fbb3;
+  box-shadow: none;
+}
+.ios-app .im-overview-scroll :is(.im-conversations, .social-channel-list, .im-contacts) {
+  flex: none;
+  overflow: visible;
+  min-height: auto;
+}
+.ios-app .im-overview-messages .im-list-caption {
+  position: static;
+  background: transparent;
+}
 .ios-app .im-plus-menu a {
   display: flex;
   align-items: center;
@@ -271,22 +367,36 @@
   border: 0;
 }
 .ios-app .tg-channel {
+  --tg-header-height: 56px;
+  --tg-pinned-height: 60px;
+  --tg-top-space: var(--tg-header-height);
+  position: relative;
   min-height: 0;
   background-color: #edeaf5;
   background-image: radial-gradient(#b7adce22 1px, transparent 1px);
   background-size: 23px 23px;
 }
+.ios-app .tg-channel:has(> .tg-pinned-bar) {
+  --tg-top-space: calc(var(--tg-header-height) + var(--tg-pinned-height));
+}
+.ios-app .tg-channel > .social-channel-empty {
+  padding-top: calc(var(--tg-header-height) + 42px);
+}
 .tg-channel-header {
-  min-height: 85px;
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 14px 23px;
-  background: #faf9fce8;
-  border-bottom: 1px solid #e4dfed;
-  backdrop-filter: blur(20px);
+  gap: 8px;
+  padding: 0 18px;
+  background: transparent;
+  border: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   flex-shrink: 0;
-  z-index: 2;
+  z-index: 10;
 }
 .tg-back {
   display: none;
@@ -296,16 +406,16 @@
 .tg-channel-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
   min-width: 0;
   flex: 1;
   color: var(--text);
   text-decoration: none;
 }
 .tg-channel-heading .social-channel-icon {
-  width: 45px;
-  height: 45px;
-  font-size: 25px;
+  width: 36px;
+  height: 36px;
+  font-size: 21px;
 }
 .tg-channel-heading > span:last-child {
   min-width: 0;
@@ -314,8 +424,8 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.3;
   font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -328,13 +438,15 @@
   display: block;
   margin-top: 2px;
   font-size: 11px;
+  line-height: 1.3;
   color: #93869f;
 }
 .tg-channel-more {
   display: grid;
   place-items: center;
-  width: 35px;
-  height: 35px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border-radius: 50%;
   color: var(--accent);
   text-decoration: none;
@@ -343,10 +455,16 @@
   background: var(--accent-soft);
 }
 .tg-pinned-bar {
+  position: absolute;
+  top: var(--tg-header-height);
+  right: 0;
+  left: 0;
+  z-index: 9;
   display: flex;
   align-items: center;
   gap: 13px;
-  min-height: 60px;
+  min-height: var(--tg-pinned-height);
+  height: var(--tg-pinned-height);
   padding: 10px 25px;
   color: var(--accent);
   background: #faf9fce6;
@@ -379,7 +497,8 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 19px 25px 27px;
+  padding: calc(var(--tg-top-space) + 19px) 25px 27px;
+  scroll-padding-top: calc(var(--tg-top-space) + 19px);
   scrollbar-color: #d1c8de transparent;
 }
 .tg-channel-history-start {
@@ -854,6 +973,12 @@
   background: #fcecf2;
 }
 .ios-app .tg-comments-page {
+  --tg-comments-header-top: max(10px, env(safe-area-inset-top));
+  --tg-comments-original-height: 72px;
+  --tg-comments-top-space: calc(
+    var(--tg-comments-header-top) + 62px + var(--tg-comments-original-height)
+  );
+  position: relative;
   display: flex;
   flex-direction: column;
   height: calc(100dvh - 28px);
@@ -863,15 +988,28 @@
   background: #eeeaf5;
   border-radius: 25px;
 }
-.tg-comments-page > .content-topbar {
+.ios-app .tg-comments-page > header.app-topbar.app-topbar {
+  position: absolute;
+  top: var(--tg-comments-header-top);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  margin: 0 16px;
   flex-shrink: 0;
-  background: #faf8fde8;
+  background: transparent;
 }
 .tg-thread-original {
+  position: absolute;
+  top: calc(var(--tg-comments-header-top) + 62px);
+  right: 0;
+  left: 0;
+  z-index: 9;
   display: flex;
   align-items: center;
   gap: 11px;
   padding: 14px 23px;
+  min-height: var(--tg-comments-original-height);
+  height: var(--tg-comments-original-height);
   border-bottom: 1px solid #e6e0ef;
   background: #f9f7fbe6;
   color: var(--accent);
@@ -904,7 +1042,8 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 25px;
+  padding: calc(var(--tg-comments-top-space) + 25px) 25px 25px;
+  scroll-padding-top: calc(var(--tg-comments-top-space) + 20px);
   scrollbar-color: #d1c8de transparent;
 }
 .tg-thread-comment {
@@ -1118,6 +1257,12 @@
   }
 }
 @media (max-width: 800px) {
+  .ios-app .im-overview-scroll {
+    --social-controls-top: max(14px, env(safe-area-inset-top));
+  }
+  .ios-app .im-chat-open .im-overview-scroll {
+    display: none;
+  }
   .social-message-tabs {
     margin-inline: 24px;
   }
@@ -1139,25 +1284,30 @@
   .tg-channel-row-caption {
     font-size: 10px;
   }
+  .ios-app .tg-channel {
+    --tg-header-height: calc(56px + env(safe-area-inset-top));
+    --tg-pinned-height: 58px;
+  }
   .tg-channel-header {
-    min-height: calc(75px + env(safe-area-inset-top));
-    padding: env(safe-area-inset-top) 14px 0 7px;
-    gap: 5px;
+    min-height: calc(56px + env(safe-area-inset-top));
+    height: calc(56px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 8px 0 4px;
+    gap: 6px;
   }
   .tg-back {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    width: 32px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
   }
   .tg-channel-heading {
-    gap: 10px;
+    gap: 8px;
   }
   .tg-channel-heading .social-channel-icon {
-    width: 41px;
-    height: 41px;
-    font-size: 23px;
+    width: 34px;
+    height: 34px;
+    font-size: 20px;
   }
   .tg-channel-heading h1 {
     font-size: 15px;
@@ -1166,14 +1316,13 @@
     font-size: 10px;
   }
   .tg-channel-more {
-    width: 33px;
+    width: 44px;
   }
   .tg-pinned-bar {
     padding: 11px 18px;
-    min-height: 58px;
   }
   .tg-timeline {
-    padding: 12px 13px 21px;
+    padding: calc(var(--tg-top-space) + 12px) 13px 21px;
   }
   .tg-message {
     max-width: min(94%, 440px);
@@ -1243,12 +1392,24 @@
     padding-inline: 18px;
   }
   .tg-thread-messages {
-    padding: 20px 15px;
+    padding: calc(var(--tg-comments-top-space) + 20px) 15px 20px;
   }
   .tg-thread-composer {
     padding: 12px 16px max(12px, env(safe-area-inset-bottom));
   }
   .tg-thread-subscribe {
     padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ios-app .im-overview-scroll :is(.im-search-wrap, .social-message-tabs) {
+    background: #fafaff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .ios-app .im-overview-scroll :is(.im-search-wrap, .social-message-tabs) {
+    border-color: #858598;
   }
 }

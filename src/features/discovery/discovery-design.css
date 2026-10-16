@@ -1,37 +1,20 @@
 .ios-app .discovery-page.discovery-studio {
   max-width: 860px;
   margin: 0 auto;
-  padding: 30px 22px 30px;
+  padding: 14px 22px 30px;
   background: transparent;
+  overflow: visible;
 }
-.ios-app .discovery-studio .discovery-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: auto;
-  padding: 0 2px;
-  margin-bottom: 26px;
-  border: 0;
-  background: transparent;
-}
-.ios-app .discovery-studio .discovery-heading h1 {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 750;
-  line-height: 1.15;
-  letter-spacing: -1px;
-  color: var(--text);
+.ios-app .discovery-studio .discovery-topbar {
+  margin: 0 -6px 26px;
 }
 .ios-app .discovery-orbit {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border: 1px solid #fff;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--surface);
   color: var(--accent);
-  box-shadow: var(--shadow-soft);
 }
 .ios-app .discovery-activity {
   display: block;
@@ -302,7 +285,10 @@
 }
 @media (min-width: 650px) {
   .ios-app .discovery-page.discovery-studio {
-    padding: 30px 18px 40px;
+    padding: 14px 18px 40px;
+  }
+  .ios-app .discovery-studio .discovery-topbar {
+    margin-inline: -2px;
   }
   .ios-app .discovery-activity {
     min-height: 300px;
@@ -317,6 +303,9 @@
 @media (max-width: 370px) {
   .ios-app .discovery-page.discovery-studio {
     padding-inline: 18px;
+  }
+  .ios-app .discovery-studio .discovery-topbar {
+    margin-inline: -2px;
   }
   .ios-app .discovery-activity-bottom {
     padding-inline: 20px;

@@ -1,24 +1,15 @@
 .ios-app .profile-home {
   min-height: calc(100dvh - var(--nav-clearance));
+  padding-top: 14px;
   background: var(--canvas);
-}
-.ios-app .profile-home .account-topbar {
-  justify-content: space-between;
-  height: 100px;
-  align-items: center;
-  padding: 20px 24px 14px;
-}
-.ios-app .profile-home .account-topbar > strong {
-  font-size: 34px;
-  font-weight: 750;
-  letter-spacing: -1.2px;
 }
 .ios-app .profile-home-content {
   max-width: 720px;
   margin: 0 auto;
-  padding: 8px 20px 24px;
+  padding: 0 20px 24px;
 }
 .ios-app .profile-identity {
+  position: relative;
   padding: 25px 24px 0;
   border: 1px solid #fff;
   border-radius: 28px;
@@ -26,11 +17,26 @@
   box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
+.ios-app .profile-identity-settings {
+  position: absolute;
+  top: 17px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--accent);
+}
+.ios-app .profile-identity-settings:hover {
+  background: var(--accent-soft);
+}
 .ios-app .profile-identity-heading {
   display: flex;
   align-items: center;
   gap: 17px;
   min-width: 0;
+  padding-right: 42px;
 }
 .ios-app .profile-identity-heading > img {
   flex: 0 0 74px;
@@ -507,13 +513,9 @@
   background: #fff0f2;
 }
 @media (min-width: 801px) {
-  .ios-app .profile-home .account-topbar {
-    padding-inline: 4px;
-    height: 108px;
-  }
   .ios-app .profile-home-content {
     max-width: 760px;
-    padding: 12px 8px 40px;
+    padding: 0 8px 40px;
   }
   .ios-app .profile-identity {
     padding-inline: 30px;

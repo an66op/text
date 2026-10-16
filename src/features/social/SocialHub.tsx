@@ -177,12 +177,6 @@ function SocialScreen({
         onOpenModule={onOpenModule}
         onOpenConversation={(id) => navigate(paths.chat(id))}
         onOpenProfile={openProfile}
-        onMarkRead={() => {
-          setConversations((current) =>
-            current.map((conversation) => ({ ...conversation, unread: 0 })),
-          );
-          notify('所有消息已标为已读');
-        }}
       />
       {initialView === '消息' &&
         showChannels &&

@@ -14,14 +14,11 @@ export default function ProfilePage() {
   const { profile } = useProfile();
   return (
     <div className="profile-home">
-      <header className="content-topbar account-topbar">
-        <strong>我</strong>
-        <Link to={paths.settings} aria-label="设置">
-          <Settings size={22} />
-        </Link>
-      </header>
       <div className="profile-home-content">
         <section className="profile-identity" aria-label="个人资料">
+          <Link className="profile-identity-settings" to={paths.settings} aria-label="设置">
+            <Settings size={22} />
+          </Link>
           <div className="profile-identity-heading">
             <img src={profile.avatar || avatar(49)} alt={profile.name} />
             <div>

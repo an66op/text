@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Bot,
   ChevronRight,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 import PageHeader from '@/shared/ui/PageHeader';
+import AppTopbar from '@/shared/ui/AppTopbar';
 import { useToast } from '@/shared/ui/useToast';
 import { AiChatPage } from './AiChatPage';
 import { AiComposer } from './AiComposer';
@@ -59,6 +60,20 @@ export default function AiPage({ kind = 'home' }: { kind?: 'home' | 'chat' | 'hi
 function AiHomePage({ state, save }: { state: AiState; save: AiSave }) {
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const composerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const height = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+      composer.parentElement?.style.setProperty(
+        '--ai-composer-clearance',
+        `${Math.ceil(height) + 30}px`,
+      );
+    });
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, []);
   const recent = [...state.sessions].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3);
   const create = (prompt = '', send = false) => {
     setError('');
@@ -99,15 +114,21 @@ function AiHomePage({ state, save }: { state: AiState; save: AiSave }) {
   };
   return (
     <section className="ai-page ai-home-page">
-      <header className="ai-home-header">
-        <h1>AI</h1>
-        <Link to={aiPaths.history} aria-label="会话历史">
-          <History size={22} />
-        </Link>
-        <button type="button" aria-label="新建会话" onClick={() => create()}>
-          <Plus size={23} />
-        </button>
-      </header>
+      <AppTopbar
+        className="ai-home-header"
+        appearance="plain"
+        title="AI"
+        actions={
+          <>
+            <Link to={aiPaths.history} aria-label="会话历史">
+              <History size={22} />
+            </Link>
+            <button type="button" aria-label="新建会话" onClick={() => create()}>
+              <Plus size={23} />
+            </button>
+          </>
+        }
+      />
       <div className="ai-home-body">
         <div className="ai-home-content">
           <div className="ai-welcome">
@@ -152,7 +173,7 @@ function AiHomePage({ state, save }: { state: AiState; save: AiSave }) {
             </section>
           )}
         </div>
-        <div className="ai-home-compose">
+        <div className="ai-home-compose" ref={composerRef}>
           {error && (
             <p className="ai-error" role="alert">
               {error}

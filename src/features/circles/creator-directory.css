@@ -3,11 +3,7 @@
   padding: 12px 32px 48px;
 }
 .ios-app .creator-directory-header {
-  display: flex;
-  align-items: center;
-  min-height: 72px;
-  gap: 14px;
-  padding-bottom: 4px;
+  margin-bottom: 12px;
 }
 .ios-app .creator-back-button {
   display: grid;
@@ -18,12 +14,6 @@
   width: 42px;
   height: 42px;
   flex-shrink: 0;
-}
-.ios-app .creator-directory-header h1 {
-  flex: 1;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.7px;
 }
 .ios-app .creator-create-button {
   display: inline-flex;
@@ -563,16 +553,7 @@
 }
 @media (max-width: 800px) {
   .ios-app .creator-directory {
-    padding: 0 20px 35px;
-  }
-  .ios-app .creator-directory-header {
-    min-height: 73px;
-    padding-bottom: 0;
-    gap: 12px;
-  }
-  .ios-app .creator-directory-header h1 {
-    font-size: 23px;
-    letter-spacing: -0.5px;
+    padding: 14px 16px 35px;
   }
   .ios-app .creator-back-button {
     width: 38px;

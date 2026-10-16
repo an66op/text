@@ -14,7 +14,7 @@ import './content.css';
 
 export default function ContentDetailPage({ kind }: { kind: DetailKind }) {
   const { postId, contentId } = useParams();
-  const { posts, communities } = useContent();
+  const { posts, communities, readerSettings } = useContent();
   const post =
     kind === 'post' && /^\d+$/.test(postId ?? '')
       ? posts.find((item) => item.id === Number(postId))
@@ -54,7 +54,9 @@ export default function ContentDetailPage({ kind }: { kind: DetailKind }) {
       </>
     );
   return (
-    <>
+    <div
+      className={`content-detail-page${kind === 'read' ? ` reader-page theme-${readerSettings.theme}` : ''}`}
+    >
       <PageHeader title={post ? '动态详情' : (item?.title ?? '内容详情')} backTo={backTo} />
       <div className="content-body">
         {post && <PostDetail post={post} key={post.id} />}
@@ -63,6 +65,6 @@ export default function ContentDetailPage({ kind }: { kind: DetailKind }) {
         {item && kind === 'game' && <GameDetail item={item} key={item.id} />}
         {item && kind === 'community' && <CommunityDetail item={item} key={item.id} />}
       </div>
-    </>
+    </div>
   );
 }

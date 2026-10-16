@@ -26,8 +26,31 @@ export function AiChatPage({ session, save }: { session: AiSession; save: AiSave
   const variation = useRef(0);
   const stopRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const notify = useToast();
   const last = session.messages.at(-1);
+
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const regions = [
+      { element: controlsRef.current, property: '--ai-chat-header-clearance', extra: 8 },
+      { element: composerRef.current, property: '--ai-chat-composer-clearance', extra: 20 },
+    ];
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const region = regions.find((item) => item.element === entry.target);
+        if (!region) continue;
+        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        entry.target.parentElement?.style.setProperty(
+          region.property,
+          `${Math.ceil(height) + region.extra}px`,
+        );
+      }
+    });
+    for (const region of regions) if (region.element) observer.observe(region.element);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!request) return;
@@ -192,21 +215,23 @@ export function AiChatPage({ session, save }: { session: AiSession; save: AiSave
   };
   return (
     <section className="ai-page ai-chat-page">
-      <PageHeader
-        title="对话"
-        backTo={aiPaths.home}
-        action={
-          <Link to={aiPaths.history} aria-label="会话历史">
-            <History size={21} />
-          </Link>
-        }
-      />
-      <div className="ai-chat-title">
-        <span>{session.title}</span>
-        <small>
-          <i />
-          本地演示
-        </small>
+      <div className="ai-chat-controls" ref={controlsRef}>
+        <PageHeader
+          title="对话"
+          backTo={aiPaths.home}
+          action={
+            <Link to={aiPaths.history} aria-label="会话历史">
+              <History size={21} />
+            </Link>
+          }
+        />
+        <div className="ai-chat-title">
+          <span>{session.title}</span>
+          <small>
+            <i />
+            本地演示
+          </small>
+        </div>
       </div>
       <div className="ai-message-list" role="log" aria-label="AI对话内容">
         {!session.messages.length && (
@@ -306,7 +331,7 @@ export function AiChatPage({ session, save }: { session: AiSession; save: AiSave
         )}
         <div ref={endRef} />
       </div>
-      <div className="ai-chat-composer">
+      <div className="ai-chat-composer" ref={composerRef}>
         {error && (
           <p className="ai-error" role="alert">
             {error}

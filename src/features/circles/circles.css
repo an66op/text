@@ -410,28 +410,31 @@
   flex: 1;
 }
 .ios-app .circle-workspace-main {
+  --circle-mobile-bar-height: 0px;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  scroll-padding-top: calc(var(--circle-mobile-bar-height) + 56px);
   background: #fff;
 }
 .ios-app .circle-workspace-main > .circle-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 1 0 auto;
+  min-height: calc(100% - var(--circle-mobile-bar-height));
+  overflow: visible;
 }
 .ios-app .circle-workspace-main > .channel-content-text {
-  overflow: hidden;
+  overflow: visible;
 }
 .ios-app .channel-content-text .circle-message-list {
-  min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
 }
 .ios-app .channel-content-text .circle-message-composer {
   flex-shrink: 0;
-  position: static;
+  position: sticky;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 15;
 }
 .ios-app .circle-message-composer textarea {
   resize: none;
@@ -444,8 +447,9 @@
 }
 .ios-app .circle-home {
   min-width: 0;
-  overflow-y: auto;
-  flex: 1;
+  min-height: calc(100% - var(--circle-mobile-bar-height));
+  overflow: visible;
+  flex: 1 0 auto;
 }
 
 @media (min-width: 801px) {
@@ -505,18 +509,28 @@
     display: none;
   }
   .ios-app .circle-workspace-main {
+    --circle-mobile-bar-height: calc(56px + env(safe-area-inset-top));
     height: 100%;
   }
   .ios-app .circle-mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
     display: flex;
     align-items: center;
     gap: 9px;
-    height: 72px;
-    flex: 0 0 72px;
-    background: #f6f6faed;
-    backdrop-filter: blur(20px);
-    padding: 12px 15px;
-    border-bottom: 1px solid #ebe8f1;
+    height: var(--circle-mobile-bar-height);
+    flex: 0 0 var(--circle-mobile-bar-height);
+    background: transparent;
+    backdrop-filter: none;
+    padding: env(safe-area-inset-top) 12px 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .ios-app .circle-mobile-bar .circle-round-button {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
   .ios-app .circle-mobile-name {
     flex: 1;
@@ -550,6 +564,9 @@
     padding: 16px 20px 23px;
     background: #f8f7fc;
     border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: var(--circle-mobile-bar-height);
+    z-index: 25;
   }
   .ios-app .circle-mobile-channel-picker .circle-channel-link {
     min-height: 44px;
@@ -560,10 +577,6 @@
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .ios-app .circle-mobile-bar {
-    background: var(--canvas);
-    backdrop-filter: none;
-  }
   .ios-app .circle-category {
     background: #272138;
     backdrop-filter: none;

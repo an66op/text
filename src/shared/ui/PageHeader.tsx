@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import { type ReactNode } from 'react';
 import { paths } from '@/shared/config/paths';
+import AppTopbar from './AppTopbar';
 export default function PageHeader({
   title,
   backTo = paths.discover,
@@ -20,12 +21,16 @@ export default function PageHeader({
     else navigate(backTo, { replace: true });
   };
   return (
-    <div className="content-topbar">
-      <button aria-label="返回" onClick={back}>
-        <ChevronLeft size={25} strokeWidth={2} />
-      </button>
-      <strong>{title}</strong>
-      {action}
-    </div>
+    <AppTopbar
+      className="content-topbar app-page-topbar"
+      title={title}
+      titleAs="strong"
+      leading={
+        <button aria-label="返回" onClick={back}>
+          <ChevronLeft size={25} strokeWidth={2} />
+        </button>
+      }
+      actions={action}
+    />
   );
 }

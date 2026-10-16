@@ -687,6 +687,9 @@
   min-height: calc(100dvh - 100px);
   box-shadow: var(--shadow-soft);
 }
+.ios-app .reader-page.theme-night {
+  --text: #d0cadc;
+}
 .ios-app .reader-tools {
   color: #8e8797;
   gap: 14px;
@@ -976,6 +979,34 @@
   height: calc(100dvh - 110px);
   margin: 0 16px 16px;
 }
+.ios-app .content-module-shorts:not(.content-module-searching) > .module-短视频 {
+  margin-top: -72px;
+}
+.ios-app .content-module-shorts:not(.content-module-searching) .short-video {
+  min-height: 620px;
+  height: calc(100dvh - 16px);
+}
+.ios-app .content-module-shorts:not(.content-module-searching) > header.app-topbar.app-topbar {
+  --text: #fff;
+
+  width: calc(100% - 64px);
+  max-width: 428px;
+  margin-inline: auto;
+  text-shadow: 0 1px 8px #17132499;
+}
+.ios-app .content-module-shorts:not(.content-module-searching) .short-video::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 160px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(#1511276e, #15112700);
+}
+.ios-app .content-module-shorts:not(.content-module-searching) .short-media-note {
+  top: 83px;
+  z-index: 2;
+}
 .ios-app .short-video aside .avatar {
   border-radius: 50%;
 }
@@ -1011,9 +1042,6 @@
 .ios-app .moments-page,
 .ios-app .moments-page .im-moments {
   background: #fff;
-}
-.ios-app .moments-page .content-topbar {
-  background: #f6f6faed;
 }
 .ios-app .moments-page .im-moments-cover {
   height: clamp(205px, 58vw, 300px);
@@ -1228,6 +1256,9 @@
     margin-inline: auto;
     min-height: 680px;
     height: min(850px, calc(100dvh - 120px));
+  }
+  .ios-app .content-module-shorts:not(.content-module-searching) .short-video {
+    height: max(620px, min(850px, calc(100dvh - 58px)));
   }
 }
 @media (max-width: 370px) {

@@ -34,7 +34,9 @@ function ModuleContent({ moduleName }: { moduleName: string }) {
   }
   if (moduleName === '小说' && tab === '我的') return <Navigate to={paths.bookshelf} replace />;
   return (
-    <>
+    <div
+      className={`content-module-page${moduleName === '短视频' ? ' content-module-shorts' : ''}${searchOpen ? ' content-module-searching' : ''}`}
+    >
       <PageHeader
         title={moduleName}
         backTo={moduleName === '组织' ? paths.me : paths.discover}
@@ -120,6 +122,6 @@ function ModuleContent({ moduleName }: { moduleName: string }) {
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }

@@ -45,7 +45,8 @@ describe('real application routes', () => {
     const router = renderRoute('/');
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/social'));
-    expect(await screen.findByRole('button', { name: '全部标为已读' })).toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: '搜索会话' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '全部标为已读' })).not.toBeInTheDocument();
   });
 
   it('opens World from Discovery and returns with history navigation', async () => {

@@ -29,6 +29,23 @@ export default function ContactsPanel({
   const letters = [...new Set(filteredContacts.map((friend) => friend.letter))].sort();
   return (
     <div className="im-contacts">
+      <div className="im-contact-index-anchor">
+        <div className="im-contact-index">
+          {letters.map((letter) => (
+            <button
+              key={letter}
+              aria-label={`跳到 ${letter} 组联系人`}
+              onClick={() =>
+                document
+                  .getElementById(`im-letter-${letter}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+      </div>
       {!query && (
         <>
           <div className="im-contact-shortcuts">
@@ -112,21 +129,6 @@ export default function ContactsPanel({
           <p>没有找到这个联系人</p>
         </div>
       )}
-      <div className="im-contact-index">
-        {letters.map((letter) => (
-          <button
-            key={letter}
-            aria-label={`跳到 ${letter} 组联系人`}
-            onClick={() =>
-              document
-                .getElementById(`im-letter-${letter}`)
-                ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-            }
-          >
-            {letter}
-          </button>
-        ))}
-      </div>
       <div className="im-list-end">{friends.length} 位联系人</div>
     </div>
   );

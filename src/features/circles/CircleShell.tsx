@@ -132,7 +132,7 @@ export default function CircleShell() {
           <ChevronDown size={15} />
         </Link>
       </aside>
-      <div className="circle-workspace-main">
+      <div className="circle-workspace-main" key={pathname}>
         <header className="circle-mobile-bar">
           <Link className="circle-round-button" to={circlePaths.list} aria-label="返回圈子列表">
             <ChevronLeft size={23} />

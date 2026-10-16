@@ -14,18 +14,21 @@ import {
 import { Link } from 'react-router';
 import { paths } from '@/shared/config/paths';
 import { pictures, postAvatar } from '@/features/content/fixtures';
+import AppTopbar from '@/shared/ui/AppTopbar';
 
 export default function DiscoveryPage() {
   return (
     <div className="discovery-page discovery-studio">
-      <header className="discovery-heading">
-        <div>
-          <h1>发现</h1>
-        </div>
-        <span className="discovery-orbit" aria-hidden="true">
-          <Globe2 size={25} strokeWidth={1.5} />
-        </span>
-      </header>
+      <AppTopbar
+        className="discovery-topbar"
+        appearance="plain"
+        title="发现"
+        actions={
+          <span className="discovery-orbit" aria-hidden="true">
+            <Globe2 size={23} strokeWidth={1.5} />
+          </span>
+        }
+      />
 
       <Link className="discovery-activity" to={paths.moments} aria-label="动态">
         <img className="discovery-activity-cover" src={pictures.travel} alt="山野与晨光" />

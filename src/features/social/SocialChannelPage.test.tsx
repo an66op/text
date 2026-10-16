@@ -60,7 +60,9 @@ describe('social broadcast channels', () => {
 
   it('filters private chats, groups and broadcast channels using URL state', () => {
     renderAt('/social');
-    const overview = screen.getByRole('tablist', { name: '消息分类' }).parentElement!;
+    const overview = screen
+      .getByRole('tablist', { name: '消息分类' })
+      .closest<HTMLDivElement>('.im-overview')!;
     fireEvent.click(screen.getByRole('tab', { name: '私聊' }));
     expect(screen.getByLabelText('当前页面')).toHaveTextContent('/social?type=private');
     expect(within(overview).getByRole('button', { name: /文件传输助手/ })).toBeInTheDocument();

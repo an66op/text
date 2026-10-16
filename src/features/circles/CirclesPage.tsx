@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { paths } from '@/shared/config/paths';
+import AppTopbar from '@/shared/ui/AppTopbar';
 import { circlePaths } from './routes';
 import { useCircles } from './useCircles';
 import type { Circle } from './types';
@@ -59,16 +60,21 @@ export default function CirclesPage() {
 
   return (
     <div className="circles-directory creator-directory">
-      <header className="creator-directory-header">
-        <Link className="creator-back-button" to={paths.discover} aria-label="返回发现">
-          <ChevronLeft size={23} />
-        </Link>
-        <h1>圈子</h1>
-        <Link className="creator-create-button" to={circlePaths.create}>
-          <Plus size={17} />
-          <span>创建</span>
-        </Link>
-      </header>
+      <AppTopbar
+        title="圈子"
+        className="creator-directory-header"
+        leading={
+          <Link className="creator-back-button" to={paths.discover} aria-label="返回发现">
+            <ChevronLeft size={23} />
+          </Link>
+        }
+        actions={
+          <Link className="creator-create-button" to={circlePaths.create}>
+            <Plus size={17} />
+            <span>创建</span>
+          </Link>
+        }
+      />
       <div className="creator-directory-toolbar">
         <div className="creator-directory-tabs" role="tablist" aria-label="圈子导航">
           {(

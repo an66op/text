@@ -1,4 +1,4 @@
-import { BellOff, Check, Search, ShieldCheck } from 'lucide-react';
+import { BellOff, Search, ShieldCheck } from 'lucide-react';
 import { useAccountSettings } from '@/features/profile/useAccountSettings';
 import { ConversationAvatar } from './Avatars';
 import type { Conversation } from './types';
@@ -6,26 +6,11 @@ type Props = {
   conversations: Conversation[];
   selectedId: string;
   onOpenConversation: (id: string) => void;
-  onMarkRead: () => void;
-  label?: string;
 };
-export default function ConversationList({
-  conversations,
-  selectedId,
-  onOpenConversation,
-  onMarkRead,
-  label = '全部消息',
-}: Props) {
+export default function ConversationList({ conversations, selectedId, onOpenConversation }: Props) {
   const { settings } = useAccountSettings();
   return (
     <div className="im-conversations">
-      <div className="im-list-caption">
-        <span>{label}</span>
-        <button onClick={onMarkRead} aria-label="全部标为已读">
-          <Check size={14} />
-          全部已读
-        </button>
-      </div>
       {conversations.map((conversation) => (
         <button
           key={conversation.id}
