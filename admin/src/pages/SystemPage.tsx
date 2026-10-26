@@ -15,12 +15,14 @@ import { Badge, ErrorState, Loading, Notice, PageHeading } from '../ui';
 
 const capabilityLabels: Record<string, string> = {
   'http-only-sessions': '安全账号会话',
+  'device-session-revocation': '登录设备与远程撤销',
   'community-posts': '社区动态与互动',
   'moderation-audit': '内容审核与操作审计',
   'member-conversations': '私聊、群组与频道',
   'mutual-friendships': '好友申请与双向关系',
   'conversation-membership-management': '会话成员与所有者管理',
   'cursor-message-history': '稳定消息历史与已读水位',
+  'domain-sql-messaging': '按域 SQL 消息查询与写入',
   'transactional-websocket-outbox': '实时消息与断线重放',
   'revisioned-personal-documents': '个人备份与版本冲突保护',
   'atomic-test-ledger': '原子测试积分账本',

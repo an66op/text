@@ -30,6 +30,9 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 		if err = migrateFriendships(ctx, tx); err != nil {
 			return err
 		}
+		if err = migrateDeviceSessions(ctx, tx); err != nil {
+			return err
+		}
 		return tx.Commit(ctx)
 	}
 	if _, err = tx.Exec(ctx, normalizedSchema); err != nil {
@@ -39,6 +42,9 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 		return fmt.Errorf("create normalized guards: %w", err)
 	}
 	if err = migrateFriendships(ctx, tx); err != nil {
+		return err
+	}
+	if err = migrateDeviceSessions(ctx, tx); err != nil {
 		return err
 	}
 	var legacy bool
@@ -57,6 +63,7 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 				return decodeErr
 			}
 			normalizeMessageSequences(state)
+			normalizeLegacySessionMetadata(state)
 			for _, event := range state.Outbox {
 				if event.Seq > state.EventSequence {
 					state.EventSequence = event.Seq

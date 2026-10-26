@@ -5,6 +5,7 @@ import (
 )
 
 func (a *App) routes(mux *http.ServeMux) {
+	a.registerDeviceSessionRoutes(mux)
 	a.registerConversationManagementRoutes(mux)
 	a.registerFriendshipRoutes(mux)
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
@@ -27,11 +28,11 @@ func (a *App) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/posts/{id}/comments", a.endpoint(false, "", a.comments))
 	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.endpoint(true, "member", a.createComment))
 	mux.HandleFunc("POST /api/v1/reports", a.endpoint(true, "member", a.report))
-	mux.HandleFunc("GET /api/v1/conversations", a.endpoint(false, "member", a.conversations))
+	mux.HandleFunc("GET /api/v1/conversations", a.messagingEndpoint(messagingList, false, a.conversations))
 	mux.HandleFunc("POST /api/v1/conversations", a.endpoint(true, "member", a.createConversation))
-	mux.HandleFunc("GET /api/v1/conversations/{id}/messages", a.endpoint(false, "member", a.messages))
-	mux.HandleFunc("POST /api/v1/conversations/{id}/messages", a.endpoint(true, "member", a.sendMessage))
-	mux.HandleFunc("POST /api/v1/conversations/{id}/read", a.endpoint(true, "member", a.readConversation))
+	mux.HandleFunc("GET /api/v1/conversations/{id}/messages", a.messagingEndpoint(messagingHistory, false, a.messages))
+	mux.HandleFunc("POST /api/v1/conversations/{id}/messages", a.messagingEndpoint(messagingSend, true, a.sendMessage))
+	mux.HandleFunc("POST /api/v1/conversations/{id}/read", a.messagingEndpoint(messagingRead, true, a.readConversation))
 	mux.HandleFunc("GET /api/v1/stream", a.stream)
 	mux.HandleFunc("GET /api/v1/directory", a.endpoint(false, "member", a.directory))
 	mux.HandleFunc("GET /api/v1/users/{handle}", a.endpoint(false, "member", a.userProfile))

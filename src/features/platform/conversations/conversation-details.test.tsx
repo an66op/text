@@ -161,7 +161,7 @@ describe('server conversation management', () => {
     fireEvent.focus(window);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.queryByLabelText('聊天名称')).not.toBeInTheDocument();
-    expect(screen.getByText('成员或管理身份已变化，请重新选择操作')).toBeInTheDocument();
+    expect(await screen.findByText('成员或管理身份已变化，请重新选择操作')).toBeInTheDocument();
     expect(remove).not.toHaveBeenCalled();
   });
 

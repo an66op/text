@@ -8,6 +8,7 @@
 - 时间 RFC3339，ID 字符串。金额全部整数字符串，价格以分为单位；钱包仅测试账本。
 - HttpOnly SameSite=Lax 会话 cookie；写请求校验 Origin，开发仅允许 5173/5174 的 localhost/127.0.0.1。密码 bcrypt，token 只存 SHA-256。管理员与成员强制角色授权。非登录/注册/查询会话请求可带 X-Gongming-Account，若与 cookie 身份不符则409 account_changed，防多标签页账号切换串写；该头不能授予权限。
 - 列表统一 `{items: T[], total: number}`，支持 `q` / `limit` / `offset`（服务限制上限）。
+- 前后台请求期限20秒，覆盖响应头与响应体读取；用户取消仍作为取消处理。写入超时不能据此认定事务失败，客户端提示刷新确认、不自动重发。
 
 ## 账号
 
@@ -17,6 +18,10 @@
 - `POST /auth/login` `{email,password}` → `{user,expiresAt}`。
 - `GET /auth/me` → `{user,expiresAt}`；`POST /auth/logout` → `{ok:true}`。
 - `PATCH /me` `{name?,bio?,avatar?}` → User。
+- `GET /me/sessions` → `{items:DeviceSession[],total}`，仅本人未过期会话，当前优先，再按创建时间倒序和 ID 排序。
+- `DeviceSession = {id,device,createdAt:string|null,lastSeenAt:string|null,expiresAt,current:boolean,legacy:boolean}`。ID 是独立非秘密随机定位符；device 仅为不可信的粗粒度系统/浏览器提示。旧会话时间未知为 null；lastSeenAt 当前仅记录登录验证，界面称「最近验证」，不代表在线或每次访问时间。不返回 token、摘要、IP、原始 UA。
+- `DELETE /me/sessions/{id}` → `{ok:true,current:boolean}`。只能撤销本人有效会话，未知/过期/已撤销/其它账号统一404；成功撤销当前会话后清 Cookie，失败不能清。受影响 WebSocket 将关闭。
+- `POST /me/sessions/revoke-others` `{}` → `{revoked:number}`，只撤销本人其它有效会话，保留当前会话；重复请求可返回0。上述写入仍要求 Origin、正常账号与预期账号匹配。
 - 本地种子：成员 `demo@gongming.local` / `Demo2026!`；管理员 `admin@gongming.local` / `Admin2026!`。仅开发环境启用种子，生产禁止默认凭据。
 
 ## 全站社区
@@ -65,6 +70,8 @@
 - 成员变更写事务 outbox；移出/退出后 API 按当前成员关系拒绝访问，WS 发送前再次检查。被移出者仅收到不含会话或消息 ID 的个人 resync，已有其它合法会话仍可继续收事件。
 - eventId 为十进制字符串的不透明游标。outbox事务提交后可推送、跨实例读取；最多保留2000事件/7天，过旧游标resync。每账号8连接、每实例256，15秒ping、30分钟重连，注销/封禁后关闭。
 - `GET /directory` → 已登录成员目录 PublicUser 列表，支持 q/分页；`GET /users/{handle}` → active成员 PublicUser。
+
+PostgreSQL 的列表/详情/历史/发送/已读使用专用 SQL，不读取帖子、文档、钱包等全域 State；测试内存存储保留原处理器。权限、搜索、响应和幂等约定一致。读取使用 REPEATABLE READ，写入使用 SERIALIZABLE 与完整事务重试；消息和 outbox 原子提交。创建/管理会话等仍使用 State 适配层，全局事件游标仍是共享串行点。详细路径与实测见 [消息查询说明](../server/QUERY_PATHS.md)。
 
 ## 账号资料同步
 

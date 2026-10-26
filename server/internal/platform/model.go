@@ -39,8 +39,13 @@ type Account struct {
 	PasswordHash string `json:"passwordHash"`
 }
 type Session struct {
-	UserID    string    `json:"userId"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	UserID     string     `json:"userId"`
+	ExpiresAt  time.Time  `json:"expiresAt"`
+	ID         string     `json:"id"`
+	Device     string     `json:"device"`
+	CreatedAt  *time.Time `json:"createdAt"`
+	LastSeenAt *time.Time `json:"lastSeenAt"`
+	Legacy     bool       `json:"legacy"`
 }
 type StoredPost struct {
 	ID        string          `json:"id"`

@@ -39,10 +39,10 @@ func loadNormalized(ctx context.Context, tx pgx.Tx) (*State, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := collectRows(ctx, tx, `SELECT token_hash,user_id,expires_at FROM gongming_sessions`, func(r pgx.Rows) error {
+	if err := collectRows(ctx, tx, `SELECT token_hash,user_id,expires_at,public_id,device,created_at,last_seen_at,legacy FROM gongming_sessions`, func(r pgx.Rows) error {
 		var key string
 		var v Session
-		if err := r.Scan(&key, &v.UserID, &v.ExpiresAt); err != nil {
+		if err := r.Scan(&key, &v.UserID, &v.ExpiresAt, &v.ID, &v.Device, &v.CreatedAt, &v.LastSeenAt, &v.Legacy); err != nil {
 			return err
 		}
 		s.Sessions[key] = v

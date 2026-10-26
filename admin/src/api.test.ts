@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError, queryString, SESSION_EXPIRED_EVENT } from './api';
+import { setExpectedAccount } from '../../src/shared/api/account-guard';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+  setExpectedAccount('');
+});
 
 describe('admin API boundary', () => {
   it('sends cookie-authenticated structured writes and unwraps only server data', async () => {
@@ -18,8 +23,10 @@ describe('admin API boundary', () => {
         method: 'PATCH',
         credentials: 'include',
         body: '{"role":"moderator"}',
-        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
       }),
+    );
+    expect(new Headers(fetch.mock.calls[0][1].headers).get('Content-Type')).toBe(
+      'application/json',
     );
   });
 

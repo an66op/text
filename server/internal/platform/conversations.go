@@ -210,7 +210,7 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	if seq >= maxMessageSequence {
 		return nil, conflict("会话消息序列已达到上限")
 	}
-	m := StoredMessage{ID: newID("message_"), ConversationID: c.ID, SenderID: u.ID, Body: body, CreatedAt: a.now(), Seq: seq + 1, ClientID: input.ClientID}
+	m := StoredMessage{ID: newID("message_"), ConversationID: c.ID, SenderID: u.ID, Body: body, CreatedAt: a.now().UTC().Truncate(time.Microsecond), Seq: seq + 1, ClientID: input.ClientID}
 	s.Messages[m.ID] = m
 	appendMessageEvent(s, "message.created", c.ID, m.ID, "", a.now())
 	return s.message(m), nil

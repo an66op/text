@@ -15,6 +15,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const generation = useRef(0);
   const latestSession = useRef<Session | null>(null);
+  const mounted = useRef(true);
   const mutation = useRef(false);
   const queuedRefresh = useRef(false);
   const channel = useRef<BroadcastChannel | null>(null);
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(next);
   }, []);
   const refresh = useCallback(async () => {
+    if (!mounted.current) return;
     if (mutation.current) {
       queuedRefresh.current = true;
       return;
@@ -56,12 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [accept]);
   useEffect(() => {
+    mounted.current = true;
     void refresh();
     const off = onUnauthorized(() => {
       generation.current += 1;
       accept(null);
       setStatus('guest');
       setError('登录已失效，请重新登录');
+      if (mutation.current) queuedRefresh.current = true;
     });
     const changed = onAccountChanged(() => void refresh());
     const revalidate = () => {
@@ -78,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     return () => {
+      mounted.current = false;
       generation.current += 1;
       off();
       changed();
@@ -100,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accept(null);
         setStatus('guest');
         setError('登录已到期，请重新登录');
+        if (mutation.current) queuedRefresh.current = true;
       }
     };
     checkExpiry();
@@ -113,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       login: async (email, password) => {
+        if (!mounted.current) throw new Error('账号页面已关闭');
         if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
         mutation.current = true;
         advanceAccountEpoch();
@@ -133,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       register: async (input) => {
+        if (!mounted.current) throw new Error('账号页面已关闭');
         if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
         mutation.current = true;
         advanceAccountEpoch();
@@ -153,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       logout: async () => {
+        if (!mounted.current) throw new Error('账号页面已关闭');
         if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
         mutation.current = true;
         advanceAccountEpoch();
@@ -173,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       updateProfile: async (input) => {
+        if (!mounted.current) throw new Error('账号页面已关闭');
         const current = generation.current;
         const user = await platformApi.updateMe(input);
         if (current !== generation.current) return;

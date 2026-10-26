@@ -1,0 +1,13 @@
+export type SessionDevice = {
+  id: string;
+  device: string;
+  createdAt: string | null;
+  lastSeenAt: string | null;
+  expiresAt: string;
+  current: boolean;
+  legacy: boolean;
+};
+
+export type SessionDevices = { items: SessionDevice[]; total: number };
+export type RevokeSessionResult = { ok: true; current: boolean };
+export type RevokeOtherSessionsResult = { revoked: number };

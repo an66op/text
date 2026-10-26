@@ -11,6 +11,7 @@ import {
 import './profile.css';
 import { Navigate } from 'react-router';
 import { useAuth } from '@/features/platform/useAuth';
+import SessionDevicesPage from '@/features/platform/sessions/SessionDevicesPage';
 
 export default function SettingsRoutePage({
   kind,
@@ -25,7 +26,7 @@ export default function SettingsRoutePage({
     | 'blocked'
     | 'devices';
 }) {
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   switch (kind) {
     case 'account':
       return user ? <Navigate to="/account" replace /> : <AccountSettingsPage />;
@@ -42,6 +43,6 @@ export default function SettingsRoutePage({
     case 'blocked':
       return <BlockedContactsPage />;
     case 'devices':
-      return <DeviceSettingsPage />;
+      return status === 'guest' && !user ? <DeviceSettingsPage /> : <SessionDevicesPage />;
   }
 }

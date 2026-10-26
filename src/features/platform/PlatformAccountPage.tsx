@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowUpRight,
   Check,
@@ -7,6 +7,7 @@ import {
   MessageCircle,
   Radio,
   ShieldCheck,
+  Smartphone,
 } from 'lucide-react';
 import { Link } from 'react-router';
 import PageHeader from '@/shared/ui/PageHeader';
@@ -19,6 +20,13 @@ import './platform.css';
 
 export default function PlatformAccountPage() {
   const auth = useAuth();
+  return <AccountPage key={`${auth.user?.id ?? 'guest'}:${auth.expiresAt}`} />;
+}
+
+function AccountPage() {
+  const auth = useAuth();
+  const active = useRef(true);
+  const dispatching = useRef(false);
   const [health, setHealth] = useState<'checking' | 'online' | 'offline'>('checking');
   const [healthError, setHealthError] = useState('');
   const [healthGeneration, setHealthGeneration] = useState(0);
@@ -29,15 +37,22 @@ export default function PlatformAccountPage() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  useEffect(() => {
     const controller = new AbortController();
     void platformApi
       .health(controller.signal)
       .then(() => {
+        if (controller.signal.aborted) return;
         setHealth('online');
         setHealthError('');
       })
       .catch((caught) => {
-        if (!isAbort(caught)) {
+        if (!controller.signal.aborted && !isAbort(caught)) {
           setHealth('offline');
           setHealthError(apiErrorMessage(caught));
         }
@@ -51,6 +66,7 @@ export default function PlatformAccountPage() {
   }, [auth.user]);
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (!auth.user || dispatching.current || !active.current) return;
     if (!name.trim()) {
       setError('请输入昵称');
       return;
@@ -59,27 +75,32 @@ export default function PlatformAccountPage() {
       setError('头像请输入 http 或 https 图片链接');
       return;
     }
+    dispatching.current = true;
     setBusy(true);
     setError('');
     setSaved(false);
     try {
       await auth.updateProfile({ name: name.trim(), bio: bio.trim(), avatar: avatar.trim() });
-      setSaved(true);
+      if (active.current) setSaved(true);
     } catch (caught) {
-      setError(apiErrorMessage(caught));
+      if (active.current) setError(apiErrorMessage(caught));
     } finally {
-      setBusy(false);
+      dispatching.current = false;
+      if (active.current) setBusy(false);
     }
   };
   const logout = async () => {
+    if (!auth.user || dispatching.current || !active.current) return;
+    dispatching.current = true;
     setBusy(true);
     setError('');
     try {
       await auth.logout();
     } catch (caught) {
-      setError(apiErrorMessage(caught));
+      if (active.current) setError(apiErrorMessage(caught));
     } finally {
-      setBusy(false);
+      dispatching.current = false;
+      if (active.current) setBusy(false);
     }
   };
   return (
@@ -217,6 +238,13 @@ export default function PlatformAccountPage() {
             <span>
               <Cloud size={21} />
               个人备份
+            </span>
+            <ArrowUpRight size={17} />
+          </Link>
+          <Link to="/settings/devices">
+            <span>
+              <Smartphone size={21} />
+              登录设备
             </span>
             <ArrowUpRight size={17} />
           </Link>

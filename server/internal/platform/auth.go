@@ -25,8 +25,8 @@ func validEmail(value string) bool {
 	email, err := mail.ParseAddress(value)
 	return err == nil && email.Address == value && len(value) <= 254
 }
-func (a *App) newSession(s *State, user User) (string, time.Time) {
-	now := a.now()
+func (a *App) newSession(s *State, user User, userAgent string) (string, time.Time) {
+	now := a.now().UTC().Truncate(time.Microsecond)
 	for hash, session := range s.Sessions {
 		if !session.ExpiresAt.After(now) {
 			delete(s.Sessions, hash)
@@ -34,7 +34,8 @@ func (a *App) newSession(s *State, user User) (string, time.Time) {
 	}
 	token := newID("") + newID("")
 	expires := now.Add(a.cfg.SessionTTL)
-	s.Sessions[tokenHash(token)] = Session{user.ID, expires}
+	created, seen := now, now
+	s.Sessions[tokenHash(token)] = Session{UserID: user.ID, ExpiresAt: expires, ID: newID("session_"), Device: sessionDevice(userAgent), CreatedAt: &created, LastSeenAt: &seen, Legacy: false}
 	return token, expires
 }
 func (a *App) register(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +71,7 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 		}
 		u := User{ID: newID("user_"), Handle: input.Handle, Name: name, Email: input.Email, Avatar: "", Bio: "", Role: "member", Status: "active", CreatedAt: a.now()}
 		s.Accounts[u.ID] = Account{u, passwordHash}
-		token, expires = a.newSession(s, u)
+		token, expires = a.newSession(s, u, r.UserAgent())
 		return map[string]any{"user": u, "expiresAt": expires}, nil
 	})
 	if err != nil {
@@ -120,7 +121,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		if account.User.Status != "active" {
 			return nil, forbidden("此账号已停用，请联系平台运营")
 		}
-		token, expires = a.newSession(s, account.User)
+		token, expires = a.newSession(s, account.User, r.UserAgent())
 		return map[string]any{"user": account.User, "expiresAt": expires}, nil
 	})
 	if err != nil {
@@ -141,8 +142,12 @@ func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Path: "/api/v1", MaxAge: -1, HttpOnly: true, Secure: a.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
+	a.clearSessionCookie(w)
 	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+func (a *App) clearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Path: "/api/v1", MaxAge: -1, HttpOnly: true, Secure: a.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
 }
 func (a *App) me(s *State, u *User, r *http.Request) (any, error) {
 	cookie, _ := r.Cookie(cookieName)

@@ -110,7 +110,7 @@ function ProtectedLayout() {
     navigation.find((item) => location.pathname.startsWith(item.to))?.title || '运营工作台';
 
   return (
-    <div className="admin-shell">
+    <div className="admin-shell" key={`${session.user.id}:${session.expiresAt}`}>
       <aside className="sidebar">
         <Link to="/overview" className="brand" aria-label="共鸣运营首页">
           <span className="brand-mark">
@@ -180,6 +180,16 @@ function ProtectedLayout() {
         {logoutError && (
           <div className="global-notice">
             <Notice onDismiss={() => setLogoutError('')}>{logoutError}</Notice>
+          </div>
+        )}
+        {error && (
+          <div className="global-notice">
+            <Notice>
+              {error}{' '}
+              <button className="text-link" onClick={() => void refresh()}>
+                重新验证
+              </button>
+            </Notice>
           </div>
         )}
         <main className="workspace-main">

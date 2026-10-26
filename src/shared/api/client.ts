@@ -1,5 +1,6 @@
 const API_BASE = '/api/v1';
 import { accountChanged, accountEpoch, expectedAccount } from './account-guard';
+import { assertRequestActive, RequestTimeoutError, withRequestDeadline } from './request-deadline';
 const unauthorizedListeners = new Set<() => void>();
 
 export class ApiError extends Error {
@@ -38,42 +39,63 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (guarded && requestAccount) headers.set('X-Gongming-Account', requestAccount);
   headers.set('Accept', 'application/json');
   if (init.body) headers.set('Content-Type', 'application/json');
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'include' });
-  } catch (error) {
-    if (isAbort(error)) throw error;
-    throw new ApiError('无法连接服务，请检查网络或启动 Go 服务', 'NETWORK_ERROR', 0);
-  }
   const changedDuringRequest = () =>
     requestEpoch !== accountEpoch() || requestAccount !== expectedAccount();
-  if (guarded && changedDuringRequest())
-    throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
-  if (response.status === 401 && guarded) {
-    unauthorizedListeners.forEach((listener) => listener());
-  }
-  let envelope: unknown;
   try {
-    envelope = await response.json();
-  } catch {
-    throw new ApiError('服务返回了无法识别的内容', 'INVALID_RESPONSE', response.status);
+    return await withRequestDeadline(init.signal, async (signal) => {
+      let response: Response;
+      try {
+        response = await fetch(`${API_BASE}${path}`, {
+          ...init,
+          headers,
+          signal,
+          credentials: 'include',
+        });
+      } catch (error) {
+        assertRequestActive(signal);
+        if (isAbort(error)) throw error;
+        throw new ApiError('无法连接服务，请检查网络或启动 Go 服务', 'NETWORK_ERROR', 0);
+      }
+      assertRequestActive(signal);
+      if (guarded && changedDuringRequest())
+        throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
+      if (response.status === 401 && guarded)
+        unauthorizedListeners.forEach((listener) => listener());
+      let envelope: unknown;
+      try {
+        envelope = await response.json();
+      } catch {
+        assertRequestActive(signal);
+        throw new ApiError('服务返回了无法识别的内容', 'INVALID_RESPONSE', response.status);
+      }
+      assertRequestActive(signal);
+      if (guarded && response.status !== 401 && changedDuringRequest())
+        throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
+      if (!response.ok) {
+        const serverError = (envelope as { error?: { message?: string; code?: string } })?.error;
+        if (response.status === 409 && serverError?.code === 'account_changed') accountChanged();
+        throw new ApiError(
+          serverError?.message ||
+            (response.status === 401 ? '请先登录，再继续操作' : '服务请求失败'),
+          serverError?.code || `HTTP_${response.status}`,
+          response.status,
+        );
+      }
+      if (!envelope || typeof envelope !== 'object' || !('data' in envelope))
+        throw new ApiError('服务响应缺少数据', 'INVALID_RESPONSE', response.status);
+      return (envelope as { data: T }).data;
+    });
+  } catch (error) {
+    if (error instanceof RequestTimeoutError) {
+      const writing = !['GET', 'HEAD'].includes((init.method || 'GET').toUpperCase());
+      throw new ApiError(
+        writing ? '请求超时，操作可能已完成；请先刷新确认，再重试' : '请求超时，请检查网络后重试',
+        'TIMEOUT',
+        0,
+      );
+    }
+    throw error;
   }
-  if (guarded && response.status !== 401 && changedDuringRequest()) {
-    throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
-  }
-  if (!response.ok) {
-    const serverError = (envelope as { error?: { message?: string; code?: string } })?.error;
-    if (response.status === 409 && serverError?.code === 'account_changed') accountChanged();
-    throw new ApiError(
-      serverError?.message || (response.status === 401 ? '请先登录，再继续操作' : '服务请求失败'),
-      serverError?.code || `HTTP_${response.status}`,
-      response.status,
-    );
-  }
-  if (!envelope || typeof envelope !== 'object' || !('data' in envelope)) {
-    throw new ApiError('服务响应缺少数据', 'INVALID_RESPONSE', response.status);
-  }
-  return (envelope as { data: T }).data;
 }
 
 export function apiQuery(values: Record<string, string | number | undefined>) {
