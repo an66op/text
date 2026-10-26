@@ -99,7 +99,8 @@ func (a *App) conversationManagementEndpoint(fn func(*State, *User, *http.Reques
 			if _, ok := a.store.(*PostgresStore); ok {
 				if conversation, ok := result.(Conversation); ok {
 					conversation.LastMessage = nil
-					result = conversation
+					s.ContactResults = append(s.ContactResults, contactConversationResult{u.ID, &conversation})
+					result = &conversation
 				}
 			}
 		}

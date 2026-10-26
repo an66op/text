@@ -1,0 +1,148 @@
+.privacy-blocked-content {
+  padding-bottom: 100px;
+}
+.privacy-block-hint {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #93899c;
+  margin: 12px 0;
+}
+.privacy-block-actions {
+  font-size: 12px;
+}
+.privacy-block-actions > button,
+.privacy-operation-notice button,
+.privacy-block-pagination button,
+.privacy-block-search button {
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: #9c8abc16;
+  color: #89729e;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.privacy-block-actions button:disabled,
+.privacy-block-pagination button:disabled {
+  opacity: 0.45;
+}
+.privacy-block-actions > .privacy-block-button {
+  color: #ad748b;
+  background: #b4829510;
+}
+.privacy-operation-notice {
+  padding: 12px 0;
+  color: #a17d8d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.privacy-operation-notice button + button {
+  margin-left: 8px;
+}
+.privacy-confirm-target {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.privacy-confirm-target small {
+  color: #99909f;
+  font-size: 11px;
+}
+.privacy-block-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #a79bb21a;
+  border-radius: 16px;
+  padding: 4px 5px 4px 12px;
+  background: #ffffff30;
+  color: #9c90a8;
+}
+.privacy-block-search input {
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  flex: 1;
+  padding: 8px 0;
+  outline: 0;
+  color: inherit;
+  font-size: 12px;
+}
+.privacy-block-count {
+  font-size: 11px;
+  color: #a199a9;
+  margin: 16px 3px 9px;
+}
+.privacy-block-row {
+  padding: 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #a89bad12;
+}
+.privacy-block-row:last-child {
+  border-bottom: 0;
+}
+.privacy-block-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  color: #9a8aa6;
+}
+.privacy-block-person > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.privacy-block-person strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.privacy-block-person small {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.privacy-block-person .platform-avatar {
+  width: 39px;
+  height: 39px;
+  flex-shrink: 0;
+}
+.privacy-block-empty {
+  padding: 38px 8px;
+  text-align: center;
+  color: #a59aa9;
+  font-size: 12px;
+}
+.privacy-block-empty h2 {
+  font-size: 15px;
+  font-weight: 500;
+}
+.privacy-block-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0;
+  color: #a197ac;
+  font-size: 11px;
+}
+.privacy-block-link {
+  display: block;
+  text-align: center;
+  margin: 20px 0;
+  color: #9580a6;
+  font-size: 12px;
+}
+@media (max-width: 380px) {
+  .privacy-block-row {
+    flex-wrap: wrap;
+  }
+  .privacy-block-row .privacy-block-actions {
+    margin-left: 49px;
+  }
+}

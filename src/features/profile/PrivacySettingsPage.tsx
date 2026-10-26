@@ -4,7 +4,13 @@ import { paths } from '@/shared/config/paths';
 import PageHeader from '@/shared/ui/PageHeader';
 import { useAccountSettings } from './useAccountSettings';
 import SettingsSwitch from './SettingsSwitch';
+import { useAuth } from '@/features/platform/useAuth';
+import PrivacySettingsForm from '@/features/platform/privacy/PrivacySettingsForm';
 export default function PrivacySettingsPage() {
+  const { status, user } = useAuth();
+  return status === 'guest' && !user ? <DemoPrivacySettingsPage /> : <PrivacySettingsForm />;
+}
+function DemoPrivacySettingsPage() {
   const { settings, update } = useAccountSettings();
   const change = <K extends keyof typeof settings.privacy>(
     key: K,

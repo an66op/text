@@ -8,12 +8,14 @@ import type { useMessageDraft } from './useMessageDraft';
 import type { useThreadMessages } from './useThreadMessages';
 import type { UploadedImage } from '../media/media-model';
 import { uncertainWrite } from './useConversationUploads';
+import { isContactRestricted } from '../privacy/privacy-api';
 export type RichPending = PendingMessage & {
   imageIds?: string[];
   replyToId?: string;
   images?: UploadedImage[];
   rich?: boolean;
   projection?: number;
+  receiptOnly?: boolean;
 };
 export function useMessageSender(
   userId: string,
@@ -23,13 +25,20 @@ export function useMessageSender(
   canSend: boolean,
   onSent: (message: PlatformMessage) => void,
   gate: { current: boolean },
+  onWriteRestricted?: (message: string) => void,
 ) {
   const [rich, setRich] = useState<RichPending[]>([]),
+    [receipts, setReceipts] = useState<RichPending[]>([]),
     [sendingId, setSendingId] = useState(''),
     [error, setError] = useState(''),
     [checks, setChecks] = useState<Record<string, 'unknown' | 'absent' | 'checking'>>({});
   const operation = useRef(0),
     inFlightPending = useRef<RichPending | null>(null);
+  const richRef = useRef<RichPending[]>([]);
+  const updateRich = useCallback((change: (items: RichPending[]) => RichPending[]) => {
+    richRef.current = change(richRef.current);
+    setRich(richRef.current);
+  }, []);
   const active = useRef(true),
     lock = useRef(false),
     controller = useRef<AbortController | null>(null),
@@ -47,7 +56,8 @@ export function useMessageSender(
   const valid = () => active.current && epoch.current === accountEpoch();
   const remove = (id: string) => {
     draft.remove([id]);
-    setRich((items) => items.filter((item) => item.clientId !== id));
+    updateRich((items) => items.filter((item) => item.clientId !== id));
+    setReceipts((items) => items.filter((item) => item.clientId !== id));
   };
   const accept = (message: PlatformMessage, pending: RichPending, permission: number | null) => {
     if (
@@ -78,19 +88,24 @@ export function useMessageSender(
     if (ids.size) {
       const pending = textPending.filter((item) => ids.has(item.clientId));
       if (pending.length) removeText(pending.map((item) => item.clientId));
-      setRich((items) =>
+      updateRich((items) =>
+        items.some((item) => ids.has(item.clientId))
+          ? items.filter((item) => !ids.has(item.clientId))
+          : items,
+      );
+      setReceipts((items) =>
         items.some((item) => ids.has(item.clientId))
           ? items.filter((item) => !ids.has(item.clientId))
           : items,
       );
     }
-  }, [thread.messages, userId, conversationId, textPending, removeText]);
+  }, [thread.messages, userId, conversationId, textPending, removeText, updateRich]);
   const execute = async (pending: RichPending, lookup = false) => {
     const permission = thread.capturePermission();
     if (
       lock.current ||
       gate.current ||
-      (!lookup && !allowed.current) ||
+      (!lookup && (!allowed.current || pending.receiptOnly)) ||
       !valid() ||
       permission === null
     )
@@ -141,7 +156,11 @@ export function useMessageSender(
             return;
           }
           setChecks((values) => ({ ...values, [pending.clientId]: 'absent' }));
-          setError('尚未查询到这条消息，核实后可使用同一请求重试');
+          setError(
+            pending.receiptOnly
+              ? '尚未查询到这条消息；内容已清除，此确认记录仅可查询'
+              : '尚未查询到这条消息，核实后可使用同一请求重试',
+          );
           return;
         } catch (caught) {
           if (!valid() || request.signal.aborted) return;
@@ -166,9 +185,10 @@ export function useMessageSender(
       confirm(message);
     } catch (caught) {
       if (valid() && !request.signal.aborted) {
+        if (isContactRestricted(caught)) onWriteRestricted?.(apiErrorMessage(caught));
         const text = apiErrorMessage(caught);
         if (pending.rich)
-          setRich((items) =>
+          updateRich((items) =>
             items.map((item) =>
               item.clientId === pending.clientId ? { ...item, error: text } : item,
             ),
@@ -208,20 +228,37 @@ export function useMessageSender(
     }
   };
   const failText = draft.fail;
-  const clearRich = useCallback(() => {
-    if (inFlightPending.current && !inFlightPending.current.rich)
-      failText(inFlightPending.current.clientId, '会话权限已更新，请重新确认发送结果');
-    inFlightPending.current = null;
-    operation.current++;
-    controller.current?.abort();
-    controller.current = null;
-    lock.current = false;
-    gate.current = false;
-    setRich([]);
-    setChecks({});
-    setSendingId('');
-    setError('');
-  }, [gate, failText]);
+  const clearRich = useCallback(
+    (preserveReceipts = true) => {
+      if (inFlightPending.current && !inFlightPending.current.rich)
+        failText(inFlightPending.current.clientId, '会话权限已更新，请重新确认发送结果');
+      inFlightPending.current = null;
+      operation.current++;
+      controller.current?.abort();
+      controller.current = null;
+      lock.current = false;
+      gate.current = false;
+      if (preserveReceipts) {
+        const cleared = richRef.current.map((item) => ({
+          clientId: item.clientId,
+          body: '',
+          createdAt: item.createdAt,
+          error: '发送结果待确认，原内容已清除',
+          receiptOnly: true,
+        }));
+        if (cleared.length)
+          setReceipts((previous) => [
+            ...previous.filter((item) => !cleared.some((next) => next.clientId === item.clientId)),
+            ...cleared,
+          ]);
+      } else setReceipts([]);
+      updateRich(() => []);
+      setChecks({});
+      setSendingId('');
+      setError('');
+    },
+    [gate, failText, updateRich],
+  );
   const stage = (body: string, images: UploadedImage[], replyToId?: string) => {
     if (lock.current || gate.current || !valid() || !allowed.current) return false;
     if (rich.length + draft.state.pending.length >= 20) {
@@ -244,19 +281,23 @@ export function useMessageSender(
         : draft.stage(body);
     if (!pending) return false;
     if (pending.rich) {
-      setRich((items) => [...items, pending]);
+      updateRich((items) => [...items, pending]);
       draft.setDraft('');
     }
     void execute(pending);
     return true;
   };
   return {
-    pending: [...draft.state.pending, ...rich] as RichPending[],
+    pending: [...draft.state.pending, ...rich, ...receipts] as RichPending[],
     sendingId,
     error,
     stage,
-    retry: (pending: RichPending) => void execute(pending, checks[pending.clientId] !== 'absent'),
-    retryLabel: (id: string) => (checks[id] === 'absent' ? '重试发送' : '查询发送结果'),
+    retry: (pending: RichPending) =>
+      void execute(pending, pending.receiptOnly || checks[pending.clientId] !== 'absent'),
+    retryLabel: (id: string) =>
+      checks[id] === 'absent' && !receipts.some((item) => item.clientId === id)
+        ? '重试发送'
+        : '查询发送结果',
     busy: lock.current,
     isBusy: () => lock.current,
     clearRich,

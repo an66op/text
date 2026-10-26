@@ -157,7 +157,10 @@ export default function MemberPicker({
       >
         {busy ? '正在添加…' : `添加${chosen.length ? ` ${chosen.length} 位` : ''}成员`}
       </button>
-      <p className="conversation-subtle">最多 200 位成员。新成员加入后可阅读此会话的历史消息。</p>
+      <p className="conversation-subtle">
+        最多 200
+        位成员。新成员加入后可阅读此会话的历史消息。能否加入由对方当前联系权限决定；添加失败时不会只加入其中一部分成员。
+      </p>
     </section>
   );
 }

@@ -10,6 +10,9 @@ import (
 )
 
 func (a *App) messagingSQLSend(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
+	if err := prepareDirectContact(r.Context(), tx, r.PathValue("id"), u.ID); err != nil {
+		return nil, err
+	}
 	c, err := messagingSQLConversation(r.Context(), tx, r.PathValue("id"), u.ID, "send")
 	if err != nil {
 		return nil, err
@@ -47,6 +50,9 @@ func (a *App) messagingSQLSend(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 		if !errors.Is(e, pgx.ErrNoRows) {
 			return nil, e
 		}
+	}
+	if err = checkDirectContact(r.Context(), tx, c, u.ID); err != nil {
+		return nil, err
 	}
 	if input.ReplyToID != "" {
 		var source int64
@@ -143,7 +149,7 @@ func appendMessagingSQLEvent(ctx context.Context, tx pgx.Tx, kind, conversationI
 	if err := tx.QueryRow(ctx, `UPDATE gongming_sequences SET value=value+1 WHERE name='message_events' RETURNING value`).Scan(&seq); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO gongming_message_outbox(id,seq,type,conversation_id,message_id,recipient_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)`, newID("event_"), seq, kind, conversationID, nullString(messageID), nullString(recipientID), now); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gongming_message_outbox(id,seq,type,conversation_id,message_id,recipient_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)`, newID("event_"), seq, kind, nullString(conversationID), nullString(messageID), nullString(recipientID), now); err != nil {
 		return err
 	}
 	// Equivalent to appendMessageEvent: retain the last 2000, then remove the

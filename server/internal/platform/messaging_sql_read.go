@@ -146,6 +146,10 @@ func messagingSQLConversations(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 			items[i].LastMessage = &m
 		}
 	}
+	items, err = projectContactConversations(r.Context(), tx, u.ID, items)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]any{"items": items, "total": total, "unreadTotal": unreadTotal}, nil
 }
 
@@ -181,6 +185,11 @@ func messagingSQLDetail(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
 		}
 		c.LastMessage = &projected[0]
 	}
+	contactItems, e := projectContactConversations(r.Context(), tx, u.ID, []Conversation{c})
+	if e != nil {
+		return nil, e
+	}
+	c = contactItems[0]
 	return struct {
 		Conversation   Conversation `json:"conversation"`
 		MemberProfiles []PublicUser `json:"memberProfiles"`

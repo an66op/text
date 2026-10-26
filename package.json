@@ -31,6 +31,7 @@
     "verify:stack": "node scripts/verify-stack.mjs",
     "verify:messages": "cd server && go run ./cmd/verify-messaging",
     "verify:message-media": "cd server && go run ./cmd/verify-message-media",
+    "verify:contact-privacy": "cd server && go run ./cmd/verify-contact-privacy",
     "verify:wallet-auth": "cd server && go run ./cmd/verify-wallet-auth",
     "verify:social": "node scripts/verify-social.mjs",
     "verify:media": "node scripts/verify-media.mjs",

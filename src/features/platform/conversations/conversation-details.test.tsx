@@ -8,6 +8,7 @@ import { member, otherMember, signedIn } from '../platform-test-fixtures';
 import ConversationDetailsPage from './ConversationDetailsPage';
 import { conversationApi, type ConversationDetails } from './conversation-api';
 import MemberPicker from './MemberPicker';
+import { privacyApi } from '../privacy/privacy-api';
 
 const stream = vi.hoisted(() => ({
   onEvent: undefined as ((event: { type: string; conversationId?: string }) => void) | undefined,
@@ -56,6 +57,27 @@ afterEach(() => {
 });
 
 describe('server conversation management', () => {
+  it('provides the same private block confirmation for a direct participant while retaining the history link', async () => {
+    vi.mocked(conversationApi.details).mockResolvedValue(
+      details({ ...group, kind: 'direct', canSend: false }),
+    );
+    vi.spyOn(privacyApi, 'blocks').mockResolvedValue({
+      items: [],
+      total: 0,
+      revision: 0,
+      updatedAt: null,
+    });
+    render(scene());
+    fireEvent.click(await screen.findByRole('button', { name: '加入黑名单' }));
+    const modal = screen.getByRole('dialog', { name: '将此人加入黑名单？' });
+    expect(modal).toHaveTextContent(otherMember.id);
+    expect(modal).toHaveTextContent('历史消息和图片保留');
+    expect(modal).toHaveTextContent('已有好友关系保留');
+    expect(screen.getByRole('link', { name: '回到对话' })).toHaveAttribute(
+      'href',
+      '/social?conversation=group-one',
+    );
+  });
   it('shows a non-owner only member access and an explicit leave confirmation', async () => {
     const leave = vi.spyOn(conversationApi, 'leave').mockResolvedValue({ ok: true });
     render(scene(otherMember));

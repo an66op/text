@@ -52,6 +52,10 @@ const capabilityLabels: Record<string, string> = {
   'message-replies': '同会话单层引用回复',
   'message-retraction': '作者撤回与终态保护',
   'message-mutation-sync': '旧消息变更与版本补漏',
+  'contact-privacy': '本人私人联系准入设置',
+  'private-blocklist': '本人私有黑名单',
+  'contact-write-guards': '联系写入权限与并发保护',
+  'permission-aware-discovery': '按本人设置控制陌生成员发现',
 };
 
 function uptime(value: number) {

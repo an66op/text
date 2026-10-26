@@ -22,7 +22,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.10.0"
+const Version = "0.11.0"
 const cookieName = "gongming_session"
 
 type Config struct {

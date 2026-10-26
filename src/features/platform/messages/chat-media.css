@@ -130,6 +130,16 @@
   scrollbar-width: thin;
   background: transparent;
 }
+.platform-thread-footer .chat-write-refresh {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  margin: 4px 0 0 9px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  background: #ffffff55;
+}
 .chat-cancelled-uploads {
   display: grid;
   gap: 7px;

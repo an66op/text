@@ -12,6 +12,7 @@ import './profile.css';
 import { Navigate } from 'react-router';
 import { useAuth } from '@/features/platform/useAuth';
 import SessionDevicesPage from '@/features/platform/sessions/SessionDevicesPage';
+import RealBlockedContactsPage from '@/features/platform/privacy/BlockedContactsPage';
 
 export default function SettingsRoutePage({
   kind,
@@ -41,7 +42,7 @@ export default function SettingsRoutePage({
     case 'about':
       return <AboutSettingsPage />;
     case 'blocked':
-      return <BlockedContactsPage />;
+      return status === 'guest' && !user ? <BlockedContactsPage /> : <RealBlockedContactsPage />;
     case 'devices':
       return status === 'guest' && !user ? <DeviceSettingsPage /> : <SessionDevicesPage />;
   }

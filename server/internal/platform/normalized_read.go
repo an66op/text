@@ -230,7 +230,7 @@ func loadMessagingNormalized(ctx context.Context, tx pgx.Tx, s *State) error {
 	}); err != nil {
 		return err
 	}
-	if err := collectRows(ctx, tx, `SELECT id,seq,type,conversation_id,COALESCE(message_id,''),COALESCE(recipient_id,''),created_at FROM gongming_message_outbox ORDER BY seq`, func(r pgx.Rows) error {
+	if err := collectRows(ctx, tx, `SELECT id,seq,type,COALESCE(conversation_id,''),COALESCE(message_id,''),COALESCE(recipient_id,''),created_at FROM gongming_message_outbox ORDER BY seq`, func(r pgx.Rows) error {
 		var v MessageEvent
 		if err := r.Scan(&v.ID, &v.Seq, &v.Type, &v.ConversationID, &v.MessageID, &v.RecipientID, &v.CreatedAt); err != nil {
 			return err

@@ -312,7 +312,7 @@ func run() {
 	check("本机开发版本、真实账号与三个独立 WebSocket", func() {
 		admin.call("POST", "/auth/login", object{"email": "admin@gongming.local", "password": "Admin2026!"}, 200)
 		system := admin.call("GET", "/admin/system", nil, 200)
-		must(system["version"] == "0.10.0" && system["environment"] == "development", "verifier requires development API v0.10.0")
+		must((system["version"] == "0.10.0" || system["version"] == "0.11.0") && system["environment"] == "development", "verifier requires development API v0.10.0 or v0.11.0")
 		a.prepareBrowser()
 		b.prepareBrowser()
 		a.call("POST", "/auth/login", object{"email": "demo@gongming.local", "password": "Demo2026!"}, 200)

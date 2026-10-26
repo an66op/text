@@ -1,6 +1,6 @@
 # 共鸣全栈 API 约定
 
-前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），本轮源码目标 Go API 0.10.0（8080）、PostgreSQL schema v10（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。本文是接口约定；运行升级、全检和恢复验收另见 [运行记录](STACK_STATUS.md)。
+前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），本轮源码目标 Go API 0.11.0（8080）、PostgreSQL schema v11（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。本文是接口约定；运行升级、全检和恢复验收另见 [运行记录](STACK_STATUS.md)。
 
 ## 通用
 
@@ -25,6 +25,22 @@
 - 本地种子：成员 `demo@gongming.local` / `Demo2026!`；管理员 `admin@gongming.local` / `Admin2026!`。仅开发环境启用种子，生产禁止默认凭据。
 
 浏览器首次准备 `GET /auth/context`（`X-Gongming-Browser:1`）获取公开generation与HttpOnly上下文Cookie，初次启用需重新登录。浏览器登录/注册/退出以及钱包确认携带Browser模式与 `X-Gongming-Auth-Generation`；事务CAS失败409，不自动重发。新会话固定绑定原context，所有HTTP/媒体/WS入口检查其匹配，成功认证撤销该context原会话；旧CLI仅在没有浏览器上下文时兼容。完整并发、首次双初始化、Cookie迟到及失败关闭规则见 [钱包身份契约](WALLET_IDENTITY_SERVICE.md)。
+
+## 私人联系准入
+
+登录账号的设置与黑名单是独立私有服务，访客本机演示、个人文档JSON均不构成服务器授权。[完整DTO、事务边界及交互契约](CONTACT_PRIVACY_SERVICE.md)。
+
+- `GET /me/contact-privacy` → `{directMessagePolicy,groupInvitePolicy,allowFriendRequests,discoverableByHandle,revision,updatedAt}`。两项policy分别取everyone/friends/nobody，默认为everyone，其余默认true；无记录返回revision0/time null，不写默认行。
+- `PUT /me/contact-privacy` 必填上述四个设置字段和revision → 最新同型DTO。CAS先于同值比较，旧版本409 `privacy_conflict`，同版本同值保持版本/时间。
+- `GET /me/blocks?q&userId&limit&offset` → `{items:[{userId,user:PublicUser|null,available,createdAt}],total,revision,updatedAt}`；精确userId与分页、本人revision处于同一快照，默认20最多100。对象停用后保留本人清理定位符，资料为null。
+- `PUT /me/blocks/{userId}`、`DELETE /me/blocks/{userId}` 输入`{revision}` → 严格`{ok:true,userId,blocked,revision,updatedAt}`；实际变化才推进本人CAS。禁止自拉黑，新记录要求active target，每人最多500；解除允许停用/不存在对象，同值仍须匹配CAS。
+- `GET /contact-capabilities/{userId}` → `{userId,blockedByMe,canMessage,canRequestFriend,canInvite,revision}`；revision为请求者本人版本，不返回对方策略或反向关系。未知/停用404，自身能力均false。
+
+私信和邀请分别检查目标入站规则；只认真实双向好友，不把同群或旧私聊当作好友。任一方向block禁止双方新私信/私聊图片、好友申请/接受和互相邀请新群/频道成员。统一403 `contact_restricted`，不说明拒绝方或原因。拉黑保留accepted好友、历史和当前成员原图，取消双方pending且不恢复；共同空间原有互动与转交独立。批次邀请整体成功或回滚，既有成员noop不重验。
+
+列表/详情的Conversation增加viewer-specific `canSend:boolean`。新增联系限制不等于失去历史成员资格；已提交消息/上传的同编号确认、by-client、resolve、已读及本人盲撤清理继续按原权限。discoverable关闭只从陌生目录/账号查询隐藏，self/好友例外，不隐藏公开内容或历史PublicUser。
+
+策略变更给本人、block增删给双方通用私有resync，wire只含type/eventId；好友通知遇block动态清空actor/context/target。策略/关系不进入User、运营接口、全局审计或个人备份。客户端未知写先核实，旧revision的查空不足以解锁相反操作；只能人工同意图同CAS重试，不能自动重放。
 
 ## 钱包身份
 
@@ -129,7 +145,7 @@
 
 ## 通讯
 
-`Conversation = {id,title,kind:'direct'|'group'|'channel',members:string[],ownerId,createdAt,mutationVersion:number,lastMessage?:Message,unreadCount,readSeq,lastReadMessageId?}`。
+`Conversation = {id,title,kind:'direct'|'group'|'channel',members:string[],ownerId,createdAt,canSend:boolean,mutationVersion:number,lastMessage?:Message,unreadCount,readSeq,lastReadMessageId?}`。
 `Message` 保留id/conversationId/sender/body/createdAt/seq/clientId，追加status、revision、retractedAt、canRetract、images和replyTo，完整字段见 [消息图片与撤回契约](MESSAGE_MEDIA_SERVICE.md)。revision取同一读取快照的mutationVersion+1；引用只保存源ID并动态投影。
 
 - `GET /conversations` → 用户已加入会话（附分页前 unreadTotal）；`POST /conversations` `{title,kind,memberIds:string[]}` → Conversation。

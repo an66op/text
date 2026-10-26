@@ -4,6 +4,7 @@ import { accountEpoch } from '@/shared/api/account-guard';
 import { hostedImageId } from '@/shared/api/media-url';
 import { mediaApi } from '../media/media-api';
 import { imageFileError, type UploadedImage } from '../media/media-model';
+import { isContactRestricted } from '../privacy/privacy-api';
 export type ChatUpload = {
   clientId: string;
   file?: File;
@@ -43,6 +44,7 @@ export function useConversationUploads(
   userId: string,
   conversationId: string,
   onDenied: (message: string) => void,
+  onWriteRestricted?: (message: string) => void,
 ) {
   const [items, setItems] = useState<ChatUpload[]>([]),
     [error, setError] = useState('');
@@ -55,6 +57,8 @@ export function useConversationUploads(
     running = useRef(false),
     queue = useRef<string[]>([]),
     denied = useRef(onDenied);
+  const restricted = useRef(onWriteRestricted);
+  restricted.current = onWriteRestricted;
   denied.current = onDenied;
   const update = useCallback((change: (items: ChatUpload[]) => ChatUpload[]) => {
     entries.current = change(entries.current);
@@ -161,6 +165,7 @@ export function useConversationUploads(
                 );
                 if (caught instanceof ApiError && caught.status === 404)
                   denied.current('当前无法访问这个会话');
+                if (isContactRestricted(caught)) restricted.current?.(apiErrorMessage(caught));
               }
             } finally {
               if (requests.current.get(clientId) === controller) requests.current.delete(clientId);

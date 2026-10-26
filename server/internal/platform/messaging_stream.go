@@ -181,7 +181,7 @@ func (h *messageHub) deliver(sub *streamSubscriber, snapshot StreamSnapshot) {
 		if event.Seq <= cursor {
 			continue
 		}
-		if event.Type == "membership.revoked" {
+		if event.Type == "membership.revoked" || event.Type == "contact.resync" {
 			if event.RecipientID == session.UserID {
 				pending = append(pending, StreamEvent{Type: "resync", EventID: strconv.FormatInt(event.Seq, 10)})
 			}

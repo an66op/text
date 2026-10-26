@@ -34,6 +34,7 @@ import { useMessageDraft } from './useMessageDraft';
 import { useThreadMessages } from './useThreadMessages';
 import type { StreamEvent, StreamStatus } from './usePlatformStream';
 import { useVisibleReadMark } from './useVisibleReadMark';
+import { useConversationWriteAccess } from './useConversationWriteAccess';
 
 export default function MessageThread({
   conversation,
@@ -102,9 +103,17 @@ export default function MessageThread({
     onRead,
     updateVersion,
   });
+  const writeAccess = useConversationWriteAccess(userId, conversation, streamEvent, thread.deny);
   const canSend =
-    !thread.accessDenied && (conversation.kind !== 'channel' || conversation.ownerId === userId);
-  const uploads = useConversationUploads(userId, conversation.id, thread.deny);
+    !thread.accessDenied &&
+    writeAccess.allowed &&
+    (conversation.kind !== 'channel' || conversation.ownerId === userId);
+  const uploads = useConversationUploads(
+    userId,
+    conversation.id,
+    thread.deny,
+    writeAccess.restrict,
+  );
   const sender = useMessageSender(
     userId,
     conversation.id,
@@ -117,6 +126,7 @@ export default function MessageThread({
       onSent(message);
     },
     gate,
+    writeAccess.restrict,
   );
   const reply = replyId ? thread.quote(replyId) : null;
   const replyInvalid = !!replyId && (!reply?.available || thread.missing(replyId));
@@ -124,17 +134,25 @@ export default function MessageThread({
     clearRich = sender.clearRich;
   const privacy = useRef('');
   useEffect(() => {
-    const key = `${thread.permissionEpoch}:${canSend}:${conversation.ownerId}`;
+    const key = `${thread.permissionEpoch}:${canSend}:${conversation.ownerId}:${writeAccess.restrictionEpoch}`;
     if (privacy.current && !privacy.current.startsWith('0:') && privacy.current !== key) {
       clearUploads();
-      clearRich();
+      clearRich(!thread.accessDenied);
       setReplyId('');
       setViewer(null);
       setRetractId('');
       requests.current.forEach((request) => request.abort());
     }
     privacy.current = key;
-  }, [thread.permissionEpoch, canSend, conversation.ownerId, clearUploads, clearRich]);
+  }, [
+    thread.permissionEpoch,
+    canSend,
+    conversation.ownerId,
+    writeAccess.restrictionEpoch,
+    clearUploads,
+    clearRich,
+    thread.accessDenied,
+  ]);
   useEffect(() => {
     if (thread.floor > 0)
       messagesChanged({ conversationId: conversation.id, mutationVersion: thread.floor });
@@ -444,6 +462,7 @@ export default function MessageThread({
             >
               <div>
                 {pending.body && <p>{pending.body}</p>}
+                {pending.receiptOnly && <p>仅查询此前发送结果，原内容已清除</p>}
                 {!!pending.images?.length && pending.projection === thread.projectionGeneration && (
                   <div className="chat-pending-images">
                     {pending.images.map((image) => (
@@ -466,7 +485,11 @@ export default function MessageThread({
                         (!canSend && sender.retryLabel(pending.clientId) === '重试发送')
                       }
                       onClick={() => sender.retry(pending)}
-                      aria-label={`重试发送：${pending.body.slice(0, 20)}`}
+                      aria-label={
+                        pending.receiptOnly
+                          ? '查询此前消息的发送结果'
+                          : `重试发送：${pending.body.slice(0, 20)}`
+                      }
                     >
                       <RotateCcw size={12} />
                       {sender.retryLabel(pending.clientId)}
@@ -680,7 +703,14 @@ export default function MessageThread({
           <p>
             {thread.accessDenied
               ? '当前无法访问这个会话'
-              : '你已加入频道，只有当前频道主可以发布消息'}
+              : conversation.kind === 'channel' && conversation.ownerId !== userId
+                ? '你已加入频道，只有当前频道主可以发布消息'
+                : writeAccess.error || '当前联系权限不允许此操作'}
+            {!thread.accessDenied && (
+              <button type="button" className="chat-write-refresh" onClick={writeAccess.refresh}>
+                刷新发送权限
+              </button>
+            )}
           </p>
         )}
       </div>

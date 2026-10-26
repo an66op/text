@@ -42,6 +42,9 @@ func (a *App) uploadConversationMediaImage(w http.ResponseWriter, r *http.Reques
 		}
 		mode := ""
 		if lock {
+			if e = prepareDirectContact(r.Context(), tx, id, u.ID); e != nil {
+				return u, e
+			}
 			mode = "send"
 		}
 		c, e := messagingSQLConversation(r.Context(), tx, id, u.ID, mode)
@@ -120,6 +123,25 @@ func (a *App) uploadConversationMediaImage(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, 200, *old)
 		return
 	}
+
+	tx, err = store.pool.BeginTx(r.Context(), pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	_, err = authorize(tx, false)
+	if err == nil {
+		var c StoredConversation
+		c, err = messagingSQLConversation(r.Context(), tx, id, actor.ID, "")
+		if err == nil {
+			err = checkDirectContact(r.Context(), tx, c, actor.ID)
+		}
+	}
+	_ = tx.Rollback(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	if !a.limiter.allow("media:"+actor.ID, 30, time.Hour, a.now()) {
 		w.Header().Set("Retry-After", "3600")
 		writeError(w, &APIError{429, "rate_limited", "每小时最多上传30次"})
@@ -158,6 +180,13 @@ func (a *App) uploadConversationMediaImage(w http.ResponseWriter, r *http.Reques
 		}
 		if old != nil {
 			return walletCommit{Data: *old}, nil
+		}
+		c, e := messagingSQLConversation(r.Context(), tx, id, u.ID, "")
+		if e != nil {
+			return walletCommit{}, e
+		}
+		if e = checkDirectContact(r.Context(), tx, c, u.ID); e != nil {
+			return walletCommit{}, e
 		}
 		var count int
 		var size int64

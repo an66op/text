@@ -16,12 +16,14 @@ import {
 } from './message-drafts';
 import { useThreadMessages } from './useThreadMessages';
 import { useMessageDraft } from './useMessageDraft';
+import { conversationApi } from '../conversations/conversation-api';
 
 const first: Conversation = {
   id: 'first',
   title: '第一场对话',
   kind: 'direct',
   ownerId: member.id,
+  canSend: true,
   members: [member.id, otherMember.id],
   createdAt: '2026-10-27T08:00:00Z',
   unreadCount: 2,
@@ -48,6 +50,10 @@ const scene = () => (
   </MemoryRouter>
 );
 beforeEach(() => {
+  vi.spyOn(conversationApi, 'details').mockImplementation(async (id) => ({
+    conversation: id === first.id ? first : second,
+    memberProfiles: [member, otherMember],
+  }));
   localStorage.clear();
   vi.stubGlobal('WebSocket', undefined);
   vi.spyOn(platformApi, 'conversations').mockResolvedValue({ items: [first, second], total: 2 });

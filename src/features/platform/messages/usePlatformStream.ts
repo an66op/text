@@ -14,6 +14,7 @@ export function usePlatformStream(userId: string, onEvent: (event: StreamEvent) 
   const callback = useRef(onEvent);
   callback.current = onEvent;
   useEffect(() => {
+    if (!userId) return;
     let active = true;
     let online = navigator.onLine;
     let socket: WebSocket | null = null;

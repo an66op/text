@@ -16,6 +16,8 @@ import type { RequestAction } from './friendship-types';
 import { useRelationship } from './useRelationship';
 import FriendRemovalDialog from './FriendRemovalDialog';
 import './friendship.css';
+import { useContactCapabilities } from '@/features/platform/privacy/useContactCapabilities';
+import { useContactScope } from '@/features/platform/privacy/contact-scope';
 
 export default function FriendshipActions({ person }: { person: PublicUser }) {
   const { user } = useAuth();
@@ -25,6 +27,8 @@ export default function FriendshipActions({ person }: { person: PublicUser }) {
 
 function RelationshipActions({ person, userId }: { person: PublicUser; userId: string }) {
   const relation = useRelationship(person.id);
+  const capabilities = useContactCapabilities(person.id),
+    { valid } = useContactScope();
   const [requesting, setRequesting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [note, setNote] = useState('');
@@ -40,7 +44,16 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
     };
   }, []);
   const mutate = async (action: 'request' | 'remove' | RequestAction) => {
-    if (dispatching.current || relation.loading || !relation.relationship) return;
+    if (
+      !active.current ||
+      !valid() ||
+      dispatching.current ||
+      relation.loading ||
+      !relation.relationship ||
+      (action === 'request' && capabilities.data?.canRequestFriend !== true) ||
+      (action === 'accept' && capabilities.data?.blockedByMe)
+    )
+      return;
     dispatching.current = true;
     setBusy(true);
     setError('');
@@ -59,7 +72,7 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
         if (result.id !== request.id || result.status !== expected)
           throw new Error('申请状态尚未更新，请重新读取关系');
       }
-      if (!active.current) return;
+      if (!active.current || !valid()) return;
       setRequesting(false);
       setRemoving(false);
       setNote('');
@@ -76,13 +89,14 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
       );
       friendshipsChanged();
     } catch (caught) {
-      if (active.current) {
+      if (active.current && valid()) {
         setError(apiErrorMessage(caught));
         relation.refresh();
+        capabilities.refresh();
       }
     } finally {
       dispatching.current = false;
-      if (active.current) setBusy(false);
+      if (active.current && valid()) setBusy(false);
     }
   };
   const submit = (event: FormEvent) => {
@@ -127,7 +141,12 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
             <button
               className="friendship-add-button"
               type="button"
-              disabled={busy || relation.loading}
+              disabled={
+                busy ||
+                relation.loading ||
+                capabilities.loading ||
+                capabilities.data?.canRequestFriend !== true
+              }
               onClick={() => {
                 setError('');
                 setMessage('');
@@ -138,6 +157,10 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
               添加好友
             </button>
           )}
+          {!capabilities.loading && capabilities.data?.canRequestFriend === false && (
+            <p className="friendship-relation-status">当前联系权限不允许发起新的好友申请</p>
+          )}
+          <PlatformError message={capabilities.error} retry={capabilities.refresh} />
         </>
       )}
       {value?.status === 'outgoing' && (
@@ -172,7 +195,9 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
             <button
               className="friendship-primary"
               type="button"
-              disabled={busy || relation.loading || !request}
+              disabled={
+                busy || relation.loading || !request || capabilities.data?.blockedByMe === true
+              }
               onClick={() => void mutate('accept')}
             >
               {busy ? '处理中…' : '接受申请'}
@@ -226,7 +251,12 @@ function RelationshipActions({ person, userId }: { person: PublicUser; userId: s
             <button
               type="submit"
               className="friendship-primary"
-              disabled={busy || relation.loading}
+              disabled={
+                busy ||
+                relation.loading ||
+                capabilities.loading ||
+                capabilities.data?.canRequestFriend !== true
+              }
             >
               {busy ? '发送中…' : '发送申请'}
             </button>

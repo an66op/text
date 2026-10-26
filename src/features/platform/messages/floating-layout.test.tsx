@@ -6,6 +6,7 @@ import type { Conversation, MessagePage, PlatformMessage } from '@/shared/api/ty
 import { AuthContext } from '../auth-context';
 import { member, otherMember, signedIn } from '../platform-test-fixtures';
 import MessageThread from './MessageThread';
+import { conversationApi } from '../conversations/conversation-api';
 
 class LayoutObserver {
   static instances: LayoutObserver[] = [];
@@ -32,6 +33,7 @@ const conversation: Conversation = {
   kind: 'direct',
   members: [member.id, otherMember.id],
   ownerId: member.id,
+  canSend: true,
   createdAt: '2026-10-27T08:00:00Z',
 };
 const message = (seq: number): PlatformMessage => ({
@@ -58,6 +60,10 @@ const view = () =>
     </MemoryRouter>,
   );
 beforeEach(() => {
+  vi.spyOn(conversationApi, 'details').mockResolvedValue({
+    conversation,
+    memberProfiles: [member, otherMember],
+  });
   localStorage.clear();
   vi.stubGlobal('ResizeObserver', LayoutObserver);
   vi.spyOn(platformApi, 'messages').mockResolvedValue({

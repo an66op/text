@@ -7,6 +7,7 @@ import type { Conversation } from '@/shared/api/types';
 import { AuthContext } from './auth-context';
 import PlatformMessagesPage from './PlatformMessagesPage';
 import { member, otherMember, signedIn } from './platform-test-fixtures';
+import { conversationApi } from './conversations/conversation-api';
 
 const conversation: Conversation = {
   id: 'channel-one',
@@ -14,9 +15,14 @@ const conversation: Conversation = {
   kind: 'channel',
   members: [member.id, otherMember.id],
   ownerId: otherMember.id,
+  canSend: true,
   createdAt: '2026-10-27T08:00:00Z',
 };
 beforeEach(() => {
+  vi.spyOn(conversationApi, 'details').mockResolvedValue({
+    conversation,
+    memberProfiles: [member, otherMember],
+  });
   localStorage.clear();
   vi.stubGlobal('WebSocket', undefined);
   vi.spyOn(platformApi, 'conversations').mockResolvedValue({ items: [conversation], total: 1 });

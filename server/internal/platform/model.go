@@ -94,6 +94,7 @@ type StoredConversation struct {
 }
 type Conversation struct {
 	MutationVersion int64 `json:"mutationVersion"`
+	CanSend         bool  `json:"canSend"`
 	StoredConversation
 	LastMessage       *Message `json:"lastMessage,omitempty"`
 	UnreadCount       int      `json:"unreadCount"`
@@ -204,6 +205,9 @@ type Idempotency struct {
 	Result      Wallet `json:"result"`
 }
 type State struct {
+	ContactChecks           []contactCheck                          `json:"-"`
+	ContactResults          []contactConversationResult             `json:"-"`
+	ContactBlocked          map[string]bool                         `json:"-"`
 	ConversationMutations   map[string]int64                        `json:"conversationMutations,omitempty"`
 	EventSeedDrafts         []eventSeedDraft                        `json:"-"`
 	NotificationDrafts      []NotificationDraft                     `json:"-"`
@@ -302,7 +306,7 @@ func (s *State) message(m StoredMessage, viewer ...string) Message {
 	return result
 }
 func (s *State) conversation(c StoredConversation, viewer ...string) Conversation {
-	result := Conversation{StoredConversation: c, MutationVersion: s.ConversationMutations[c.ID]}
+	result := Conversation{StoredConversation: c, CanSend: len(viewer) > 0 && member(c, viewer[0]) && (c.Kind != "channel" || c.OwnerID == viewer[0]), MutationVersion: s.ConversationMutations[c.ID]}
 	if len(viewer) > 0 {
 		mark := s.Reads[readKey(c.ID, viewer[0])]
 		result.ReadSeq, result.LastReadMessageID = mark.Seq, mark.MessageID

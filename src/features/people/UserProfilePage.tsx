@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { Flag, MessageCircle, Waves } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '@/features/platform/useAuth';
@@ -10,15 +10,20 @@ import type { PlatformPost, PublicUser } from '@/shared/api/types';
 import { paths } from '@/shared/config/paths';
 import { peopleApi } from './people-api';
 import FriendshipActions from './FriendshipActions';
+import BlockActions from '@/features/platform/privacy/BlockActions';
+import { useContactScope } from '@/features/platform/privacy/contact-scope';
+import { useContactCapabilities } from '@/features/platform/privacy/useContactCapabilities';
 import './people.css';
 
 export default function UserProfilePage() {
   const { handle = '' } = useParams();
-  const { user } = useAuth();
-  return <UserProfile key={`${user?.id ?? 'guest'}:${handle}`} handle={handle} />;
+  const { status } = useAuth();
+  const { scope } = useContactScope();
+  return <UserProfile key={`${scope}:${status}:${handle}`} handle={handle} />;
 }
 function UserProfile({ handle }: { handle: string }) {
-  const { user, status } = useAuth();
+  const auth = useAuth();
+  const { user, status } = auth;
   const userId = user?.id;
   const navigate = useNavigate();
   const [person, setPerson] = useState<PublicUser | null>(null);
@@ -33,14 +38,15 @@ function UserProfile({ handle }: { handle: string }) {
   const [reason, setReason] = useState('');
   const [reported, setReported] = useState(false);
   const active = useRef(true);
-  useEffect(() => {
+  const capabilities = useContactCapabilities(person?.id ?? '');
+  useLayoutEffect(() => {
     active.current = true;
     return () => {
       active.current = false;
     };
   }, []);
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || status !== 'authenticated') return;
     const controller = new AbortController();
     setLoading(true);
     setError('');
@@ -74,9 +80,9 @@ function UserProfile({ handle }: { handle: string }) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [handle, userId, offset, revision]);
+  }, [handle, userId, status, offset, revision]);
   const chat = async () => {
-    if (!person || busy) return;
+    if (!person || busy || capabilities.data?.canMessage !== true) return;
     setBusy(true);
     setError('');
     try {
@@ -118,14 +124,17 @@ function UserProfile({ handle }: { handle: string }) {
     <section className="people-profile platform-page">
       <PageHeader title="资料" backTo={paths.contacts} />
       <div className="people-profile-content">
-        {!user ? (
-          status === 'checking' ? (
-            <p className="people-empty" role="status">
-              正在验证账号…
-            </p>
-          ) : (
-            <LoginNotice returnTo={paths.user(handle)} text="登录后查看共鸣成员资料" />
-          )
+        {status === 'checking' ? (
+          <p className="people-empty" role="status">
+            正在验证账号…
+          </p>
+        ) : status === 'unavailable' ? (
+          <PlatformError
+            message={auth.error || '账号服务暂时不可用，请重新验证后查看资料'}
+            retry={() => void auth.refresh()}
+          />
+        ) : !user ? (
+          <LoginNotice returnTo={paths.user(handle)} text="登录后查看共鸣成员资料" />
         ) : (
           <>
             {person && (
@@ -143,7 +152,13 @@ function UserProfile({ handle }: { handle: string }) {
                   </Link>
                 ) : (
                   <div className="people-profile-actions">
-                    <button className="people-message" disabled={busy} onClick={() => void chat()}>
+                    <button
+                      className="people-message"
+                      disabled={
+                        busy || capabilities.loading || capabilities.data?.canMessage !== true
+                      }
+                      onClick={() => void chat()}
+                    >
                       <MessageCircle size={18} />
                       发消息
                     </button>
@@ -159,6 +174,20 @@ function UserProfile({ handle }: { handle: string }) {
                   </div>
                 )}
                 <FriendshipActions person={person} />
+                {user.id !== person.id && (
+                  <>
+                    <PlatformError
+                      message={capabilities.error}
+                      retry={capabilities.error ? capabilities.refresh : undefined}
+                    />
+                    {!capabilities.loading && capabilities.data?.canMessage === false && (
+                      <p className="people-footnote">
+                        当前不能发送新私信。<Link to={paths.social}>从消息列表查看已有聊天</Link>
+                      </p>
+                    )}
+                    <BlockActions userId={person.id} person={person} />
+                  </>
+                )}
               </section>
             )}
             <PlatformError message={error} retry={() => setRevision((value) => value + 1)} />

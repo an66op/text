@@ -5,6 +5,41 @@ import SystemPage from './SystemPage';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('wallet capability boundaries', () => {
+  it('labels private contact capabilities without requesting private policies or block relationships', async () => {
+    const fetcher = vi.fn().mockImplementation((path: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            data: path.endsWith('/health')
+              ? { ok: true }
+              : {
+                  version: '0.11.0',
+                  storage: 'PostgreSQL · relational schema v11',
+                  environment: 'development',
+                  uptimeSeconds: 1,
+                  features: [
+                    'contact-privacy',
+                    'private-blocklist',
+                    'contact-write-guards',
+                    'permission-aware-discovery',
+                  ],
+                },
+          }),
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    render(<SystemPage />);
+    await screen.findByText('本人私人联系准入设置');
+    for (const label of ['本人私有黑名单', '联系写入权限与并发保护', '按本人设置控制陌生成员发现'])
+      expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText('版本 0.11.0')).toBeInTheDocument();
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    expect(fetcher.mock.calls.map(([path]) => path).sort()).toEqual([
+      '/api/v1/admin/system',
+      '/api/v1/health',
+    ]);
+  });
   it('labels message capabilities and keeps conversation originals outside operational access', async () => {
     vi.stubGlobal(
       'fetch',

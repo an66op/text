@@ -5,16 +5,12 @@ import { paths } from '@/shared/config/paths';
 import PageHeader from '@/shared/ui/PageHeader';
 import { defaultSettings, SETTINGS_KEY } from './settings-model';
 import { writeStorage } from '@/shared/lib/storage';
+import { localDemoExport } from './local-demo-export';
 export default function AboutSettingsPage() {
   const [reset, setReset] = useState(false);
   const navigate = useNavigate();
   const exportData = () => {
-    const keys = Object.keys(localStorage).filter((key) =>
-      /^(profile|preferences|account-settings|wallet|balance|transactions|social-|content-|circles-|matching-|shop-|ai-|posts|likes|bookmarks|follows|comments|joined|chapter)/.test(
-        key,
-      ),
-    );
-    const data = Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)]));
+    const data = localDemoExport();
     const url = URL.createObjectURL(
       new Blob(
         [
@@ -74,7 +70,7 @@ export default function AboutSettingsPage() {
               </span>
               <span className="settings-row-copy">
                 <strong>导出我的演示数据</strong>
-                <small>下载 JSON 备份，包含本机保存的内容</small>
+                <small>下载列入本机演示范围的内容，不包含真实账号隐私或黑名单</small>
               </span>
               <ChevronRight size={18} />
             </button>
@@ -90,7 +86,7 @@ export default function AboutSettingsPage() {
         {reset && (
           <section className="settings-inline-confirm">
             <h2>恢复默认设置？</h2>
-            <p>消息、隐私、内容与演示安全设置将恢复初始值。</p>
+            <p>本机偏好与演示安全设置将恢复初始值，不更改真实账号隐私或黑名单。</p>
             <div>
               <button onClick={() => setReset(false)}>取消</button>
               <button className="primary" onClick={restore}>

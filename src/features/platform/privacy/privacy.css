@@ -1,0 +1,50 @@
+.privacy-empty {
+  padding: 30px 18px;
+  text-align: center;
+  color: #938a9e;
+  font-size: 13px;
+}
+.privacy-form-actions {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0;
+  align-items: center;
+}
+.privacy-form-actions > button {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-size: 13px;
+  background: #eee9f533;
+  color: #837591;
+}
+.privacy-form-actions > button:first-child {
+  background: #8c80c4;
+  color: #fff;
+}
+.privacy-unknown {
+  padding: 12px 0;
+  color: #928295;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.privacy-unknown button {
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 10px;
+  margin: 0 8px 7px 0;
+  background: #e3dced70;
+  color: #827091;
+}
+.privacy-server-form select {
+  max-width: 110px;
+}
+.privacy-server-form button:disabled {
+  opacity: 0.5;
+}
+.privacy-current-snapshot {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #94869d;
+  padding: 10px 0;
+}

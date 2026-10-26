@@ -304,7 +304,7 @@ func persistMessaging(ctx context.Context, tx pgx.Tx, before, after *State) erro
 		if _, exists := oldEvents[v.ID]; exists {
 			return fmt.Errorf("outbox event payload is immutable")
 		}
-		return execRow(ctx, tx, `INSERT INTO gongming_message_outbox(id,seq,type,conversation_id,message_id,recipient_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)`, v.ID, v.Seq, v.Type, v.ConversationID, nullString(v.MessageID), nullString(v.RecipientID), v.CreatedAt)
+		return execRow(ctx, tx, `INSERT INTO gongming_message_outbox(id,seq,type,conversation_id,message_id,recipient_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)`, v.ID, v.Seq, v.Type, nullString(v.ConversationID), nullString(v.MessageID), nullString(v.RecipientID), v.CreatedAt)
 	}, func(id string) error { return removeID(ctx, tx, "gongming_message_outbox", id) }); err != nil {
 		return err
 	}

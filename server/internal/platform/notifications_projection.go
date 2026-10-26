@@ -153,6 +153,17 @@ func loadNotificationProjection(r *http.Request, tx pgx.Tx, user string, items [
 	}); err != nil {
 		return nil, err
 	}
+
+	if len(refs["friend"]) > 0 {
+		targets, e := readContactTargets(r.Context(), tx, user, mapKeys(actors))
+		if e != nil {
+			return nil, e
+		}
+		s.ContactBlocked = map[string]bool{}
+		for id, v := range targets {
+			s.ContactBlocked[id] = v.Blocked
+		}
+	}
 	return s, nil
 }
 
@@ -170,6 +181,9 @@ func projectNotification(s *State, user string, v storedNotification) Notificati
 		other := request.FromID
 		if other == user {
 			other = request.ToID
+		}
+		if s.ContactBlocked[other] {
+			return n
 		}
 		account, ok := s.Accounts[other]
 		if !ok || account.User.Status != "active" {

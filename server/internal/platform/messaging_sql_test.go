@@ -27,7 +27,7 @@ func TestMessagingSQLDoesNotTouchUnrelatedTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer lock.Rollback(ctx)
-	if _, err = lock.Exec(ctx, `LOCK TABLE gongming_posts,gongming_comments,gongming_wallets,gongming_ledger,gongming_documents,gongming_friend_requests,gongming_friendships,gongming_reports,gongming_audits IN ACCESS EXCLUSIVE MODE`); err != nil {
+	if _, err = lock.Exec(ctx, `LOCK TABLE gongming_posts,gongming_comments,gongming_wallets,gongming_ledger,gongming_documents,gongming_friend_requests,gongming_reports,gongming_audits IN ACCESS EXCLUSIVE MODE`); err != nil {
 		t.Fatal(err)
 	}
 	// Each real HTTP operation gets its own short deadline while all unrelated

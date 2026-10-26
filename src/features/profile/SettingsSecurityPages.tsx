@@ -7,8 +7,10 @@ import { contacts } from '@/features/social/fixtures';
 import { useAccountSettings, useBlockedContacts } from './useAccountSettings';
 import { hashDemoPin } from './settings-model';
 import SettingsSwitch from './SettingsSwitch';
+import { useAuth } from '@/features/platform/useAuth';
 
 export function SecuritySettingsPage() {
+  const auth = useAuth();
   const { settings, update } = useAccountSettings();
   const [editing, setEditing] = useState(false);
   const [pin, setPin] = useState('');
@@ -134,7 +136,13 @@ export function SecuritySettingsPage() {
             <Link className="settings-nav-row" to="/settings/devices">
               <span className="settings-row-copy">
                 <strong>设备管理</strong>
-                <small>{settings.devices.length} 个演示会话</small>
+                <small>
+                  {auth.user
+                    ? '管理当前账号的登录设备与会话'
+                    : auth.status === 'guest'
+                      ? `${settings.devices.length} 个演示会话`
+                      : '验证账号后读取登录设备'}
+                </small>
               </span>
               <ChevronRight size={18} />
             </Link>

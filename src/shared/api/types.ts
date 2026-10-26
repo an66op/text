@@ -70,6 +70,7 @@ export type Conversation = {
   kind: ConversationKind;
   members: string[];
   ownerId: string;
+  canSend?: boolean;
   createdAt: string;
   lastMessage?: PlatformMessage;
   mutationVersion?: number;

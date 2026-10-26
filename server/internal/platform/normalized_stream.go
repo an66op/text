@@ -98,7 +98,7 @@ func (s *PostgresStore) ReadStream(ctx context.Context, requests []StreamRequest
 		return result, err
 	}
 	if len(users) > 0 {
-		events, err := tx.Query(ctx, `SELECT e.id,e.seq,e.type,e.conversation_id,COALESCE(e.message_id,''),COALESCE(e.recipient_id,''),e.created_at FROM gongming_message_outbox e WHERE e.seq>$1 AND ((e.type='membership.revoked' AND e.recipient_id=ANY($2::text[])) OR (e.type<>'membership.revoked' AND EXISTS(SELECT 1 FROM gongming_conversation_members m WHERE m.conversation_id=e.conversation_id AND m.user_id=ANY($2::text[]) AND (e.recipient_id IS NULL OR e.recipient_id=m.user_id)))) ORDER BY e.seq LIMIT $3`, after, users, limit)
+		events, err := tx.Query(ctx, `SELECT e.id,e.seq,e.type,COALESCE(e.conversation_id,''),COALESCE(e.message_id,''),COALESCE(e.recipient_id,''),e.created_at FROM gongming_message_outbox e WHERE e.seq>$1 AND ((e.type IN ('membership.revoked','contact.resync') AND e.recipient_id=ANY($2::text[])) OR (e.type NOT IN ('membership.revoked','contact.resync') AND EXISTS(SELECT 1 FROM gongming_conversation_members m WHERE m.conversation_id=e.conversation_id AND m.user_id=ANY($2::text[]) AND (e.recipient_id IS NULL OR e.recipient_id=m.user_id)))) ORDER BY e.seq LIMIT $3`, after, users, limit)
 		if err != nil {
 			return result, err
 		}

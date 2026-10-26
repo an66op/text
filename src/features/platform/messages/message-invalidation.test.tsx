@@ -15,6 +15,7 @@ import MessageThread from './MessageThread';
 import { msg } from './message-media-fixtures';
 import { useThreadMessages } from './useThreadMessages';
 import type { StreamEvent } from './usePlatformStream';
+import { conversationApi } from '../conversations/conversation-api';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -34,6 +35,7 @@ const conversation: Conversation = {
   title: '失效投影回归',
   kind: 'group',
   ownerId: member.id,
+  canSend: true,
   members: [member.id],
   createdAt: '2026-10-27T08:00:00Z',
   mutationVersion: 0,
@@ -71,6 +73,10 @@ function scene(updateVersion = 0, event?: StreamEvent) {
   );
 }
 beforeEach(() => {
+  vi.spyOn(conversationApi, 'details').mockResolvedValue({
+    conversation,
+    memberProfiles: [member],
+  });
   localStorage.clear();
   vi.spyOn(platformApi, 'markConversationRead').mockResolvedValue({
     conversationId: 'chat',

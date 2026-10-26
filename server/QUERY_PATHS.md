@@ -221,3 +221,39 @@ distributed deployment, sustained throughput, or production capacity, and do
 not establish a throughput or capacity commitment.
 
 The historical byte-parity benchmark above predates wallet context and rich-message projection. It is not a measured schema10 latency figure. The current schema10 correctness and runtime verification results are recorded in [STACK_STATUS](../docs/STACK_STATUS.md).
+
+## Contact privacy and directory (schema11)
+
+`GET/PUT /me/contact-privacy`, own block list/mutations and contact capabilities
+use private SQL tables in their own authenticated transactions. Read-only GETs
+return virtual defaults without inserting guard rows. Lists, totals and own CAS
+revision share a REPEATABLE READ snapshot. Directory and handle profile reads
+also use SQL, applying active status plus discoverable/self/real-friend rules
+before filtering and pagination. They do not load ordinary State.
+
+Conversation list/detail batches direct-chat targets into one bounded permission
+projection. `canSend` combines current membership, channel ownership and the
+recipient's inbound policy. Blocks work in either direction; accepted friendship
+remains independent. No policy or reverse block relation enters User/PublicUser,
+admin users, audit search or personal backup documents.
+
+Ordinary contact writes establish and share-lock sorted private guard rows;
+policy/block/friendship/account-status changes update guards so an old
+SERIALIZABLE snapshot retries after waiting. Narrow SQL send/upload and the
+State management adapter follow actor/session, sorted contact guards,
+conversation, message, media and outbox order. Same client/hash confirmations
+return the existing current object before applying the gate to new effects.
+The State adapter records transient checks and projects return values in the
+same transaction; it does not hydrate or persist the two private tables.
+
+Private refresh events use nullable conversation IDs exclusively for internal
+`contact.resync`, constrained to a recipient and no message ID. Wire projection
+is only `resync/eventId`, including accounts with no conversations. Existing
+outbox rows are not rewritten. Friend notifications retain immutable event keys
+and dynamically remove actor/context/target when either direction is blocked.
+
+These paths add correctness boundaries; no new capacity benchmark has been
+performed. Group metadata and friendship writes still use the ordinary State
+adapter, and sorted guard contention, default-row establishment and large
+invitation batches need production load measurements. Runtime migration,
+regression and recovery evidence is recorded in [STACK_STATUS](../docs/STACK_STATUS.md).

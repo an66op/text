@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRightLeft, Crown, LogOut, Plus, Radio, UserMinus, UsersRound } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ApiError, apiErrorMessage } from '@/shared/api/client';
@@ -13,6 +13,8 @@ import { messagesChanged } from '../messages/message-drafts';
 import { conversationApi } from './conversation-api';
 import { useConversationDetails } from './useConversationDetails';
 import MemberPicker from './MemberPicker';
+import BlockActions from '../privacy/BlockActions';
+import { useContactScope } from '../privacy/contact-scope';
 import '../platform.css';
 import './conversation-details.css';
 
@@ -21,6 +23,7 @@ type Confirmation = { kind: 'remove' | 'transfer'; person: PublicUser } | { kind
 export default function ConversationDetailsPage() {
   const { conversationId = '' } = useParams();
   const auth = useAuth();
+  const { scope } = useContactScope();
   return (
     <section className="conversation-details-page">
       <PageHeader title="聊天信息" backTo={paths.social} />
@@ -28,8 +31,15 @@ export default function ConversationDetailsPage() {
         <p className="conversation-loading" role="status">
           正在验证账号…
         </p>
+      ) : auth.status === 'unavailable' ? (
+        <div className="conversation-details-content">
+          <PlatformError
+            message={auth.error || '账号服务暂时不可用'}
+            retry={() => void auth.refresh()}
+          />
+        </div>
       ) : auth.user ? (
-        <ConversationSettings key={`${auth.user.id}:${conversationId}`} id={conversationId} />
+        <ConversationSettings key={`${scope}:${conversationId}`} id={conversationId} />
       ) : (
         <div className="conversation-details-content">
           <LoginNotice
@@ -79,7 +89,7 @@ function ConversationSettings({ id }: { id: string }) {
       setActionError('成员或管理身份已变化，请重新选择操作');
     }
   }, [confirmation, confirmationAllowed]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     active.current = true;
     return () => {
       active.current = false;
@@ -270,6 +280,22 @@ function ConversationSettings({ id }: { id: string }) {
           </p>
         )}
       </section>
+      {isDirect &&
+        conversation.members
+          .filter((memberId) => memberId !== user!.id)
+          .slice(0, 1)
+          .map((memberId) => (
+            <section key={memberId} className="conversation-member-section">
+              <h2>私人联系</h2>
+              <BlockActions
+                userId={memberId}
+                person={memberProfiles.find((person) => person.id === memberId) ?? null}
+              />
+              <p className="conversation-subtle">
+                拉黑保留好友和历史消息；共同群组、频道与圈子中的互动仍按原有权限进行。
+              </p>
+            </section>
+          ))}
       {!isDirect && (
         <section className="conversation-leave-section">
           {isOwner ? (

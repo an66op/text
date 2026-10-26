@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AuthContext } from '../auth-context';
@@ -11,11 +11,13 @@ import type { UploadedImage } from '../media/media-model';
 import MessageThread from './MessageThread';
 import { msg } from './message-media-fixtures';
 import type { StreamEvent } from './usePlatformStream';
+import { conversationApi } from '../conversations/conversation-api';
 const conversation: Conversation = {
   id: 'chat',
   title: '真实聊天',
   kind: 'group',
   ownerId: member.id,
+  canSend: true,
   members: [member.id],
   createdAt: '2026-10-27T08:00:00Z',
   mutationVersion: 0,
@@ -49,6 +51,10 @@ function scene(updateVersion = 0, event?: StreamEvent, conv = conversation) {
   );
 }
 beforeEach(() => {
+  vi.spyOn(conversationApi, 'details').mockResolvedValue({
+    conversation,
+    memberProfiles: [member],
+  });
   localStorage.clear();
   Object.defineProperty(URL, 'createObjectURL', {
     configurable: true,
@@ -273,4 +279,81 @@ it('does not label an invisible conversation 404 as a safe absent send', async (
   expect(screen.getByRole('article', { name: '消息尚未确认' })).toHaveTextContent(
     'preserve own text',
   );
+});
+it('retains readable history and plain text while a private-contact restriction clears an in-flight image draft and ignores its late receipt', async () => {
+  let finish!: (value: UploadedImage) => void;
+  vi.spyOn(mediaApi, 'uploadToConversation').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const direct = { ...conversation, kind: 'direct' as const };
+  const view = render(scene(0, undefined, direct));
+  await screen.findByText('private-one');
+  fireEvent.change(screen.getByRole('textbox', { name: '服务器消息内容' }), {
+    target: { value: '保留的文字草稿' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '更多消息操作' }));
+  fireEvent.change(view.container.querySelector('input[type=file]')!, {
+    target: { files: [new File(['png'], 'photo.png', { type: 'image/png' })] },
+  });
+  vi.mocked(conversationApi.details).mockResolvedValue({
+    conversation: { ...direct, canSend: false },
+    memberProfiles: [member],
+  });
+  view.rerender(scene(0, undefined, { ...direct, canSend: false }));
+  await screen.findByText('当前联系权限不允许此操作');
+  expect(screen.getByText('private-one')).toBeInTheDocument();
+  expect(screen.queryByAltText('待发送图片')).not.toBeInTheDocument();
+  expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
+  await act(async () => finish(image));
+  expect(screen.queryByAltText('待发送图片')).not.toBeInTheDocument();
+  expect(screen.getByText('private-one')).toBeInTheDocument();
+  expect(Object.values(localStorage).join('')).toContain('保留的文字草稿');
+});
+it('keeps a payload-free read-only receipt after contact restriction and can confirm an already retracted rich send without publishing again', async () => {
+  let reject!: (error: unknown) => void;
+  const send = vi.spyOn(platformApi, 'sendMessage').mockImplementation(
+    () =>
+      new Promise((_resolve, no) => {
+        reject = no;
+      }),
+  );
+  vi.spyOn(mediaApi, 'uploadToConversation').mockResolvedValue(image);
+  const direct = { ...conversation, kind: 'direct' as const },
+    view = render(scene(0, undefined, direct));
+  await screen.findByText('private-one');
+  await addImage(view.container);
+  fireEvent.change(screen.getByRole('textbox', { name: '服务器消息内容' }), {
+    target: { value: '清除的富消息正文' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '发送服务器消息' }));
+  const clientId = send.mock.calls[0][2]!;
+  vi.mocked(conversationApi.details).mockResolvedValue({
+    conversation: { ...direct, canSend: false },
+    memberProfiles: [member],
+  });
+  view.rerender(scene(0, undefined, { ...direct, canSend: false }));
+  await screen.findByText('仅查询此前发送结果，原内容已清除');
+  expect(screen.queryByText('清除的富消息正文')).not.toBeInTheDocument();
+  expect(screen.queryByAltText('待发图片')).not.toBeInTheDocument();
+  await act(async () => reject(new ApiError('迟到失败', 'TIMEOUT', 0)));
+  expect(screen.queryByAltText('待发图片')).not.toBeInTheDocument();
+  const query = vi.spyOn(platformApi, 'messageByClient').mockResolvedValue({
+    ...msg('confirmed'),
+    clientId,
+    body: '',
+    status: 'retracted',
+    images: [],
+    replyTo: null,
+    retractedAt: '2026-10-27T08:01:00Z',
+    canRetract: false,
+  });
+  fireEvent.click(screen.getByRole('button', { name: '查询此前消息的发送结果' }));
+  await screen.findByText('消息已撤回');
+  expect(query).toHaveBeenCalledWith('chat', clientId, expect.any(AbortSignal));
+  expect(send).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('textbox', { name: '服务器消息内容' })).not.toBeInTheDocument();
+  expect(screen.getByText('private-one')).toBeInTheDocument();
 });

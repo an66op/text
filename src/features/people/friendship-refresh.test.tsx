@@ -8,6 +8,7 @@ import FriendRequestsPanel from './FriendRequestsPanel';
 import FriendshipActions from './FriendshipActions';
 import { friendshipApi } from './friendship-api';
 import type { FriendRequest, Relationship } from './friendship-types';
+import { privacyApi } from '@/features/platform/privacy/privacy-api';
 
 const incoming: FriendRequest = {
   id: 'live-incoming',
@@ -23,8 +24,20 @@ const flush = async (milliseconds = 0) => {
     await vi.advanceTimersByTimeAsync(milliseconds);
   });
 };
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.stubGlobal('WebSocket', undefined);
+  vi.spyOn(privacyApi, 'capabilities').mockImplementation(async (userId) => ({
+    userId,
+    blockedByMe: false,
+    canMessage: true,
+    canInvite: true,
+    canRequestFriend: true,
+    revision: 0,
+  }));
+});
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });

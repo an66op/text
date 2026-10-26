@@ -12,7 +12,7 @@ import (
 // not with today's authentication writer. This adapter exists only in tests;
 // the production writer always requires the fully migrated current schema.
 func persistHistoricalFixture(ctx context.Context, tx pgx.Tx, version int, state *State) error {
-	if version < 2 || version >= 10 {
+	if version < 2 || version >= 11 {
 		return fmt.Errorf("unsupported historical fixture version %d", version)
 	}
 	snapshot := *state

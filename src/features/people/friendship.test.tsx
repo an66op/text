@@ -10,6 +10,7 @@ import FriendshipActions from './FriendshipActions';
 import { friendshipApi } from './friendship-api';
 import { peopleApi } from './people-api';
 import type { Friend, FriendRequest, Relationship } from './friendship-types';
+import { privacyApi } from '@/features/platform/privacy/privacy-api';
 
 const incoming: FriendRequest = {
   id: 'request-incoming',
@@ -50,17 +51,66 @@ const relationshipScene = (person: PublicUser = otherMember) => (
   </MemoryRouter>
 );
 beforeEach(() => {
+  vi.stubGlobal('WebSocket', undefined);
+  vi.spyOn(privacyApi, 'capabilities').mockImplementation(async (userId) => ({
+    userId,
+    blockedByMe: false,
+    canMessage: true,
+    canInvite: true,
+    canRequestFriend: true,
+    revision: 0,
+  }));
   vi.spyOn(friendshipApi, 'friends').mockResolvedValue({ items: [friend], total: 1 });
   vi.spyOn(friendshipApi, 'requests').mockResolvedValue({ items: [], total: 0 });
   vi.spyOn(friendshipApi, 'relationship').mockResolvedValue({ status: 'none' });
   vi.spyOn(peopleApi, 'directory').mockResolvedValue({ items: [stranger], total: 1 });
 });
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
 describe('real friendships and applications', () => {
+  it('does not confuse refusing new applications with refusing an existing incoming application', async () => {
+    vi.mocked(friendshipApi.relationship).mockResolvedValue({
+      status: 'incoming',
+      request: incoming,
+    });
+    vi.mocked(privacyApi.capabilities).mockResolvedValue({
+      userId: otherMember.id,
+      blockedByMe: false,
+      canMessage: false,
+      canRequestFriend: false,
+      canInvite: false,
+      revision: 2,
+    });
+    const respond = vi
+      .spyOn(friendshipApi, 'respond')
+      .mockResolvedValue({ ...incoming, status: 'accepted' });
+    render(relationshipScene());
+    const accept = await screen.findByRole('button', { name: '接受申请' });
+    expect(accept).toBeEnabled();
+    fireEvent.click(accept);
+    await waitFor(() => expect(respond).toHaveBeenCalledWith(incoming.id, 'accept'));
+  });
+  it('keeps decline available when a known own block forbids accepting the pending application', async () => {
+    vi.mocked(friendshipApi.relationship).mockResolvedValue({
+      status: 'incoming',
+      request: incoming,
+    });
+    vi.mocked(privacyApi.capabilities).mockResolvedValue({
+      userId: otherMember.id,
+      blockedByMe: true,
+      canMessage: false,
+      canRequestFriend: false,
+      canInvite: false,
+      revision: 2,
+    });
+    render(relationshipScene());
+    await waitFor(() => expect(screen.getByRole('button', { name: '接受申请' })).toBeDisabled());
+    expect(screen.getByRole('button', { name: '拒绝申请' })).toBeEnabled();
+  });
   it('keeps the true friend list separate from member discovery', async () => {
     render(contactScene());
     await screen.findByText(otherMember.name);
