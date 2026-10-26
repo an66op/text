@@ -3,6 +3,7 @@ export type UserStatus = 'active' | 'suspended';
 export type PostStatus = 'published' | 'hidden' | 'pending';
 export type ReportStatus = 'open' | 'resolved' | 'dismissed';
 export type MediaStatus = 'ready' | 'blocked';
+export type CircleStatus = 'active' | 'suspended' | 'archived';
 
 export interface User {
   id: string;
@@ -36,7 +37,7 @@ export interface Post {
   commentCount: number;
 }
 
-export interface AdminMediaAsset {
+export interface MediaAsset {
   id: string;
   url: string;
   contentType: string;
@@ -44,6 +45,11 @@ export interface AdminMediaAsset {
   height: number;
   bytes: number;
   createdAt: string;
+  scope: 'world' | 'circle';
+  circleId?: string;
+}
+
+export interface AdminMediaAsset extends MediaAsset {
   updatedAt: string;
   owner: PublicUser;
   status: MediaStatus;
@@ -51,12 +57,57 @@ export interface AdminMediaAsset {
   referenceCount: number;
   publishedReferenceCount: number;
   posts: Pick<Post, 'id' | 'body' | 'status'>[];
+  circleReferenceCount: number;
+  circlePublishedReferenceCount: number;
+  circlePosts: (Pick<Post, 'id' | 'body' | 'status'> & { circleId: string; channelId: string })[];
+}
+
+export interface AdminCircle {
+  id: string;
+  name: string;
+  description: string;
+  cover: string;
+  icon: string;
+  category: string;
+  visibility: 'public' | 'private';
+  joinPolicy: 'open' | 'approval';
+  status: CircleStatus;
+  owner: PublicUser;
+  role: 'owner' | 'admin' | 'member' | 'guest';
+  membership: 'active' | 'pending' | 'banned' | 'none';
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+  channelCount: number;
+  postCount: number;
+  moderationNote: string;
+}
+
+export interface AdminCirclePost {
+  id: string;
+  circleId: string;
+  channelId: string;
+  author: PublicUser;
+  title: string;
+  body: string;
+  images: string[];
+  status: PostStatus;
+  featured: boolean;
+  pinned: boolean;
+  likeCount: number;
+  liked: boolean;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+  circleName: string;
+  channelName: string;
+  moderationNote: string;
 }
 
 export interface Report {
   id: string;
   reporterId: string;
-  targetType: 'post' | 'user';
+  targetType: 'post' | 'user' | 'circle-post';
   targetId: string;
   reason: string;
   status: ReportStatus;

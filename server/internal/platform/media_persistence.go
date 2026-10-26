@@ -93,11 +93,11 @@ func migrateMedia(ctx context.Context, tx pgx.Tx) error {
 	return err
 }
 
-const mediaSQLFields = `id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at`
+const mediaSQLFields = `id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,COALESCE(circle_id,'')`
 
 func scanStoredMedia(row messagingSQLScanner) (StoredMediaAsset, error) {
 	v := StoredMediaAsset{}
-	err := row.Scan(&v.ID, &v.OwnerID, &v.ClientID, &v.SourceHash, &v.ContentType, &v.Width, &v.Height, &v.Bytes, &v.Status, &v.Note, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt)
+	err := row.Scan(&v.ID, &v.OwnerID, &v.ClientID, &v.SourceHash, &v.ContentType, &v.Width, &v.Height, &v.Bytes, &v.Status, &v.Note, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt, &v.Scope, &v.CircleID)
 	v.URL = mediaURLPrefix + v.ID
 	v.CreatedAt = v.CreatedAt.UTC()
 	v.UpdatedAt = v.UpdatedAt.UTC()
@@ -120,7 +120,7 @@ func persistMedia(ctx context.Context, tx pgx.Tx, before, after *State) error {
 		if id != v.ID || v.URL != mediaURLPrefix+id {
 			return fmt.Errorf("invalid media identity/url")
 		}
-		return execRow(ctx, tx, `INSERT INTO gongming_media_assets(id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(id) DO UPDATE SET owner_id=EXCLUDED.owner_id,client_id=EXCLUDED.client_id,source_hash=EXCLUDED.source_hash,content_type=EXCLUDED.content_type,width=EXCLUDED.width,height=EXCLUDED.height,bytes=EXCLUDED.bytes,status=EXCLUDED.status,note=EXCLUDED.note,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,deleted_at=EXCLUDED.deleted_at`, v.ID, v.OwnerID, v.ClientID, v.SourceHash, v.ContentType, v.Width, v.Height, v.Bytes, v.Status, v.Note, v.CreatedAt, v.UpdatedAt, v.DeletedAt)
+		return execRow(ctx, tx, `INSERT INTO gongming_media_assets(id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,circle_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT(id) DO UPDATE SET owner_id=EXCLUDED.owner_id,client_id=EXCLUDED.client_id,source_hash=EXCLUDED.source_hash,content_type=EXCLUDED.content_type,width=EXCLUDED.width,height=EXCLUDED.height,bytes=EXCLUDED.bytes,status=EXCLUDED.status,note=EXCLUDED.note,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,deleted_at=EXCLUDED.deleted_at,scope=EXCLUDED.scope,circle_id=EXCLUDED.circle_id`, v.ID, v.OwnerID, v.ClientID, v.SourceHash, v.ContentType, v.Width, v.Height, v.Bytes, v.Status, v.Note, v.CreatedAt, v.UpdatedAt, v.DeletedAt, effectiveMediaScope(v), nullString(v.CircleID))
 	}, func(string) error { return errors.New("media rows require soft deletion") })
 }
 func postMediaIDs(p StoredPost) map[string]bool {
@@ -184,7 +184,13 @@ func (a *App) authorizeMediaSQL(r *http.Request, s *PostgresStore) (StoredMediaA
 	}
 	allowed := isStaff || userID == v.OwnerID
 	if !allowed {
-		if err = tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM gongming_post_media ref JOIN gongming_posts p ON p.id=ref.post_id WHERE ref.media_id=$1 AND p.status='published')`, v.ID).Scan(&allowed); err != nil {
+		query := `SELECT EXISTS(SELECT 1 FROM gongming_post_media ref JOIN gongming_posts p ON p.id=ref.post_id WHERE ref.media_id=$1 AND p.status='published')`
+		args := []any{v.ID}
+		if v.Scope == "circle" {
+			query = `SELECT EXISTS(SELECT 1 FROM gongming_circle_post_media ref JOIN gongming_circle_posts p ON p.id=ref.post_id JOIN gongming_circles c ON c.id=p.circle_id JOIN gongming_circle_channels ch ON ch.id=p.channel_id AND ch.circle_id=c.id JOIN gongming_circle_members m ON m.circle_id=c.id AND m.user_id=$2 AND m.status='active' WHERE ref.media_id=$1 AND p.circle_id=$3 AND p.deleted_at IS NULL AND p.status='published' AND c.status IN ('active','archived') AND (ch.access='members' OR m.role IN ('owner','admin')))`
+			args = append(args, userID, v.CircleID)
+		}
+		if err = tx.QueryRow(r.Context(), query, args...).Scan(&allowed); err != nil {
 			return v, err
 		}
 	}

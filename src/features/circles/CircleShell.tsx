@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router';
+import { paths } from '@/shared/config/paths';
 import { circlePaths } from './routes';
 import { useCircles } from './useCircles';
 import { ChannelIcon } from './CircleIcons';
@@ -87,7 +88,10 @@ export default function CircleShell() {
       <aside className="circle-channel-panel" aria-label="圈子频道">
         <Link className="creator-back-circles" to={circlePaths.list}>
           <ChevronLeft size={16} />
-          我的圈子
+          本机圈子
+        </Link>
+        <Link className="circle-back-link" to={paths.circles}>
+          打开在线圈子
         </Link>
         <Link
           className="circle-panel-cover"

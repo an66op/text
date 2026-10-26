@@ -30,6 +30,11 @@ const capabilityLabels: Record<string, string> = {
   'private-image-storage': '私有图片存储与权限读取',
   'reviewed-image-posts': '托管图片投稿审核',
   'media-moderation': '图片屏蔽与引用联动处置',
+  'server-circles': '服务器圈子社区',
+  'circle-role-permissions': '圈主、管理员与成员权限',
+  'hashed-circle-invitations': '限次限时邀请与加入审批',
+  'circle-moderation': '圈子治理与圈帖审核',
+  'scoped-circle-media': '绑定圈子的私有图片',
 };
 
 function uptime(value: number) {

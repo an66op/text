@@ -205,6 +205,9 @@ func loadNormalized(ctx context.Context, tx pgx.Tx) (*State, error) {
 	if err := loadMedia(ctx, tx, s); err != nil {
 		return nil, err
 	}
+	if err := loadCircles(ctx, tx, s); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 

@@ -19,6 +19,12 @@ import {
   SearchForm,
 } from '../ui';
 
+const targetLabels: Record<Report['targetType'], string> = {
+  post: '社区内容',
+  user: '用户账号',
+  'circle-post': '圈内帖子',
+};
+
 function ReportDetail({
   report,
   onClose,
@@ -33,7 +39,13 @@ function ReportDetail({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const targetPath = `${report.targetType === 'post' ? '/content' : '/users'}?q=${encodeURIComponent(report.targetId)}&detail=${encodeURIComponent(report.targetId)}`;
+  const targetPage =
+    report.targetType === 'circle-post'
+      ? '/circles/posts'
+      : report.targetType === 'post'
+        ? '/content'
+        : '/users';
+  const targetPath = `${targetPage}?q=${encodeURIComponent(report.targetId)}&detail=${encodeURIComponent(report.targetId)}`;
   const save = async () => {
     if (busy || !note.trim() || report.status !== 'open') return;
     setBusy(true);
@@ -66,7 +78,7 @@ function ReportDetail({
       <dl className="detail-grid">
         <div>
           <dt>举报对象</dt>
-          <dd>{report.targetType === 'post' ? '社区内容' : '用户账号'}</dd>
+          <dd>{targetLabels[report.targetType]}</dd>
         </div>
         <div>
           <dt>对象 ID</dt>
@@ -82,7 +94,7 @@ function ReportDetail({
         </div>
       </dl>
       <Link className="button review-target" to={targetPath}>
-        查看被举报{report.targetType === 'post' ? '内容' : '账号'} <ArrowUpRight size={16} />
+        查看被举报{targetLabels[report.targetType]} <ArrowUpRight size={16} />
       </Link>
       <div className="section-separator" />
       {report.status !== 'open' ? (
@@ -245,7 +257,7 @@ export default function ReportsPage() {
                           </td>
                           <td>
                             <div className="stacked-cell">
-                              <span>{report.targetType === 'post' ? '内容' : '账号'}</span>
+                              <span>{targetLabels[report.targetType]}</span>
                               <small className="mono">{report.targetId}</small>
                             </div>
                           </td>

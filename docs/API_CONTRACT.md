@@ -28,15 +28,16 @@
 
 ### 上传图片
 
-`MediaAsset = {id,url,contentType:'image/jpeg'|'image/png',width,height,bytes,createdAt}`。ID 为 `media_` 加32位小写十六进制，URL 固定为同源相对路径 `/api/v1/media/images/{id}`。bytes 是处理后的文件大小。
+`MediaAsset = {id,url,scope:'world'|'circle',circleId?,contentType:'image/jpeg'|'image/png',width,height,bytes,createdAt}`。ID 为 `media_` 加32位小写十六进制，URL 固定为同源相对路径 `/api/v1/media/images/{id}`。bytes 是处理后的文件大小；scope与circleId创建后不可更改，旧资产为world。
 
 - `POST /media/images` 使用 multipart/form-data，且仅包含 `file` 与 `clientId` 两个字段。必须登录，来源与预期账号仍校验。clientId 为8–100位字母/数字/下划线/连字符；同账号同内容重试返回原资产，不同内容409，已删除资产不能用旧编号恢复。
 - 仅 JPEG/PNG，输入与重编码输出均最多8MiB；单边8192像素、总像素16MP。服务端以实际解码结果判断，处理JPEG方向后重编码，移除原始元数据。最多9图/帖；每账号未删资产最多100张/100MiB，屏蔽图片也计入；新上传每小时30次，重复已提交请求不重复占额。单实例最多4个上传接纳、2个解码、每账号1个上传。
-- `GET /media/images/{id}` 与 `HEAD` 返回二进制图片。只有本人、运营人员，或至少一篇已发布帖子引用时可读；被屏蔽图片仅运营人员可读，删除后一律不可读。不存在/不可见统一404；响应 `no-store`，不能把它变成无鉴权的静态目录。
+- `POST /circles/{circleId}/media/images` 使用相同上传契约，要求正常圈内成员，资产固定绑定该圈。世界帖子只接受本人world资产，圈帖只接受本人且绑定该圈的资产；同clientId跨scope冲突。
+- `GET /media/images/{id}` 与 `HEAD` 返回二进制图片。本人和运营可读可用原图；world资产有已发布世界帖引用时才开放，circle资产要求当前圈成员、可读频道及已发布圈帖引用，暂停圈不向其它成员开放图片。公开圈介绍不授予图片权限。被屏蔽图片仅运营人员可读，删除后一律不可读。不存在/不可见统一404；响应 `no-store`，不能把它变成无鉴权的静态目录。
 - `DELETE /media/images/{id}` → `{ok:true}`，仅本人且没有任何帖子引用时可删；已删除重复成功，未知/他人404，仍有引用409。逻辑删除提交后再清文件；存储失败可能留下不可访问文件，不能恢复软删资产。
 - `GET /me/media` → 本人未删资产列表，支持 q/status/limit/offset；结构与下述运营媒体列表相同，仅本人可查。用于找回或清理取消、超时后可能已经保存的上传。
 - `GET /admin/media` → `{items:AdminMediaAsset[],total}`，仅运营人员；status 为 ready/blocked，q 支持图片ID、上传者ID/用户名/昵称、引用帖子ID。
-- `AdminMediaAsset = MediaAsset & {owner:PublicUser,status:'ready'|'blocked',note,referenceCount,publishedReferenceCount,posts:[{id,body,status}],updatedAt}`。posts 最多10条，按创建时间倒序，body 最多200字；计数为完整引用数。ready 表示可引用，不能解释为已公开。
+- `AdminMediaAsset = MediaAsset & {owner:PublicUser,status:'ready'|'blocked',note,referenceCount,publishedReferenceCount,circleReferenceCount,circlePublishedReferenceCount,posts:[{id,body,status}],circlePosts:[{circleId,channelId,id,body,status}],updatedAt}`。两个帖子预览数组各最多10条，按创建时间倒序，body最多200字；referenceCount为两域总引用，publishedReferenceCount仅世界公开引用，circle计数明确分列，不能称为公开。ready表示可引用，不能解释为已公开。
 - `PATCH /admin/media/{id}` `{status:'ready'|'blocked',note}`，note 必填且最多1000字，允许同状态更新说明并记审计。屏蔽图片时，同事务隐藏全部已发布引用帖；解除屏蔽只恢复图片可用性，不自动恢复帖子。
 
 创建含托管图片的帖子时，只能引用本人可用图片，初始状态为 pending；不能把托管相对路径改成本站绝对URL绕过引用记录。审核发布前重新验证全部托管图片，含已屏蔽/删除图片时拒绝发布。既有外站 http(s) 图片链接继续兼容，它们不受托管图片存储/审核服务控制。存储、恢复及故障边界见 [媒体说明](MEDIA_STORAGE.md)。
@@ -50,7 +51,13 @@
 - `GET /posts/{id}` → Post；`DELETE /posts/{id}` → `{ok:true}`（作者/管理员）。
 - `POST /posts/{id}/like` `{liked:boolean}` → Post（幂等目标状态）。
 - `GET /posts/{id}/comments` → Comment 列表；`POST ...` `{body}` → Comment。
-- `POST /reports` `{targetType:'post'|'user',targetId,reason}` → Report。
+- `POST /reports` `{targetType:'post'|'user'|'circle-post',targetId,reason}` → Report。圈帖举报必须由当前可读该帖的成员提交。
+
+## 圈子社区
+
+圈子目录、创建、加入审批、成员角色、转交/退出/封禁、邀请、讨论/公告频道、图文/评论/点赞及独立平台治理使用专用服务接口。公开介绍可先浏览，正文均要求当前成员；私圈介绍也受成员或待处理申请权限限制。平台运营身份不自动成为圈内成员；平台审核通过独立 `/admin/circles` 与 `/admin/circle-posts` 接口进行。
+
+完整DTO、路由、媒体作用域和幂等规则见 [圈子服务契约](CIRCLES_SERVICE.md)。前台入口 `/circles`，详情 `/circles/s/:circleId`；本机演示目录 `/circles/demo`，不随登录导入服务器。
 
 ## 好友关系
 

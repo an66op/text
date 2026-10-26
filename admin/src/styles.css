@@ -2589,6 +2589,168 @@ select:disabled {
   gap: 8px 16px;
   margin-top: 7px;
 }
+
+.circle-tabs {
+  display: flex;
+  gap: 6px;
+  margin: -2px 0 20px;
+  padding: 4px;
+  width: fit-content;
+  background: #eaf0e2;
+  border-radius: 9px;
+}
+.circle-tabs a {
+  padding: 9px 17px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #8b9a7c;
+}
+.circle-tabs a.active {
+  background: #fff;
+  color: #586e49;
+  box-shadow: 0 1px 5px #2630240d;
+}
+.circle-icon {
+  width: 43px;
+  height: 43px;
+  background: #eff3e6;
+  color: #8aa571;
+  font-size: 23px;
+  border: 1px solid #e4eada;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.circle-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 220px;
+}
+.circle-cell strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #677d55;
+}
+.circle-cell small {
+  display: block;
+  max-width: 220px;
+  color: #a0ac92;
+  margin-top: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.circle-cover {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+.circle-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.circle-detail-title > div {
+  flex: 1;
+  min-width: 0;
+}
+.circle-detail-title h3 {
+  color: #546b44;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.circle-detail-title p {
+  color: #a2af92;
+  font-size: 11px;
+  margin-top: 6px;
+}
+.circle-description {
+  color: #879979;
+  font-size: 12px;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 25px;
+}
+.circle-detail-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+.circle-previous-note {
+  background: #f7f8f2;
+  border: 1px solid #e7ebdc;
+  border-radius: 9px;
+  padding: 15px;
+  margin-top: 24px;
+}
+.circle-previous-note h3 {
+  color: #7c8d6c;
+  font-size: 11px;
+}
+.circle-previous-note p {
+  color: #8f9c80;
+  font-size: 11px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-top: 8px;
+}
+.circle-post-origin {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: #a4af95;
+  font-size: 11px;
+  margin: 0 0 20px;
+}
+.circle-post-origin > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #8672bc;
+}
+.circle-post-title {
+  color: #5e744e;
+  font-size: 17px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.circle-id-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px 20px;
+  flex-wrap: wrap;
+}
+.circle-id-filter label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a283;
+  font-size: 10px;
+}
+.circle-id-filter input {
+  border: 1px solid #e3e8da;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fdfefa;
+  color: #6d835a;
+  font-size: 11px;
+  width: min(290px, 55vw);
+}
+.circle-id-filter > .button {
+  font-size: 10px;
+  padding: 8px 13px;
+}
 @media (max-width: 600px) {
   .media-metadata {
     grid-template-columns: 1fr;

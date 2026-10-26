@@ -5,6 +5,8 @@ export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export const MAX_POST_IMAGES = 9;
 
 export type UploadedImage = {
+  scope: 'world' | 'circle';
+  circleId?: string;
   id: string;
   url: string;
   contentType: 'image/jpeg' | 'image/png';
@@ -19,6 +21,15 @@ export type MyMediaAsset = UploadedImage & {
   note: string;
   referenceCount: number;
   publishedReferenceCount: number;
+  circleReferenceCount: number;
+  circlePublishedReferenceCount: number;
+  circlePosts: {
+    circleId: string;
+    channelId: string;
+    id: string;
+    body: string;
+    status: 'published' | 'pending' | 'hidden';
+  }[];
   posts: { id: string; body: string; status: 'published' | 'pending' | 'hidden' }[];
   updatedAt: string;
 };
@@ -39,9 +50,12 @@ export function imageFileError(file: File) {
   return '';
 }
 
-export function validUploadedImage(value: UploadedImage) {
+export function validUploadedImage(value: UploadedImage, circleId?: string) {
   return (
     value &&
+    (circleId
+      ? value.scope === 'circle' && value.circleId === circleId
+      : value.scope === 'world' && !value.circleId) &&
     hostedImageId(value.url) === value.id &&
     !!value.id &&
     ['image/jpeg', 'image/png'].includes(value.contentType) &&

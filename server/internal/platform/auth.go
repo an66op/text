@@ -220,6 +220,7 @@ func (a *App) SeedDevelopment(ctx context.Context) error {
 			s.Messages[m.ID] = m
 		}
 		s.Reports["report_demo"] = Report{"report_demo", demo.ID, "post", "post_review", "演示审核流程，请检查内容是否符合社区规则。", "open", "", now.Add(-10 * time.Minute)}
+		a.seedDevelopmentCircles(s)
 		s.audit(&admin, "system.seed", "development", "开发环境示例数据初始化", now)
 		return nil
 	})

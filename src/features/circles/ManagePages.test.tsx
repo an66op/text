@@ -89,7 +89,7 @@ function renderPage(entry: string, value = state()) {
       <ToastProvider>
         <CircleContext.Provider value={value}>
           <Routes>
-            <Route path="/circles/new" element={<CircleCreatePage />} />
+            <Route path="/circles/demo/new" element={<CircleCreatePage />} />
             <Route path="/circles/:circleId/settings" element={<CircleSettingsPage />} />
             <Route path="/circles/:circleId/members" element={<CircleMembersPage />} />
             <Route path="/circles/:circleId/invite" element={<CircleInvitePage />} />
@@ -104,7 +104,7 @@ function renderPage(entry: string, value = state()) {
             />
             <Route path="/circles/:circleId/channels/:channelId" element={<h1>已进入频道</h1>} />
             <Route path="/circles/:circleId" element={<h1>已进入圈子</h1>} />
-            <Route path="/circles" element={<h1>圈子列表</h1>} />
+            <Route path="/circles/demo" element={<h1>圈子列表</h1>} />
           </Routes>
         </CircleContext.Provider>
       </ToastProvider>
@@ -119,7 +119,7 @@ beforeEach(() => {
 describe('circle management pages', () => {
   it('requires a useful name and preserves all selected creation settings', () => {
     const value = state();
-    renderPage('/circles/new', value);
+    renderPage('/circles/demo/new', value);
     const submit = screen.getByRole('button', { name: '创建圈子' });
     expect(submit).toBeDisabled();
     fireEvent.change(screen.getByLabelText('圈子名称'), { target: { value: '周' } });
@@ -150,7 +150,7 @@ describe('circle management pages', () => {
         throw new Error('本地存储已满');
       }),
     });
-    renderPage('/circles/new', value);
+    renderPage('/circles/demo/new', value);
     fireEvent.change(screen.getByLabelText('圈子名称'), { target: { value: '周末散步' } });
     fireEvent.click(screen.getByRole('button', { name: '创建圈子' }));
     expect(screen.getByRole('alert')).toHaveTextContent('本地存储已满');

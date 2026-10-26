@@ -5,12 +5,16 @@ describe('admin navigation and media guards', () => {
   it('keeps login returns inside known console routes', () => {
     expect(safeReturnTo('/reports?status=open&detail=r1')).toBe('/reports?status=open&detail=r1');
     expect(safeReturnTo('/media?status=blocked')).toBe('/media?status=blocked');
+    expect(safeReturnTo('/circles/posts?circleId=circle_1')).toBe(
+      '/circles/posts?circleId=circle_1',
+    );
     for (const path of [
       'https://evil.example',
       '//evil.example',
       '/\\evil.example',
       '/login',
       '/unknown',
+      '/circles/members',
       null,
       '/users\n',
     ]) {

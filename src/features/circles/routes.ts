@@ -1,7 +1,7 @@
 const segment = (value: string) => encodeURIComponent(value);
 export const circlePaths = {
-  list: '/circles',
-  create: '/circles/new',
+  list: '/circles/demo',
+  create: '/circles/demo/new',
   home: (id: string) => `/circles/${segment(id)}`,
   channel: (id: string, channelId: string) =>
     `/circles/${segment(id)}/channels/${segment(channelId)}`,

@@ -130,9 +130,11 @@ function renderDirectory(items = circles) {
 describe('creator circle directory', () => {
   it('uses the two short navigation tabs and shows public metadata for recommendations', () => {
     const value = renderDirectory();
+    expect(screen.getByRole('heading', { name: '本机圈子', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '打开在线圈子' })).toHaveAttribute('href', '/circles');
     expect(screen.getByRole('tab', { name: '发现' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: /^我的/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '创建' })).toHaveAttribute('href', '/circles/new');
+    expect(screen.getByRole('link', { name: '创建' })).toHaveAttribute('href', '/circles/demo/new');
     expect(screen.getByRole('link', { name: '推荐圈子：城市读书会' })).toHaveAttribute(
       'href',
       '/circles/reading',
@@ -183,7 +185,7 @@ describe('creator circle directory', () => {
     );
     expect(within(rail).getByRole('link', { name: /创建圈子/ })).toHaveAttribute(
       'href',
-      '/circles/new',
+      '/circles/demo/new',
     );
     expect(
       within(screen.getByRole('region', { name: '我的圈子' })).getAllByRole('heading', {

@@ -1,6 +1,7 @@
 import type { UploadedImage } from './media-model';
 
 export const uploadedImage: UploadedImage = {
+  scope: 'world',
   id: `media_${'a'.repeat(32)}`,
   url: `/api/v1/media/images/media_${'a'.repeat(32)}`,
   contentType: 'image/png',

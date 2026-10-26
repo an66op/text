@@ -27,12 +27,16 @@ const asset: AdminMediaAsset = {
   bytes: 153600,
   createdAt: '2026-10-27T03:00:00Z',
   updatedAt: '2026-10-27T03:00:00Z',
+  scope: 'world',
   owner: { id: 'member-1', name: '图片作者', handle: 'author', avatar: '', bio: '' },
   status: 'ready',
   note: '',
   referenceCount: 14,
   publishedReferenceCount: 2,
   posts: [{ id: 'post-1', body: '需要核实的图片帖子', status: 'published' }],
+  circleReferenceCount: 0,
+  circlePublishedReferenceCount: 0,
+  circlePosts: [],
 };
 const ok = (data: unknown) => new Response(JSON.stringify({ data }), { status: 200 });
 const failure = (status: number, message: string) =>
@@ -83,9 +87,10 @@ describe('hosted image moderation', () => {
       expect.arrayContaining([
         '内容审核03',
         '图片管理04',
-        '举报中心05',
-        '操作审计06',
-        '系统状态07',
+        '圈子治理05',
+        '举报中心06',
+        '操作审计07',
+        '系统状态08',
       ]),
     );
     expect(within(dialog).getByRole('img', { name: '托管图片预览' })).toHaveAttribute(

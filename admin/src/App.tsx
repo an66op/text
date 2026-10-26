@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowUpRight,
   CircleHelp,
+  CircleDot,
   FileText,
   Flag,
   Images,
@@ -26,6 +27,7 @@ import OverviewPage from './pages/OverviewPage';
 import UsersPage from './pages/UsersPage';
 import ContentPage from './pages/ContentPage';
 import MediaPage from './pages/MediaPage';
+import CirclesPage, { CirclePostsPage } from './pages/CirclesPage';
 import ReportsPage from './pages/ReportsPage';
 import AuditPage from './pages/AuditPage';
 import SystemPage from './pages/SystemPage';
@@ -35,9 +37,10 @@ const navigation = [
   { to: '/users', title: '用户管理', icon: Users, code: '02' },
   { to: '/content', title: '内容审核', icon: FileText, code: '03' },
   { to: '/media', title: '图片管理', icon: Images, code: '04' },
-  { to: '/reports', title: '举报中心', icon: Flag, code: '05' },
-  { to: '/audit', title: '操作审计', icon: Activity, code: '06' },
-  { to: '/system', title: '系统状态', icon: Settings2, code: '07' },
+  { to: '/circles', title: '圈子治理', icon: CircleDot, code: '05' },
+  { to: '/reports', title: '举报中心', icon: Flag, code: '06' },
+  { to: '/audit', title: '操作审计', icon: Activity, code: '07' },
+  { to: '/system', title: '系统状态', icon: Settings2, code: '08' },
 ];
 
 function EnvironmentBadge() {
@@ -230,6 +233,8 @@ export default function App() {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/content" element={<ContentPage />} />
         <Route path="/media" element={<MediaPage />} />
+        <Route path="/circles" element={<CirclesPage />} />
+        <Route path="/circles/posts" element={<CirclePostsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/system" element={<SystemPage />} />

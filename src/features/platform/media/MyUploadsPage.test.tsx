@@ -16,6 +16,9 @@ const asset: MyMediaAsset = {
   note: '',
   referenceCount: 0,
   publishedReferenceCount: 0,
+  circleReferenceCount: 0,
+  circlePublishedReferenceCount: 0,
+  circlePosts: [],
   posts: [],
   updatedAt: uploadedImage.createdAt,
 };
@@ -47,6 +50,41 @@ afterEach(() => {
 });
 
 describe('owned server image recovery', () => {
+  it('labels published circle references as circle-only and links to their protected detail instead of the world', async () => {
+    const circleId = `circle_${'d'.repeat(32)}`;
+    vi.mocked(mediaApi.mine).mockResolvedValue({
+      items: [
+        {
+          ...asset,
+          scope: 'circle',
+          circleId,
+          referenceCount: 1,
+          circleReferenceCount: 1,
+          circlePublishedReferenceCount: 1,
+          circlePosts: [
+            {
+              id: 'circle-post',
+              circleId,
+              channelId: 'channel-one',
+              body: '圈内作品',
+              status: 'published',
+            },
+          ],
+        },
+      ],
+      total: 1,
+    });
+    render(page());
+    await screen.findByText('圈内可读');
+    expect(screen.queryByText('已有公开引用')).not.toBeInTheDocument();
+    expect(screen.getByText(/仅绑定所属圈子/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /已发布\s*圈内作品/ })).toHaveAttribute(
+      'href',
+      `/circles/s/${circleId}/posts/circle-post`,
+    );
+    expect(screen.queryByRole('button', { name: '删除上传 aaaaaaaa' })).not.toBeInTheDocument();
+  });
+
   it('shows private, publicly referenced and blocked states without fetching blocked previews or offering deletion for referenced images', async () => {
     const blocked = {
       ...another,
@@ -75,7 +113,7 @@ describe('owned server image recovery', () => {
       '/world/p/pending-post',
     );
     expect(screen.getByText(/100 张 \/ 100 MiB/)).toBeInTheDocument();
-    expect(screen.getByText('2 条引用 · 1 条公开')).toBeInTheDocument();
+    expect(screen.getByText('2 条引用 · 1 条世界公开')).toBeInTheDocument();
   });
 
   it('deletes an orphaned image only after a concrete confirmation and server acknowledgement', async () => {

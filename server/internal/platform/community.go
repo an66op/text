@@ -186,6 +186,14 @@ func (a *App) report(s *State, u *User, r *http.Request) (any, error) {
 		if _, exists := s.Accounts[input.TargetID]; !exists {
 			return nil, missing("被举报用户不存在")
 		}
+	case "circle-post":
+		post, exists := s.CirclePosts[input.TargetID]
+		if !exists {
+			return nil, missing("圈帖不存在或不可见")
+		}
+		if _, _, err = visibleCirclePost(s, u, post.CircleID, post.ID); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, bad("不支持的举报类型")
 	}

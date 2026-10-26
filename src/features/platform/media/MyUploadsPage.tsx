@@ -303,10 +303,23 @@ function OwnedUploads({ userId }: { userId: string }) {
                     <span className={`my-upload-state is-${image.status}`}>
                       {image.status === 'blocked'
                         ? '已屏蔽'
-                        : image.publishedReferenceCount > 0
-                          ? '已有公开引用'
-                          : '私人上传'}
+                        : image.scope === 'circle'
+                          ? image.circlePublishedReferenceCount > 0
+                            ? '圈内可读'
+                            : '圈内私人上传'
+                          : image.publishedReferenceCount > 0
+                            ? '已有公开引用'
+                            : '私人上传'}
                     </span>
+                    <p>
+                      {image.scope === 'circle' && image.circleId ? (
+                        <Link to={`/circles/s/${encodeURIComponent(image.circleId)}`}>
+                          圈内上传 ↗
+                        </Link>
+                      ) : (
+                        '世界上传'
+                      )}
+                    </p>
                     <p>
                       {size(image.bytes)} · {image.width} × {image.height}
                     </p>
@@ -317,17 +330,27 @@ function OwnedUploads({ userId }: { userId: string }) {
                       </time>
                     </p>
                     <small>
-                      {image.referenceCount} 条引用 · {image.publishedReferenceCount} 条公开
+                      {image.referenceCount} 条引用 · {image.publishedReferenceCount} 条世界公开
+                      {!!image.circleReferenceCount &&
+                        ` · ${image.circleReferenceCount} 条圈内引用`}
                     </small>
                   </div>
                 </div>
                 {image.note && <p className="my-upload-note">审核说明：{image.note}</p>}
-                {image.status === 'ready' && image.publishedReferenceCount === 0 && (
+                {image.status === 'ready' && image.scope === 'circle' && (
                   <p className="my-upload-private">
                     <LockKeyhole size={12} />
-                    没有公开帖引用，仅作为私人上传保存。
+                    仅绑定所属圈子，成员还需具有引用帖所在频道的访问权限。
                   </p>
                 )}
+                {image.status === 'ready' &&
+                  image.scope === 'world' &&
+                  image.publishedReferenceCount === 0 && (
+                    <p className="my-upload-private">
+                      <LockKeyhole size={12} />
+                      没有公开帖引用，仅作为私人上传保存。
+                    </p>
+                  )}
                 {!!image.posts.length && (
                   <div className="my-upload-posts">
                     <span>
@@ -340,6 +363,20 @@ function OwnedUploads({ userId }: { userId: string }) {
                       <Link key={post.id} to={`/world/p/${encodeURIComponent(post.id)}`}>
                         <small>{postLabels[post.status]}</small>
                         <span>{post.body || '查看帖子'}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {!!image.circlePosts?.length && (
+                  <div className="my-upload-posts">
+                    <span>圈内引用帖子（最近 {image.circlePosts.length} 条）</span>
+                    {image.circlePosts.slice(0, 10).map((post) => (
+                      <Link
+                        key={post.id}
+                        to={`/circles/s/${encodeURIComponent(post.circleId)}/posts/${encodeURIComponent(post.id)}`}
+                      >
+                        <small>{postLabels[post.status]}</small>
+                        <span>{post.body || '查看圈内帖子'}</span>
                       </Link>
                     ))}
                   </div>

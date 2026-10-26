@@ -47,4 +47,18 @@ describe('managed image request boundaries', () => {
     expect(validUploadedImage({ ...uploadedImage, width: 8193 })).toBe(false);
     expect(validUploadedImage({ ...uploadedImage, bytes: MAX_IMAGE_BYTES + 1 })).toBe(false);
   });
+
+  it('uses the circle upload endpoint and requires the receipt to match its exact circle scope', async () => {
+    const circleId = `circle_${'c'.repeat(32)}`;
+    const receipt = { ...uploadedImage, scope: 'circle' as const, circleId };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: receipt })));
+    vi.stubGlobal('fetch', fetcher);
+    await mediaApi.upload(imageFile(), 'circle-client-id', undefined, circleId);
+    expect(fetcher.mock.calls[0][0]).toBe(`/api/v1/circles/${circleId}/media/images`);
+    expect(validUploadedImage(receipt, circleId)).toBe(true);
+    expect(validUploadedImage(receipt)).toBe(false);
+    expect(validUploadedImage(receipt, `circle_${'d'.repeat(32)}`)).toBe(false);
+    expect(validUploadedImage(uploadedImage, circleId)).toBe(false);
+    expect(validUploadedImage({ ...uploadedImage, circleId })).toBe(false);
+  });
 });

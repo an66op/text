@@ -20,6 +20,57 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 describe('owned image upload lifecycle', () => {
+  it('aborts and releases an old circle upload without deleting or attaching its late receipt to the next circle', async () => {
+    const first = deferred<UploadedImage>();
+    const firstCircle = `circle_${'a'.repeat(32)}`,
+      nextCircle = `circle_${'b'.repeat(32)}`;
+    const upload = vi
+      .spyOn(mediaApi, 'upload')
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValue({ ...uploadedImage, scope: 'circle', circleId: nextCircle });
+    const remove = vi.spyOn(mediaApi, 'remove');
+    const { result, rerender } = renderHook(({ circleId }) => useImageUploads('alice', circleId), {
+      initialProps: { circleId: firstCircle },
+    });
+    act(() => result.current.add([imageFile()]));
+    const oldAdd = result.current.add,
+      oldRemove = result.current.remove,
+      oldId = result.current.items[0].clientId;
+    expect(upload.mock.calls[0][3]).toBe(firstCircle);
+    rerender({ circleId: nextCircle });
+    expect(upload.mock.calls[0][2]?.aborted).toBe(true);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview-1');
+    act(() => oldAdd([imageFile('stale.png')]));
+    await act(async () => oldRemove(oldId));
+    expect(upload).toHaveBeenCalledOnce();
+    act(() => result.current.add([imageFile('new.png')]));
+    await waitFor(() => expect(result.current.items[0]?.status).toBe('ready'));
+    await act(async () =>
+      first.resolve({ ...uploadedImage, scope: 'circle', circleId: firstCircle }),
+    );
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].image?.circleId).toBe(nextCircle);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('keeps a wrong-scope receipt failed and blocks publishing until a same-ID manual retry confirms the circle', async () => {
+    const circleId = `circle_${'a'.repeat(32)}`;
+    const upload = vi
+      .spyOn(mediaApi, 'upload')
+      .mockResolvedValueOnce(uploadedImage)
+      .mockResolvedValue({ ...uploadedImage, scope: 'circle', circleId });
+    const { result } = renderHook(() => useImageUploads('alice', circleId));
+    act(() => result.current.add([imageFile()]));
+    await waitFor(() => expect(result.current.items[0]?.status).toBe('failed'));
+    expect(result.current.ready).toBe(false);
+    expect(result.current.urls).toEqual([]);
+    const clientId = result.current.items[0].clientId;
+    act(() => result.current.retry(clientId));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(upload.mock.calls[1][1]).toBe(clientId);
+    expect(result.current.urls).toEqual([uploadedImage.url]);
+  });
+
   it('queues multiple selected files and sends only one image at a time', async () => {
     const first = deferred<UploadedImage>();
     const upload = vi

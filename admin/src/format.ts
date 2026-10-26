@@ -1,4 +1,12 @@
-import type { Audit, MediaStatus, PostStatus, ReportStatus, UserRole, UserStatus } from './types';
+import type {
+  Audit,
+  CircleStatus,
+  MediaStatus,
+  PostStatus,
+  ReportStatus,
+  UserRole,
+  UserStatus,
+} from './types';
 import { hostedImageId } from '../../src/shared/api/media-url';
 
 export const roleLabels: Record<UserRole, string> = {
@@ -18,6 +26,16 @@ export const reportStatusLabels: Record<ReportStatus, string> = {
   dismissed: '已驳回',
 };
 export const mediaStatusLabels: Record<MediaStatus, string> = { ready: '可用', blocked: '已屏蔽' };
+export const circleStatusLabels: Record<CircleStatus, string> = {
+  active: '正常',
+  suspended: '已暂停',
+  archived: '已归档',
+};
+export const circlePostStatusLabels: Record<PostStatus, string> = {
+  published: '圈内已发布',
+  hidden: '已隐藏',
+  pending: '待审核',
+};
 
 export function number(value: number): string {
   return new Intl.NumberFormat('zh-CN').format(value);
@@ -64,6 +82,11 @@ export function actionLabel(action: Audit['action']): string {
     'media.moderate': '审核图片',
     'media.upload': '上传图片',
     'media.delete': '删除图片',
+    'circle.moderate': '治理圈子',
+    'circle.govern': '治理圈子',
+    'circle.post.moderate': '审核圈帖',
+    'circle.post.govern': '审核圈帖',
+    'circle-post.moderate': '审核圈帖',
     'report.update': '处理举报',
     'report.resolve': '处理举报',
     'report.updated': '处理举报',
@@ -83,7 +106,9 @@ export function safeOffset(value: string | null, limit = 20): number {
 
 export function safeReturnTo(value: unknown): string {
   return typeof value === 'string' &&
-    /^\/(overview|users|content|media|reports|audit|system)(\?|$)/.test(value) &&
+    /^\/(overview|users|content|media|circles(?:\/posts)?|reports|audit|system)(\?|$)/.test(
+      value,
+    ) &&
     !Array.from(value).some((character) => character.charCodeAt(0) < 32 || character === '\\')
     ? value
     : '/overview';

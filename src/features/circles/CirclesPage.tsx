@@ -61,7 +61,7 @@ export default function CirclesPage() {
   return (
     <div className="circles-directory creator-directory">
       <AppTopbar
-        title="圈子"
+        title="本机圈子"
         className="creator-directory-header"
         leading={
           <Link className="creator-back-button" to={paths.discover} aria-label="返回发现">
@@ -75,6 +75,9 @@ export default function CirclesPage() {
           </Link>
         }
       />
+      <Link className="circle-back-link" to={paths.circles}>
+        打开在线圈子
+      </Link>
       <div className="creator-directory-toolbar">
         <div className="creator-directory-tabs" role="tablist" aria-label="圈子导航">
           {(

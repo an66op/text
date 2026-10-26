@@ -32,6 +32,7 @@
     "verify:messages": "cd server && go run ./cmd/verify-messaging",
     "verify:social": "node scripts/verify-social.mjs",
     "verify:media": "node scripts/verify-media.mjs",
+    "verify:circles": "node scripts/verify-circles.mjs",
     "check:all": "npm run check && npm run build:admin && npm run test:admin && npm run test:server && npm run test:tooling"
   },
   "dependencies": {

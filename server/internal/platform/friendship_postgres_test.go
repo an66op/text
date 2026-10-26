@@ -238,6 +238,15 @@ func installVersionTwo(t *testing.T, ctx context.Context, s *PostgresStore, with
 	}
 	if withData {
 		_, memory, _ := fixture(t)
+		// This source schema predates the independent circles service.
+		memory.state.Circles = nil
+		memory.state.CircleMembers = nil
+		memory.state.CircleJoinRequests = nil
+		memory.state.CircleChannels = nil
+		memory.state.CirclePosts = nil
+		memory.state.CircleComments = nil
+		memory.state.CircleInvites = nil
+		memory.state.CircleInviteRedemptions = nil
 		if err = persistNormalized(ctx, tx, NewState(), memory.state); err != nil {
 			t.Fatal(err)
 		}

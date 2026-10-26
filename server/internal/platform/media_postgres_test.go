@@ -271,6 +271,16 @@ func TestMediaV4MigrationAtomicPreservesRowsAndCookie(t *testing.T) {
 	ctx, s, _ := isolatedPostgres(t)
 	_, memory, memoryHandler := fixture(t)
 	cookie := memberCookie(t, memoryHandler)
+	// The source predates circles; today's development fixture includes v6
+	// examples, which must not be imported into a simulated v4 source schema.
+	memory.state.Circles = nil
+	memory.state.CircleMembers = nil
+	memory.state.CircleJoinRequests = nil
+	memory.state.CircleChannels = nil
+	memory.state.CirclePosts = nil
+	memory.state.CircleComments = nil
+	memory.state.CircleInvites = nil
+	memory.state.CircleInviteRedemptions = nil
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)

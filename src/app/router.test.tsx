@@ -184,6 +184,22 @@ describe('real application routes', () => {
     }
   });
 
+  it('keeps online circles distinct from the local directory and old deep links', () => {
+    const route = (url: string) => matchRoutes(appRoutes, url)?.at(-1)?.route.path;
+    expect(route('/circles')).toBe('/circles');
+    expect(route('/circles/new')).toBe('/circles/new');
+    expect(route('/circles/demo')).toBe('/circles/demo');
+    expect(route('/circles/demo/new')).toBe('/circles/demo/new');
+    expect(route('/circles/s/circle_123/members')).toBe('/circles/s/:circleId/members');
+    expect(route('/circles/s/circle_123/channels/cchannel_123')).toBe(
+      '/circles/s/:circleId/channels/:channelId',
+    );
+    expect(route('/circles/organization-photography')).toBeUndefined();
+    expect(matchRoutes(appRoutes, '/circles/organization-photography')?.at(-1)?.route.index).toBe(
+      true,
+    );
+  });
+
   it('reserves the bottom navigation for the five primary pages', () => {
     const children = appRoutes[0].children ?? [];
     const primaryRoutes = children.filter((route) => route.handle?.level === 'primary');

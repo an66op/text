@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiErrorMessage, isAbort } from '@/shared/api/client';
+import { ApiError, apiErrorMessage, isAbort } from '@/shared/api/client';
 import { mediaApi } from './media-api';
 import {
   imageFileError,
@@ -8,17 +8,28 @@ import {
   type ImageUpload,
 } from './media-model';
 
-export function useImageUploads(userId: string) {
+export function useImageUploads(
+  userId: string,
+  circleId?: string,
+  onDenied?: (message: string) => void,
+) {
   const [items, setItems] = useState<ImageUpload[]>([]);
   const [error, setError] = useState('');
   const entries = useRef<ImageUpload[]>([]);
-  const current = useRef({ active: false, userId, generation: 0 });
+  const current = useRef({ active: false, userId, circleId, generation: 0 });
   const controllers = useRef(new Map<string, AbortController>());
   const waiting = useRef<string[]>([]);
   const uploading = useRef<string | null>(null);
+  const denied = useRef(onDenied);
+  denied.current = onDenied;
   useEffect(() => {
     const requests = controllers.current;
-    current.current = { active: true, userId, generation: current.current.generation + 1 };
+    current.current = {
+      active: true,
+      userId,
+      circleId,
+      generation: current.current.generation + 1,
+    };
     entries.current = [];
     setItems([]);
     setError('');
@@ -32,10 +43,13 @@ export function useImageUploads(userId: string) {
       for (const item of entries.current) URL.revokeObjectURL(item.preview);
       entries.current = [];
     };
-  }, [userId]);
+  }, [userId, circleId]);
   const owned = useCallback(
-    () => current.current.active && current.current.userId === userId,
-    [userId],
+    () =>
+      current.current.active &&
+      current.current.userId === userId &&
+      current.current.circleId === circleId,
+    [userId, circleId],
   );
   const update = useCallback((change: (previous: ImageUpload[]) => ImageUpload[]) => {
     entries.current = change(entries.current);
@@ -79,9 +93,11 @@ export function useImageUploads(userId: string) {
             ),
           );
           try {
-            const image = await mediaApi.upload(item.file, clientId, controller.signal);
+            const image = circleId
+              ? await mediaApi.upload(item.file, clientId, controller.signal, circleId)
+              : await mediaApi.upload(item.file, clientId, controller.signal);
             if (!valid()) continue;
-            if (!validUploadedImage(image))
+            if (!validUploadedImage(image, circleId))
               throw new Error('图片上传结果不完整，请使用同一请求重试');
             update((previous) =>
               previous.map((entry) =>
@@ -91,7 +107,7 @@ export function useImageUploads(userId: string) {
               ),
             );
           } catch (caught) {
-            if (valid() && !isAbort(caught))
+            if (valid() && !isAbort(caught)) {
               update((previous) =>
                 previous.map((entry) =>
                   entry.clientId === clientId
@@ -99,6 +115,19 @@ export function useImageUploads(userId: string) {
                     : entry,
                 ),
               );
+              if (
+                circleId &&
+                denied.current &&
+                caught instanceof ApiError &&
+                [403, 404].includes(caught.status)
+              ) {
+                current.current.active = false;
+                current.current.generation += 1;
+                waiting.current = [];
+                for (const request of controllers.current.values()) request.abort();
+                denied.current(apiErrorMessage(caught));
+              }
+            }
           } finally {
             if (controllers.current.get(clientId) === controller)
               controllers.current.delete(clientId);
@@ -108,7 +137,7 @@ export function useImageUploads(userId: string) {
       };
       void drain();
     },
-    [owned, update],
+    [owned, update, circleId],
   );
   const add = useCallback(
     (files: File[]) => {

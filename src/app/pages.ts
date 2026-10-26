@@ -3,6 +3,22 @@ import { lazy } from 'react';
 export const AuthPage = lazy(() => import('@/features/platform/AuthPage'));
 export const PlatformAccountPage = lazy(() => import('@/features/platform/PlatformAccountPage'));
 export const MyUploadsPage = lazy(() => import('@/features/platform/media/MyUploadsPage'));
+export const ServerCirclesPage = lazy(() => import('@/features/platform/circles/DirectoryPage'));
+export const ServerCircleCreatePage = lazy(() => import('@/features/platform/circles/CreatePage'));
+export const ServerCircleHomePage = lazy(() => import('@/features/platform/circles/HomePage'));
+export const ServerCircleChannelPage = lazy(
+  () => import('@/features/platform/circles/ChannelPage'),
+);
+export const ServerCirclePostPage = lazy(() => import('@/features/platform/circles/PostPage'));
+export const ServerCircleComposePage = lazy(
+  () => import('@/features/platform/circles/ComposePage'),
+);
+export const ServerCircleMembersPage = lazy(
+  () => import('@/features/platform/circles/MembersPage'),
+);
+export const ServerCircleManagePage = lazy(() => import('@/features/platform/circles/ManagePage'));
+export const ServerCircleJoinPage = lazy(() => import('@/features/platform/circles/JoinPage'));
+export const ServerCircleInvitePage = lazy(() => import('@/features/platform/circles/InvitePage'));
 export const ServerWorldPage = lazy(() => import('@/features/platform/ServerWorldPage'));
 export const PlatformMessagesPage = lazy(() => import('@/features/platform/PlatformMessagesPage'));
 export const ConversationDetailsPage = lazy(

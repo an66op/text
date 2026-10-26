@@ -30,6 +30,8 @@ type MediaAsset struct {
 	Height      int       `json:"height"`
 	Bytes       int64     `json:"bytes"`
 	CreatedAt   time.Time `json:"createdAt"`
+	Scope       string    `json:"scope"`
+	CircleID    string    `json:"circleId,omitempty"`
 }
 
 type StoredMediaAsset struct {
@@ -50,13 +52,16 @@ type AdminMediaPost struct {
 }
 type AdminMediaAsset struct {
 	MediaAsset
-	Owner                   PublicUser       `json:"owner"`
-	Status                  string           `json:"status"`
-	Note                    string           `json:"note"`
-	ReferenceCount          int              `json:"referenceCount"`
-	PublishedReferenceCount int              `json:"publishedReferenceCount"`
-	Posts                   []AdminMediaPost `json:"posts"`
-	UpdatedAt               time.Time        `json:"updatedAt"`
+	Owner                         PublicUser             `json:"owner"`
+	Status                        string                 `json:"status"`
+	Note                          string                 `json:"note"`
+	ReferenceCount                int                    `json:"referenceCount"`
+	PublishedReferenceCount       int                    `json:"publishedReferenceCount"`
+	Posts                         []AdminMediaPost       `json:"posts"`
+	UpdatedAt                     time.Time              `json:"updatedAt"`
+	CircleReferenceCount          int                    `json:"circleReferenceCount"`
+	CirclePublishedReferenceCount int                    `json:"circlePublishedReferenceCount"`
+	CirclePosts                   []AdminMediaCirclePost `json:"circlePosts"`
 }
 
 type mediaAccountGate struct {
@@ -124,7 +129,21 @@ func (a *App) registerMediaRoutes(mux *http.ServeMux) {
 }
 
 func (a *App) uploadMediaImage(w http.ResponseWriter, r *http.Request) {
-	identity, err := a.execute(r, false, "member", func(_ *State, u *User) (any, error) { return u.ID, nil })
+	a.uploadMediaImageScoped(w, r, "")
+}
+func (a *App) uploadMediaImageScoped(w http.ResponseWriter, r *http.Request, circleID string) {
+	scope := "world"
+	if circleID != "" {
+		scope = "circle"
+	}
+	identity, err := a.execute(r, false, "member", func(s *State, u *User) (any, error) {
+		if circleID != "" {
+			if _, _, err := circleAccess(s, u, circleID, true, false); err != nil {
+				return nil, err
+			}
+		}
+		return u.ID, nil
+	})
 	if err != nil {
 		writeError(w, err)
 		return
@@ -158,7 +177,14 @@ func (a *App) uploadMediaImage(w http.ResponseWriter, r *http.Request) {
 	sourceHash := hex.EncodeToString(hash[:])
 	// Check a committed retry before spending decoder/file resources. The write
 	// transaction below repeats this check and authorization for concurrent calls.
-	existing, err := a.execute(r, false, "member", func(s *State, u *User) (any, error) { return existingMediaUpload(s, u.ID, clientID, sourceHash) })
+	existing, err := a.execute(r, false, "member", func(s *State, u *User) (any, error) {
+		if circleID != "" {
+			if _, _, err := circleAccess(s, u, circleID, true, false); err != nil {
+				return nil, err
+			}
+		}
+		return existingMediaUpload(s, u.ID, clientID, sourceHash, scope, circleID)
+	})
 	if err != nil {
 		writeError(w, err)
 		return
@@ -186,7 +212,7 @@ func (a *App) uploadMediaImage(w http.ResponseWriter, r *http.Request) {
 	}
 	now := a.now().UTC().Truncate(time.Microsecond)
 	id := newID("media_")
-	v := StoredMediaAsset{MediaAsset: MediaAsset{ID: id, URL: mediaURLPrefix + id, ContentType: contentType, Width: width, Height: height, Bytes: int64(len(encoded)), CreatedAt: now}, OwnerID: identity.(string), ClientID: clientID, SourceHash: sourceHash, Status: "ready", UpdatedAt: now}
+	v := StoredMediaAsset{MediaAsset: MediaAsset{ID: id, URL: mediaURLPrefix + id, ContentType: contentType, Width: width, Height: height, Bytes: int64(len(encoded)), CreatedAt: now, Scope: scope, CircleID: circleID}, OwnerID: identity.(string), ClientID: clientID, SourceHash: sourceHash, Status: "ready", UpdatedAt: now}
 	if err = writeMediaFile(a.cfg.MediaDirectory, v, encoded); err != nil {
 		writeError(w, mediaUnavailable())
 		return
@@ -197,7 +223,12 @@ func (a *App) uploadMediaImage(w http.ResponseWriter, r *http.Request) {
 		if u.ID != v.OwnerID {
 			return nil, &APIError{409, "account_changed", "账号已切换，请重新上传"}
 		}
-		if original, err := existingMediaUpload(s, u.ID, clientID, sourceHash); err != nil || original != nil {
+		if circleID != "" {
+			if _, _, err := circleAccess(s, u, circleID, true, false); err != nil {
+				return nil, err
+			}
+		}
+		if original, err := existingMediaUpload(s, u.ID, clientID, sourceHash, scope, circleID); err != nil || original != nil {
 			return original, err
 		}
 		count := 0
@@ -232,12 +263,12 @@ func (a *App) uploadMediaImage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, asset)
 }
 
-func existingMediaUpload(s *State, owner, clientID, sourceHash string) (any, error) {
+func existingMediaUpload(s *State, owner, clientID, sourceHash, scope, circleID string) (any, error) {
 	for _, v := range s.Media {
 		if v.OwnerID != owner || v.ClientID != clientID {
 			continue
 		}
-		if v.SourceHash != sourceHash {
+		if v.SourceHash != sourceHash || effectiveMediaScope(v) != scope || v.CircleID != circleID {
 			return nil, conflict("clientId 已用于不同的图片内容")
 		}
 		if v.DeletedAt != nil {
@@ -287,6 +318,21 @@ func adminMediaAsset(s *State, v StoredMediaAsset) AdminMediaAsset {
 			result.Posts = append(result.Posts, AdminMediaPost{p.ID, string(body), p.Status})
 		}
 	}
+	result.CirclePosts = []AdminMediaCirclePost{}
+	for _, p := range circleMediaReferences(s, v.ID) {
+		result.ReferenceCount++
+		result.CircleReferenceCount++
+		if p.Status == "published" {
+			result.CirclePublishedReferenceCount++
+		}
+		if len(result.CirclePosts) < 10 {
+			body := []rune(p.Body)
+			if len(body) > 200 {
+				body = body[:200]
+			}
+			result.CirclePosts = append(result.CirclePosts, AdminMediaCirclePost{p.CircleID, p.ChannelID, p.ID, string(body), p.Status})
+		}
+	}
 	return result
 }
 func (a *App) adminMedia(s *State, _ *User, r *http.Request) (any, error) {
@@ -309,6 +355,9 @@ func listMediaAssets(s *State, owner string, r *http.Request) (any, error) {
 		search := v.ID + " " + u.ID + " " + u.Handle + " " + u.Name
 		for _, p := range mediaReferences(s, v.ID) {
 			search += " " + p.ID
+		}
+		for _, p := range circleMediaReferences(s, v.ID) {
+			search += " " + p.ID + " " + p.CircleID
 		}
 		if matches(r, search) {
 			items = append(items, adminMediaAsset(s, v))
@@ -351,6 +400,15 @@ func (a *App) adminUpdateMedia(s *State, u *User, r *http.Request) (any, error) 
 				s.audit(u, "post.moderate", p.ID, "status=hidden, blocked_media="+v.ID, a.now())
 			}
 		}
+		for _, p := range circleMediaReferences(s, v.ID) {
+			if p.Status == "published" {
+				p.Status = "hidden"
+				p.UpdatedAt = a.circleNow()
+				p.Note = "关联图片被平台屏蔽：" + v.ID
+				s.CirclePosts[p.ID] = p
+				s.audit(u, "circle.post.govern", p.ID, "status=hidden, blocked_media="+v.ID, a.circleNow())
+			}
+		}
 	}
 	s.audit(u, "media.moderate", v.ID, "status="+v.Status+", note="+v.Note, a.now())
 	return adminMediaAsset(s, v), nil
@@ -366,7 +424,7 @@ func (a *App) deleteMediaImage(w http.ResponseWriter, r *http.Request) {
 		if v.DeletedAt != nil {
 			return nil, nil
 		}
-		if len(mediaReferences(s, v.ID)) != 0 {
+		if len(mediaReferences(s, v.ID)) != 0 || len(circleMediaReferences(s, v.ID)) != 0 {
 			return nil, conflict("图片仍被动态引用，请先删除相关动态")
 		}
 		now := a.now().UTC().Truncate(time.Microsecond)
@@ -411,11 +469,15 @@ func (a *App) readMediaImage(w http.ResponseWriter, r *http.Request) {
 			}
 			allowed := staff(u) || u != nil && u.ID == asset.OwnerID
 			if !allowed {
-				for _, p := range mediaReferences(s, asset.ID) {
-					if p.Status == "published" {
-						allowed = true
-						break
+				if effectiveMediaScope(asset) == "world" {
+					for _, p := range mediaReferences(s, asset.ID) {
+						if p.Status == "published" {
+							allowed = true
+							break
+						}
 					}
+				} else {
+					allowed = canReadCircleMedia(s, asset, u)
 				}
 			}
 			if !allowed {
@@ -465,7 +527,7 @@ func (a *App) validatePostMedia(s *State, owner string, images []string, r *http
 		seen[value] = true
 		if id, ok := mediaIDFromURL(value); ok {
 			v, exists := s.Media[id]
-			if !exists || v.OwnerID != owner || v.DeletedAt != nil || v.Status != "ready" {
+			if !exists || v.OwnerID != owner || v.DeletedAt != nil || v.Status != "ready" || effectiveMediaScope(v) != "world" {
 				return nil, false, bad("只能使用本人正常可用的托管图片")
 			}
 			hosted = true

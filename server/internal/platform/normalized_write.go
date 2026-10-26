@@ -203,7 +203,10 @@ func persistNormalized(ctx context.Context, tx pgx.Tx, before, after *State) err
 	if err := persistMessaging(ctx, tx, before, after); err != nil {
 		return err
 	}
-	return persistFriendships(ctx, tx, before, after)
+	if err := persistFriendships(ctx, tx, before, after); err != nil {
+		return err
+	}
+	return persistCircles(ctx, tx, before, after)
 }
 
 func flattenDocuments(s *State) map[string]Document {
