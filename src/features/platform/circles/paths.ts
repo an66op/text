@@ -13,4 +13,10 @@ export const circlePaths = {
   manage: (id: string) => `${home(id)}/manage`,
   join: (id: string) => `${home(id)}/join`,
   invite: (id: string) => `${home(id)}/invite`,
+  events: (id: string) => `${home(id)}/events`,
+  event: (id: string, eventId: string) => `${home(id)}/events/${segment(eventId)}`,
+  eventCreate: (id: string) => `${home(id)}/events/new`,
+  eventEdit: (id: string, eventId: string) => `${home(id)}/events/${segment(eventId)}/edit`,
+  eventAttendees: (id: string, eventId: string) =>
+    `${home(id)}/events/${segment(eventId)}/attendees`,
 };

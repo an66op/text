@@ -10,6 +10,9 @@ const systemKinds = new Set<NotificationKind>([
   'circle-review',
   'media-review',
   'report-review',
+  'circle-event-update',
+  'circle-event-registration',
+  'circle-event-review',
 ]);
 const simpleText: Partial<Record<NotificationKind, Text>> = {
   'friend-request': { title: '好友申请', body: '收到一条好友申请' },
@@ -59,6 +62,32 @@ const outcomeText: Partial<Record<NotificationKind, Record<string, Text>>> = {
     resolved: { title: '举报已处理', body: '你的举报已处理完成' },
     dismissed: { title: '举报已结案', body: '你的举报已结案，未予采纳' },
   },
+  'circle-event-update': {
+    updated: {
+      title: '活动资料已更新',
+      body: '你报名或候补的活动在此次操作中更新了资料，请核对最新安排',
+    },
+    cancelled: {
+      title: '活动已取消',
+      body: '你报名或候补的活动在此次操作中被取消，相关登记已释放',
+    },
+  },
+  'circle-event-registration': {
+    promoted: {
+      title: '候补已递补',
+      body: '你的候补在此次操作中递补为确认报名，请核对当前登记状态',
+    },
+  },
+  'circle-event-review': {
+    hidden: {
+      title: '活动已隐藏',
+      body: '活动在此次平台审核中被隐藏，原有报名或候补不会因此自动取消',
+    },
+    visible: {
+      title: '活动恢复可见',
+      body: '活动在此次平台审核中恢复可见，报名资格与截止仍以当前状态为准',
+    },
+  },
 };
 
 /** Replace a server projection as a whole; never revive fields from an older item. */
@@ -88,6 +117,7 @@ const idPatterns = {
   post: /^post_[a-f0-9]{32}$/,
   cpost: /^cpost_[a-f0-9]{32}$/,
   media: /^media_[a-f0-9]{32}$/,
+  event: /^cevent_[a-f0-9]{32}$/,
 };
 const validId = (value: unknown, type: keyof typeof idPatterns): value is string =>
   typeof value === 'string' && idPatterns[type].test(value);
@@ -121,6 +151,10 @@ export function notificationPath(item: Notification): string | null {
     case 'uploads':
       return validId(target.mediaId, 'media')
         ? `/account/uploads?image=${segment(target.mediaId)}`
+        : null;
+    case 'circle-event':
+      return validId(target.circleId, 'circle') && validId(target.eventId, 'event')
+        ? `/circles/s/${segment(target.circleId)}/events/${segment(target.eventId)}`
         : null;
     default:
       return null;

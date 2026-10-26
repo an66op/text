@@ -1,13 +1,13 @@
 # 共鸣全栈 API 约定
 
-前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），Go API 0.7.0（8080）、PostgreSQL schema v7（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。
+前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），本轮源码目标 Go API 0.8.0（8080）、PostgreSQL schema v8（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。本文是接口约定；运行升级、全检和恢复验收另见 [运行记录](STACK_STATUS.md)。
 
 ## 通用
 
 - 前缀 `/api/v1`。成功 `{ "data": T }`；失败 `{ "error": { "code": "...", "message": "中文可读说明" } }`。
 - 时间 RFC3339，ID 字符串。金额全部整数字符串，价格以分为单位；钱包仅测试账本。
 - HttpOnly SameSite=Lax 会话 cookie；写请求校验 Origin，开发仅允许 5173/5174 的 localhost/127.0.0.1。密码 bcrypt，token 只存 SHA-256。管理员与成员强制角色授权。非登录/注册/查询会话请求可带 X-Gongming-Account，若与 cookie 身份不符则409 account_changed，防多标签页账号切换串写；该头不能授予权限。
-- 普通列表 `{items: T[], total: number}`，按域支持 `q` / `limit` / `offset`；通知额外返回unreadTotal/throughId，默认limit20。
+- 普通列表 `{items: T[], total: number}`，按域支持 `q` / `limit` / `offset`；活动与通知默认limit20，通知额外返回unreadTotal/throughId。
 - 前后台请求期限20秒，覆盖响应头与响应体读取；用户取消仍作为取消处理。写入超时不能据此认定事务失败，客户端提示刷新确认、不自动重发。
 
 ## 账号
@@ -62,6 +62,31 @@
 
 `DELETE /circles/{id}/posts/{postId}` → `{ok:true}`，作者或当前有频道权限的圈管理可删除。正常登录的作者即使已退出、被移除、降级或圈/频道归档，仍可按已知ID删除本人帖以解除上传引用；接口不因此返回私密正文。成功保留幂等墓碑，原clientId重放409，不能复活已删帖。
 
+## 圈子活动
+
+活动独立于频道，ID为 `cevent_` 加32小写hex。完整 `CircleEvent`、`EventInput`、`EventRegistration`、`EventAttendee` 与 `AdminCircleEvent` 见 [活动服务契约](CIRCLE_EVENTS_SERVICE.md)。所有接口须正常会话与预期账号匹配；普通端正文、地点、标题和数量只向当前active圈成员开放，平台角色不绕过。hidden只向当前圈owner/admin开放，创建者降为普通成员后也不可读；圈暂停普通端不可读，归档保留历史。
+
+| 方法与路径                                         | 请求或筛选                                                      | 返回与关键边界                                                                                                     |
+| -------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `GET /circles/{id}/events`                         | view：upcoming / mine / all；limit/offset                       | `{items:CircleEvent[],total}`；默认upcoming，mine仅本人当前确认/候补，普通成员完全排除hidden                       |
+| `GET /circles/{id}/events/{eventId}`               | 无                                                              | CircleEvent；未知/不可见统一404，myRegistration仅本人登记                                                          |
+| `POST /circles/{id}/events`                        | `{...EventInput,clientId}`                                      | CircleEvent，201；当前圈owner/admin且圈active，按creator+circle+clientId永久幂等                                   |
+| `PATCH /circles/{id}/events/{eventId}`             | `{...EventInput,revision}`                                      | CircleEvent；全量编辑、未开始/未取消，旧revision409，有实际内容变化才推进版本                                      |
+| `POST /circles/{id}/events/{eventId}/cancel`       | `{revision}`                                                    | CircleEvent；结束前当前管理可取消，释放登记为cancelled/event，取消终态不可恢复                                     |
+| `POST /circles/{id}/events/{eventId}/registration` | `{intent,clientId}`；intent为join / waitlist / leave            | `{ok:true,registration}`；registration为EventRegistration或null，不返回活动正文；join满额409，waitlist明确同意候补 |
+| `GET /circles/{id}/events/{eventId}/attendees`     | status：all / registered / waitlisted / cancelled；limit/offset | `{items:EventAttendee[],total}`；仅当前圈owner/admin，普通成员不读名单                                             |
+| `POST /circles/{id}/events/{eventId}/report`       | `{reason}`                                                      | Report，201；须本人当前可读活动，持久化targetType=circle-event                                                     |
+| `GET /admin/circle-events`                         | q/circleId/lifecycle/moderation/limit/offset                    | `{items:AdminCircleEvent[],total}`；独立staff权限，只给聚合数，无名单/收据/联系方式                                |
+| `PATCH /admin/circle-events/{eventId}`             | `{moderation,note,revision}`                                    | AdminCircleEvent；说明1–1000字、旧版本409、取消只读，任何visible请求要求圈active                                   |
+
+标题/介绍/地点分别1–80/4000/200字，地点仅纯文本；mode为online/offline。容量1–1000，每圈最多20个未结束且未取消活动（含hidden）。开始时间为未来365天内，持续不超过绝对168小时，报名截止不晚于开始；phase、registrationOpen由服务端计算。前台日期输入转换UTC，不能以本机时钟伪造已开始或已截止状态。
+
+成功报名操作保存event+user+clientId及intent，旧成功收据只返回当前本人登记，不重新报名或取消后来登记；同ID换intent409。失败不生成成功收据，超时保留clientId、先刷新后手动重试。leave允许截止后、结束前取消；失去成员资格、圈暂停/归档后，正常登录且有本人历史者仍可按已知圈/活动ID仅清理本人登记，不读取活动内容。前台详情业务树外的清理入口不预取标题、地点或名单。
+
+候补按活动内稳定顺序，在释放名额、增加容量或恢复圈/活动可见性时，同事务递补仍有效且未截止候补；不能让新报名插队，不恢复cancelled登记或重开报名窗口。成员退出/封禁、账号停用在原业务事务末尾释放未结束登记；重入/解禁不复活。活动取消为生命周期终态，平台屏蔽独立于生命周期并保留原登记；已结束活动可恢复历史可见性。
+
+活动API使用按域SQL，报名先锁活动行；活动、登记、成功操作收据、通知及审计原子提交。schema8新增 `gongming_circle_events`、`gongming_circle_event_registrations`、`gongming_circle_event_requests`，普通State不加载这些历史。活动举报通过上述专用路由提交；通用 `POST /reports` 的请求类型仍仅post/user/circle-post，后台Report对象可以包含circle-event。
+
 ## 好友关系
 
 好友关系必须双方确认，成员目录、私聊和群组成员关系都不会自动变成好友。
@@ -78,7 +103,7 @@
 
 ## 站内通知
 
-`Notification = {id,kind,category:'requests'|'interactions'|'system',outcome,actor:PublicUser|null,available,context:{title,excerpt}|null,target:NotificationTarget|null,createdAt,readAt:string|null}`。id为 `notice_` 加32位小写hex；kind为14种冻结业务类型，outcome与target只接受 [通知服务契约](NOTIFICATIONS_SERVICE.md) 的白名单。不提供创建通知接口，不重复聊天未读。
+`Notification = {id,kind,category:'requests'|'interactions'|'system',outcome,actor:PublicUser|null,available,context:{title,excerpt}|null,target:NotificationTarget|null,createdAt,readAt:string|null}`。id为 `notice_` 加32位小写hex；kind为17种受控业务类型（原14种及活动更新/递补/审核3种），outcome与target只接受 [通知服务契约](NOTIFICATIONS_SERVICE.md) 的白名单。不提供创建通知接口，不重复聊天未读。
 
 - `GET /notifications?category=all|requests|interactions|system&unread=true|false&limit&offset` → `{items:Notification[],total,unreadTotal,throughId:string|null}`。默认all/false/limit20，limit1–100、offset0–100000；unread=false包含已读，非法枚举400。按本人序号降序，total为筛选后数量，unreadTotal为全收件箱未读数。
 - `GET /notifications/unread` → `{unreadTotal,throughId}`，独立轻量SQL徽标。
@@ -88,6 +113,8 @@
 所有接口要求正常会话与预期账号匹配，写入校验Origin。throughId取同一REPEATABLE READ快照内本人全收件箱最高序号对应ID，不受筛选、分页影响，空箱null；列表之后新到通知不被旧水位覆盖。业务/审计与通知原子提交，recipient/eventKey唯一，点赞按actor+帖子终身去重，反复点赞或重放幂等回执不刷通知。
 
 上下文、人物和跳转每次按当前权限投影，不持久化正文、私圈名、审核note或邀请token。失权后available=false且actor/context/target全null；系统通知actor始终null。圈通知不借平台角色绕过成员/频道权限，公开圈历史通知也要求当前成员或本人pending申请。举报结案只给本人固定状态，无内容或链接。客户端只映射已知target；uploads目标携mediaId到本人上传深链，不能直接加载屏蔽图。通知列表/徽标/已读均走账号域SQL，不加载普通业务State。
+
+活动target为 `{type:'circle-event',circleId,eventId}`，映射 `/circles/s/:circleId/events/:eventId`。更新/取消通知给当时正常确认/候补成员，实际递补通知给本人，平台审核给创建者及正常确认/候补成员并去重、排除操作者；创建者独立于当前成员资格收件，读取时仍须当前成员和活动权限，失权只保留通用历史结果。普通报名已有回执，不再制造通知。
 
 ## 通讯
 
@@ -123,8 +150,9 @@ PostgreSQL 的列表/详情/历史/发送/已读使用专用 SQL，不读取帖�
 - `GET /admin/users` → User 列表；`PATCH /admin/users/{id}` `{status?,role?}` → User。禁止降级/封禁自己及最后管理员。
 - `GET /admin/posts` → 全部状态 Post 列表；`PATCH /admin/posts/{id}` `{status}` → Post。
 - `GET /admin/reports` → Report 列表；`PATCH /admin/reports/{id}` `{status:'resolved'|'dismissed',note}` → Report，note 必填；只允许 open 工单处理，重复结案返回409。
+- 圈子、圈帖和活动使用独立 `/admin/circles`、`/admin/circle-posts`、`/admin/circle-events`；活动治理入口 `/circles/events` 显示生命周期与平台可见性双状态，冲突刷新后再次确认，不请求报名名单。
 - `GET /admin/audit` → Audit 列表。`Audit={id,actorId,actorName,action,targetId,detail,createdAt}`。
-- `Report={id,reporterId,targetType,targetId,reason,status:'open'|'resolved'|'dismissed',note,createdAt}`。
+- `Report={id,reporterId,targetType:'post'|'user'|'circle-post'|'circle-event',targetId,reason,status:'open'|'resolved'|'dismissed',note,createdAt}`。
 - admin / moderator 可以读取运营并审核内容/处理举报；仅 admin 可变更用户角色和状态。用户列表支持 status/role，内容和举报支持 status。
 - dailyActive 为当前有效会话用户数，series 按 UTC 日期统计，不作为严格 DAU 指标。
 - 所有运营写操作在同一事务写审计。

@@ -4,6 +4,9 @@ export type PostStatus = 'published' | 'hidden' | 'pending';
 export type ReportStatus = 'open' | 'resolved' | 'dismissed';
 export type MediaStatus = 'ready' | 'blocked';
 export type CircleStatus = 'active' | 'suspended' | 'archived';
+export type EventModeration = 'visible' | 'hidden';
+export type EventLifecycle = 'published' | 'cancelled';
+export type EventPhase = 'upcoming' | 'ongoing' | 'ended' | 'cancelled';
 
 export interface User {
   id: string;
@@ -104,10 +107,43 @@ export interface AdminCirclePost {
   moderationNote: string;
 }
 
+export interface AdminCircleEvent {
+  id: string;
+  circleId: string;
+  creator: PublicUser;
+  title: string;
+  description: string;
+  mode: 'online' | 'offline';
+  location: string;
+  startsAt: string;
+  endsAt: string;
+  registrationClosesAt: string;
+  capacity: number;
+  registeredCount: number;
+  waitlistedCount: number;
+  lifecycle: EventLifecycle;
+  moderation: EventModeration;
+  phase: EventPhase;
+  registrationOpen: boolean;
+  myRegistration: {
+    status: 'registered' | 'waitlisted' | 'cancelled';
+    reason: '' | 'user' | 'membership' | 'account' | 'event';
+    queuePosition: number | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  circleName: string;
+  circleStatus: CircleStatus;
+  moderationNote: string;
+}
+
 export interface Report {
   id: string;
   reporterId: string;
-  targetType: 'post' | 'user' | 'circle-post';
+  targetType: 'post' | 'user' | 'circle-post' | 'circle-event';
   targetId: string;
   reason: string;
   status: ReportStatus;

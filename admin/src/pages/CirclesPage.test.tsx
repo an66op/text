@@ -117,6 +117,10 @@ describe('independent platform circle governance', () => {
       'href',
       `/circles/posts?circleId=${circle.id}`,
     );
+    expect(within(dialog).getByRole('link', { name: '审核圈内活动' })).toHaveAttribute(
+      'href',
+      `/circles/events?circleId=${circle.id}`,
+    );
     expect(within(dialog).getByRole('link', { name: '查看治理审计' })).toHaveAttribute(
       'href',
       `/audit?q=${circle.id}`,

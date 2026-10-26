@@ -1,12 +1,14 @@
 # 圈子服务
 
-创建、成员、邀请、forum/announcement频道、帖子、评论/点赞及治理已接入Go/PostgreSQL；v0.7.0增加同事务站内通知与本人引用清理入口。本机圈子不自动导入，保留独立演示。活动、语音、聊天实时流和资料库后续继续接入，不使用虚假的在线人数或成功回执。
+创建、成员、邀请、forum/announcement频道、帖子、评论/点赞及治理已接入Go/PostgreSQL；v0.7.0增加同事务站内通知与本人引用清理，本轮v0.8.0 / schema8实现圈级活动发布、报名候补、管理名单、举报与独立治理。本机圈子不自动导入，保留独立演示。语音、真实圈聊和资料库仍待接入，不使用虚假的在线人数或成功回执；运行验收见 [阶段记录](STACK_STATUS.md)。
 
 ## 路由与模型
 
 前台真实目录 `/circles`，创建 `/circles/new`，圈子主页 `/circles/s/:circleId`；其下 `channels/:channelId`、`posts/:postId`、`compose?channel=ID`、`members`、`manage`、`join`、`invite`。后端前缀 `/api/v1`。本机目录 `/circles/demo`、创建 `/circles/demo/new`，旧本机ID详情路由继续保留；与真实服务互不替代。
 
-所有ID为随机前缀加32位小写hex：circle_/cchannel_/cpost_/ccomment_/crequest_/cinvite_。时间RFC3339；列表 `{items,total}`，limit1–100、offset0–100000。PublicUser沿用不含邮箱/角色的投影。
+真实活动位于同一圈详情下 `events`、`events/new`、`events/:eventId`、`events/:eventId/edit`、`events/:eventId/attendees`，不改变频道枚举或五个一级入口。后台圈子治理第三分区为 `/circles/events`。
+
+所有ID为随机前缀加32位小写hex：circle_/cchannel_/cpost_/ccomment_/crequest_/cinvite_/cevent_。时间RFC3339；列表 `{items,total}`，limit1–100、offset0–100000。PublicUser沿用不含邮箱/角色的投影。
 
 ```ts
 type CircleRole = 'owner' | 'admin' | 'member' | 'guest';
@@ -144,14 +146,27 @@ CircleInput：name最多40字，description最多600字，category最多30字，
 
 本人上传页的圈内引用可明确确认删除整篇本人圈帖，成功后刷新引用，原图另行清理；删除失败保留并可重试。通知的图片目标只跳 `/account/uploads?image=media_<32小写hex>`，按本人资产重新读取，不直接公开原图。
 
+## 圈级活动
+
+活动独立于讨论/公告频道，完整模型、10个API与时间、容量、候补规则集中在 [活动服务契约](CIRCLE_EVENTS_SERVICE.md)。当前圈owner/admin可创建、全量编辑和结束前取消，管理权来自当前角色；创建者身份不授予永久管理权限。编辑和后台治理使用revision防旧表单覆盖，取消是终态。活动不收费、不收报名附言或联系方式，地点仅纯文本。
+
+普通列表、详情与数量只向当前active成员开放；公开圈介绍也不授予活动权限。hidden仅当前圈管理可读，创建者降为普通成员后也不能借旧创建回执读取；暂停圈普通端不可读，归档只保留历史。普通成员只通过myRegistration读取本人登记，名单独立分页且仅圈owner/admin可查，平台活动治理不请求名单。
+
+join仅争取确认名额，满额409；waitlist明确同意候补，空位直接确认、满额进入队尾。成功操作收据按event/user/clientId绑定intent，重放只回当前本人状态，不能用旧join复活登记或旧leave取消后来登记。超时先刷新，手动重试保留原编号，不以本机人数替代服务器结果。
+
+释放名额、容量增加或恢复圈/活动可见性时，同事务按顺序递补有效且未截止候补；不恢复cancelled登记，不重开报名窗口。退出/移除/封禁和账号停用在原事务释放未结束活动登记，重入/解禁不恢复旧报名。持有已知圈/活动ID且正常登录的本人，可经leave清理既有登记；前台清理入口在私密详情业务树外，只发本人清理操作，不预取标题、地点或名单。
+
+活动举报使用 `POST /circles/{id}/events/{eventId}/report`，必须本人当前可读，写入现有举报表的circle-event类型。活动编辑/取消、实际候补递补和平台可见性变化生成受控站内通知；创建者独立收审核结果，离圈后通知上下文仍按当前权限脱敏。
+
 ## 独立平台治理
 
 - `GET /admin/circles?q&status&limit&offset` → AdminCircle列表；`PATCH /admin/circles/{id}` `{status:'active'|'suspended',note}` → AdminCircle。仅平台staff，note必填1–1000字，同状态更新说明允许并审计。archived只读，不能用平台恢复冒充圈主解除归档。
 - `GET /admin/circle-posts?circleId&status&q&limit&offset` → AdminCirclePost列表，包括私圈内容，界面明确为平台审核权限；`PATCH /admin/circle-posts/{id}` `{status:'published'|'hidden'|'pending',note}` → AdminCirclePost。须填说明并审计，发布重查圈子/频道状态和绑定图片，不能从暂停/归档圈发布新内容。
+- `GET /admin/circle-events` / `PATCH /admin/circle-events/{eventId}` 是独立staff活动治理，仅显示内容和聚合数，无名单、收据或联系方式。PATCH带moderation/note/revision，说明必填，取消活动只读；任何visible提交须圈active，已结束可恢复历史阅读。恢复事务仅递补有效未截止候补，不恢复取消登记或改变原报名截止；同状态补说明仍推进版本并审计。
 - 平台暂停圈后，普通端不再读频道/帖子/评论及他人的圈内图片，自己的圈介绍显示暂停状态便于申诉；平台审核入口仍可查。恢复不改成员或自动发布待审/隐藏帖。
 
 ## 验证与工程边界
 
-schema6和原图scope迁移在一个事务，保留旧实体、Cookie与文件；当前schema7另加通知收件箱与每账号序号两表，不导入本机demo或回填旧通知。圈子审批/身份/互动/治理、图帖和原图审核结果依 [通知契约](NOTIFICATIONS_SERVICE.md) 同事务产生事件。历史通知每次按当前成员、圈状态和频道角色动态投影；管理降权不能继续读申请附言，失权后actor/context/target均为空。公开圈的通知上下文也要求当前成员或本人pending申请，不能借历史记录追踪离圈后的介绍变更。
+schema6和原图scope迁移在一个事务，保留旧实体、Cookie与文件；schema7增加通知收件箱与每账号序号两表，schema8增加活动、本人登记和成功操作收据三表，并扩展通知/举报约束，不导入本机demo或回填旧活动/通知。圈子审批/身份/互动/治理、图帖、原图和活动结果依 [通知契约](NOTIFICATIONS_SERVICE.md) 同事务产生事件。历史通知每次按当前成员、圈状态及相应频道/活动权限动态投影；管理降权不能继续读申请附言，失权后actor/context/target均为空。公开圈的介绍类通知上下文也要求当前成员或本人pending申请，不能借历史记录追踪离圈后的介绍变更。
 
-公开介绍不得携带邀请token、私频道名、私密正文或邮箱。关键验证包含幂等、角色竞态、最后名额邀请/审批、移除与图读取重查、通知动态脱敏、作者失权后仅删除本人内容；另有真实PG隔离、迁移回滚、私圈/跨圈IDOR、媒体世界隔离和后台越权验证。圈子普通读写仍有State全域快照成本，通知列表/徽标/已读使用独立账号SQL，不声称高流量容量或实时语音已完成。
+公开介绍不得携带邀请token、私频道名、私密正文、活动标题/数量或邮箱。关键验证包含幂等、角色竞态、最后名额邀请/审批、移除与图读取重查、通知动态脱敏、作者失权后仅删除本人内容，以及活动限额/FIFO/成功收据/取消与失权清理；另有真实PG隔离、迁移回滚、私圈/跨圈IDOR、媒体世界隔离和后台越权验证。圈子成员/频道/图文普通读写仍有State全域快照成本；活动、通知走按域SQL，活动历史不进入State，成员/账号变化在同事务末尾用窄域reconciliation协调登记。新建活动与报名发生在旧State快照之后的交错也属于必须验证的边界。本文不代替本轮全检/恢复证据，不声称高流量容量或实时语音已完成。

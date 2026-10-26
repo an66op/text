@@ -22,6 +22,14 @@ export const ServerCircleMembersPage = lazy(
 export const ServerCircleManagePage = lazy(() => import('@/features/platform/circles/ManagePage'));
 export const ServerCircleJoinPage = lazy(() => import('@/features/platform/circles/JoinPage'));
 export const ServerCircleInvitePage = lazy(() => import('@/features/platform/circles/InvitePage'));
+export const CircleEventsPage = lazy(() => import('@/features/platform/circles/events/EventsPage'));
+export const CircleEventPage = lazy(() => import('@/features/platform/circles/events/EventPage'));
+export const CircleEventEditorPage = lazy(
+  () => import('@/features/platform/circles/events/EventEditorPage'),
+);
+export const CircleEventAttendeesPage = lazy(
+  () => import('@/features/platform/circles/events/AttendeesPage'),
+);
 export const ServerWorldPage = lazy(() => import('@/features/platform/ServerWorldPage'));
 export const PlatformMessagesPage = lazy(() => import('@/features/platform/PlatformMessagesPage'));
 export const ConversationDetailsPage = lazy(

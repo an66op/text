@@ -1,4 +1,13 @@
-import { Crown, Hash, LockKeyhole, Megaphone, PenLine, Settings2, Users } from 'lucide-react';
+import {
+  CalendarDays,
+  Crown,
+  Hash,
+  LockKeyhole,
+  Megaphone,
+  PenLine,
+  Settings2,
+  Users,
+} from 'lucide-react';
 import { Link } from 'react-router';
 import { imageUrl } from '../platform-format';
 import { PlatformAvatar, PlatformError } from '../PlatformUi';
@@ -87,6 +96,10 @@ function Home() {
             <Link to={circlePaths.members(circle.id)}>
               <Users size={20} />
               成员
+            </Link>
+            <Link to={circlePaths.events(circle.id)}>
+              <CalendarDays size={20} />
+              活动
             </Link>
             {channels.data?.items.map((channel) => (
               <Link key={channel.id} to={circlePaths.channel(circle.id, channel.id)}>

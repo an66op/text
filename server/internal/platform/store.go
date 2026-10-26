@@ -107,6 +107,12 @@ func (s *PostgresStore) updateOnce(ctx context.Context, fn func(*State) error) e
 	if err = persistNormalized(ctx, tx, before, state); err != nil {
 		return err
 	}
+	if err = persistCircleEventSeeds(ctx, tx, state.EventSeedDrafts); err != nil {
+		return err
+	}
+	if err = reconcileCircleEvents(ctx, tx, before, state); err != nil {
+		return err
+	}
 	if err = persistNotificationDrafts(ctx, tx, state.NotificationDrafts); err != nil {
 		return err
 	}

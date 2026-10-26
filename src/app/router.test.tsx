@@ -206,6 +206,19 @@ describe('real application routes', () => {
     expect(matched?.handle).toMatchObject({ title: '通知', section: 'social', level: 'secondary' });
   });
 
+  it('routes real circle events and management independently of local activity demos', () => {
+    for (const suffix of ['', '/new', '/cevent_123', '/cevent_123/edit', '/cevent_123/attendees']) {
+      const matched = matchRoutes(appRoutes, `/circles/s/circle_123/events${suffix}`)?.at(
+        -1,
+      )?.route;
+      expect(matched?.path).toMatch(/^\/circles\/s\/:circleId\/events/);
+      expect(matched?.handle).toMatchObject({ section: 'discover', level: 'secondary' });
+    }
+    expect(matchRoutes(appRoutes, '/circles/s/circle_123/events/new')?.at(-1)?.route.path).toBe(
+      '/circles/s/:circleId/events/new',
+    );
+  });
+
   it('reserves the bottom navigation for the five primary pages', () => {
     const children = appRoutes[0].children ?? [];
     const primaryRoutes = children.filter((route) => route.handle?.level === 'primary');

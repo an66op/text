@@ -9,7 +9,7 @@ import {
   RefreshCw,
   ThumbsUp,
 } from 'lucide-react';
-import { Link, NavLink, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { accountEpoch, expectedAccount } from '../../../src/shared/api/account-guard';
 import { hostedImageId } from '../../../src/shared/api/media-url';
 import { api, errorMessage, queryString } from '../api';
@@ -36,17 +36,7 @@ import {
   Pagination,
   SearchForm,
 } from '../ui';
-
-function CircleTabs() {
-  return (
-    <nav className="circle-tabs" aria-label="圈子治理分区">
-      <NavLink to="/circles" end>
-        圈子治理
-      </NavLink>
-      <NavLink to="/circles/posts">圈帖审核</NavLink>
-    </nav>
-  );
-}
+import CircleGovernanceTabs from './CircleGovernanceTabs';
 
 function useGovernanceMutation<T>(path: string, onSaved: (value: T) => void) {
   const [busy, setBusy] = useState(false);
@@ -280,6 +270,9 @@ function CircleDetail({
         <Link className="button" to={`/circles/posts?circleId=${encodeURIComponent(circle.id)}`}>
           审核圈内帖子 <ArrowUpRight size={15} />
         </Link>
+        <Link className="button" to={`/circles/events?circleId=${encodeURIComponent(circle.id)}`}>
+          审核圈内活动 <ArrowUpRight size={15} />
+        </Link>
         <Link className="text-link" to={`/audit?q=${encodeURIComponent(circle.id)}`}>
           查看治理审计 <ArrowUpRight size={14} />
         </Link>
@@ -343,7 +336,7 @@ export default function CirclesPage() {
           </button>
         }
       />
-      <CircleTabs />
+      <CircleGovernanceTabs />
       <Notice tone="info">
         平台治理可查看公开与私密圈子的运营记录。进入此页面不会加入圈子，也不会获得普通圈内接口权限。
       </Notice>
@@ -659,7 +652,7 @@ export function CirclePostsPage() {
           </button>
         }
       />
-      <CircleTabs />
+      <CircleGovernanceTabs />
       <Notice tone="info">
         <LockKeyhole size={14} />{' '}
         以平台运营权限查看圈帖，范围包含私密圈子与管理频道。平台身份不会自动成为圈子成员，已发布圈帖仍受成员与频道权限控制。

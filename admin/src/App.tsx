@@ -28,6 +28,7 @@ import UsersPage from './pages/UsersPage';
 import ContentPage from './pages/ContentPage';
 import MediaPage from './pages/MediaPage';
 import CirclesPage, { CirclePostsPage } from './pages/CirclesPage';
+import CircleEventsPage from './pages/CircleEventsPage';
 import ReportsPage from './pages/ReportsPage';
 import AuditPage from './pages/AuditPage';
 import SystemPage from './pages/SystemPage';
@@ -235,6 +236,7 @@ export default function App() {
         <Route path="/media" element={<MediaPage />} />
         <Route path="/circles" element={<CirclesPage />} />
         <Route path="/circles/posts" element={<CirclePostsPage />} />
+        <Route path="/circles/events" element={<CircleEventsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/system" element={<SystemPage />} />

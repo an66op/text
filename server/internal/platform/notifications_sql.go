@@ -172,6 +172,9 @@ func notificationSQLList(r *http.Request, tx pgx.Tx, user string) (any, error) {
 	for _, v := range stored {
 		page.Items = append(page.Items, projectNotification(projection, user, v))
 	}
+	if err = projectEventNotifications(r, tx, user, stored, page.Items); err != nil {
+		return nil, err
+	}
 	return page, nil
 }
 func (a *App) notificationSQLRead(r *http.Request, tx pgx.Tx, user string) (any, error) {

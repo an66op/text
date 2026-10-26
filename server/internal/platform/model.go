@@ -192,6 +192,7 @@ type Idempotency struct {
 	Result      Wallet `json:"result"`
 }
 type State struct {
+	EventSeedDrafts         []eventSeedDraft                        `json:"-"`
 	NotificationDrafts      []NotificationDraft                     `json:"-"`
 	Circles                 map[string]StoredCircle                 `json:"circles"`
 	CircleMembers           map[string]StoredCircleMember           `json:"circleMembers"`

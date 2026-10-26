@@ -35,6 +35,7 @@ type NotificationTarget struct {
 	CircleID string `json:"circleId,omitempty"`
 	PostID   string `json:"postId,omitempty"`
 	MediaID  string `json:"mediaId,omitempty"`
+	EventID  string `json:"eventId,omitempty"`
 }
 type Notification struct {
 	ID        string               `json:"id"`
@@ -68,6 +69,7 @@ var notificationRules = map[string]notificationRule{
 	"circle-comment": {"interactions", ""}, "circle-like": {"interactions", ""},
 	"world-review": {"system", "published|pending|hidden"}, "circle-review": {"system", "published|pending|hidden"},
 	"media-review": {"system", "ready|blocked"}, "report-review": {"system", "resolved|dismissed"},
+	"circle-event-update": {"system", "updated|cancelled"}, "circle-event-registration": {"system", "promoted"}, "circle-event-review": {"system", "hidden|visible"},
 }
 
 func (s *State) queueNotification(kind, actor, recipient, reference, outcome, eventKey string, now time.Time) {

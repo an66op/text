@@ -39,6 +39,11 @@ const capabilityLabels: Record<string, string> = {
   'transactional-notification-events': '业务与通知原子提交',
   'permission-aware-notifications': '按当前权限显示通知内容',
   'bounded-read-all': '截至列表快照的批量已读',
+  'circle-events': '圈内活动与报名管理',
+  'domain-sql-events': '活动按域查询与事务写入',
+  'event-waitlists': '限额报名与顺序候补递补',
+  'event-registration-receipts': '报名回执去重与取消保护',
+  'circle-event-moderation': '独立活动治理与审计',
 };
 
 function uptime(value: number) {

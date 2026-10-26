@@ -1,6 +1,8 @@
 import type {
   Audit,
   CircleStatus,
+  EventModeration,
+  EventPhase,
   MediaStatus,
   PostStatus,
   ReportStatus,
@@ -35,6 +37,16 @@ export const circlePostStatusLabels: Record<PostStatus, string> = {
   published: '圈内已发布',
   hidden: '已隐藏',
   pending: '待审核',
+};
+export const eventModerationLabels: Record<EventModeration, string> = {
+  visible: '圈内可见',
+  hidden: '平台屏蔽',
+};
+export const eventPhaseLabels: Record<EventPhase, string> = {
+  upcoming: '即将开始',
+  ongoing: '进行中',
+  ended: '已结束',
+  cancelled: '已取消',
 };
 
 export function number(value: number): string {
@@ -87,6 +99,11 @@ export function actionLabel(action: Audit['action']): string {
     'circle.post.moderate': '审核圈帖',
     'circle.post.govern': '审核圈帖',
     'circle-post.moderate': '审核圈帖',
+    'circle.event.govern': '审核活动',
+    'circle.event.create': '创建活动',
+    'circle.event.update': '编辑活动',
+    'circle.event.cancel': '取消活动',
+    'circle.event.registration': '活动报名',
     'report.update': '处理举报',
     'report.resolve': '处理举报',
     'report.updated': '处理举报',
@@ -106,7 +123,7 @@ export function safeOffset(value: string | null, limit = 20): number {
 
 export function safeReturnTo(value: unknown): string {
   return typeof value === 'string' &&
-    /^\/(overview|users|content|media|circles(?:\/posts)?|reports|audit|system)(\?|$)/.test(
+    /^\/(overview|users|content|media|circles(?:\/(?:posts|events))?|reports|audit|system)(\?|$)/.test(
       value,
     ) &&
     !Array.from(value).some((character) => character.charCodeAt(0) < 32 || character === '\\')

@@ -14,7 +14,10 @@ export type NotificationKind =
   | 'world-review'
   | 'circle-review'
   | 'media-review'
-  | 'report-review';
+  | 'report-review'
+  | 'circle-event-update'
+  | 'circle-event-registration'
+  | 'circle-event-review';
 
 export type Category = 'all' | 'requests' | 'interactions' | 'system';
 export type NotificationCategory = Exclude<Category, 'all'>;
@@ -25,6 +28,7 @@ export type NotificationTarget =
   | { type: 'circle'; circleId: string }
   | { type: 'world-post'; postId: string }
   | { type: 'circle-post'; circleId: string; postId: string }
+  | { type: 'circle-event'; circleId: string; eventId: string }
   | { type: 'uploads'; mediaId: string };
 
 export type Notification = {

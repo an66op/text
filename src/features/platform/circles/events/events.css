@@ -1,0 +1,355 @@
+.sce-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+}
+.sce-heading > .sce-tabs {
+  flex: 1;
+  margin: 0;
+}
+.sce-heading > a,
+.sce-heading > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.sce-tabs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+  margin: 12px 0 20px;
+}
+.sce-tabs > button {
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px 0;
+}
+.sce-tabs > button[aria-selected='true'] {
+  color: var(--text);
+  font-weight: 650;
+}
+.sce-tabs > button[aria-selected='true']:after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  width: 17px;
+  height: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: var(--accent);
+}
+.sce-tabs > button:last-child:not([role='tab']) {
+  margin-left: auto;
+}
+.sce-list {
+  display: grid;
+  gap: 14px;
+}
+.sce-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 19px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sce-card > div:last-child {
+  min-width: 0;
+  flex: 1;
+}
+.sce-date {
+  width: 48px;
+  flex: none;
+  background: #7770d70b;
+  border: 1px solid #7770d710;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  border-radius: 13px;
+  overflow: hidden;
+  color: var(--accent);
+  padding: 5px 0 8px;
+}
+.sce-date span {
+  font-size: 10px;
+  padding: 2px;
+}
+.sce-date strong {
+  font-size: 25px;
+  font-weight: 550;
+  line-height: 1.3;
+}
+.sce-card h2 {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--text);
+  margin: 4px 0 8px;
+}
+.sce-card p {
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 3px 0;
+  color: var(--muted);
+}
+.sce-card small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.sce-location {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.sce-status {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--accent);
+}
+.sce-status span {
+  padding: 3px 6px;
+  background: #7770d70a;
+  border-radius: 5px;
+}
+.sce-status .is-hidden {
+  color: #b67a42;
+  background: #d9a15d0c;
+}
+.sce-title {
+  font-size: 24px;
+  font-weight: 620;
+  line-height: 1.55;
+  margin: 14px 0 20px;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.6px;
+}
+.sce-detail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sce-facts {
+  display: grid;
+  gap: 10px;
+}
+.sce-facts p {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text);
+  margin: 0;
+}
+.sce-facts svg {
+  color: var(--muted);
+  margin-top: 3px;
+  flex: none;
+}
+.sce-facts span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.sce-registration {
+  margin: 23px 0;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sce-registration > .sce-mine {
+  width: 100%;
+  margin: 0 0 3px;
+}
+.sce-registration > .sc-muted {
+  width: 100%;
+  margin: 0;
+}
+.sce-mine {
+  font-size: 12px;
+  color: var(--accent);
+  line-height: 1.8;
+  margin: 10px 0 0;
+}
+.sce-mine.is-cancelled,
+.sce-mine.is-none {
+  color: var(--muted);
+}
+.sce-mine small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.8;
+}
+.sce-description {
+  margin: 25px 0;
+}
+.sce-description h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+.sce-description > p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 2;
+  color: var(--text);
+}
+.sce-creator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 25px 0;
+  color: var(--text);
+  font-size: 12px;
+}
+.sce-creator .platform-avatar {
+  width: 30px;
+  height: 30px;
+}
+.sce-creator small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.sce-manager-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 25px 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+.sce-report {
+  margin-top: 15px;
+}
+.sce-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 25px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.sce-pagination button {
+  font-size: 11px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  padding: 8px;
+}
+.sce-pagination button:disabled {
+  opacity: 0.35;
+}
+.sce-attendees > article {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 19px 0;
+}
+.sce-attendees > article > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sce-attendees strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+.sce-attendees small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.sce-attendees p {
+  font-size: 12px;
+  color: var(--accent);
+  margin: 9px 0 4px;
+}
+.sce-form input[type='datetime-local'] {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+}
+.sce-cleanup {
+  max-width: 788px;
+  margin: 0 auto 24px;
+  padding: 0 16px calc(12px + env(safe-area-inset-bottom));
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.sce-cleanup summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.sce-cleanup > button {
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  color: var(--accent);
+  font-size: 11px;
+}
+.sce-cleanup > p {
+  font-size: 11px;
+  line-height: 1.8;
+}
+.sce-cleanup > button:disabled,
+.sce-registration button:disabled {
+  opacity: 0.4;
+}
+@media (max-width: 600px) {
+  .sce-title {
+    font-size: 22px;
+  }
+  .sce-card {
+    gap: 12px;
+  }
+  .sce-card h2 {
+    font-size: 15px;
+  }
+  .sce-date {
+    width: 44px;
+  }
+  .sce-registration {
+    padding: 15px 13px;
+  }
+  .sce-tabs {
+    gap: 23px;
+  }
+  .sce-form .sc-form-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sce-form input,
+  .sce-form textarea,
+  .sce-form select {
+    font-size: 14px;
+  }
+  .sce-cleanup {
+    padding-inline: 16px;
+  }
+}

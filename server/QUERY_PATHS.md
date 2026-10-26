@@ -90,6 +90,20 @@ documents, wallet, and admin endpoints also retain it unless separately migrated
 by their owning domain. Device-session routes have their own implementation;
 messaging SQL needs only the retained `token_hash/user_id/expires_at` columns.
 
+Other migrated domains now have their own narrow paths: private-image GET/HEAD,
+notification list/badge/read operations, and all ten circle-event endpoints
+(including the independent platform governance routes). Event and registration
+history never enter ordinary State snapshots. State membership/account changes
+run bounded event reconciliation in the same transaction; old snapshots retry
+even when the activity itself was created after the snapshot. See
+[circle events](../docs/CIRCLE_EVENTS_SERVICE.md) and
+[notifications](../docs/NOTIFICATIONS_SERVICE.md) for those contracts. The
+frontend still reads ordinary circle metadata and authentication through the
+existing adapter, so these migrations do not remove every page's broad-read
+cost. Event-row locks, circle management/quota locks, and per-recipient notice
+counters also retain serialization points. The messaging benchmark below does
+not measure these newer domains.
+
 Thus broad snapshot costs and serializable predicate conflicts still exist for
 those operations. The five messaging routes avoid cross-domain hydration, but
 conversation-list unread totals count matching messages across the viewer's

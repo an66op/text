@@ -8,6 +8,9 @@ describe('admin navigation and media guards', () => {
     expect(safeReturnTo('/circles/posts?circleId=circle_1')).toBe(
       '/circles/posts?circleId=circle_1',
     );
+    expect(safeReturnTo('/circles/events?moderation=hidden')).toBe(
+      '/circles/events?moderation=hidden',
+    );
     for (const path of [
       'https://evil.example',
       '//evil.example',
@@ -15,6 +18,7 @@ describe('admin navigation and media guards', () => {
       '/login',
       '/unknown',
       '/circles/members',
+      '/circles/events/attendees',
       null,
       '/users\n',
     ]) {

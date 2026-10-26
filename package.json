@@ -34,6 +34,7 @@
     "verify:media": "node scripts/verify-media.mjs",
     "verify:circles": "node scripts/verify-circles.mjs",
     "verify:notifications": "node scripts/verify-notifications.mjs",
+    "verify:circle-events": "node scripts/verify-circle-events.mjs",
     "check:all": "npm run check && npm run build:admin && npm run test:admin && npm run test:server && npm run test:tooling"
   },
   "dependencies": {

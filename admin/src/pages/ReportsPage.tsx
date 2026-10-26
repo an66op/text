@@ -23,7 +23,16 @@ const targetLabels: Record<Report['targetType'], string> = {
   post: '社区内容',
   user: '用户账号',
   'circle-post': '圈内帖子',
+  'circle-event': '圈内活动',
 };
+const targetPages: Record<Report['targetType'], string> = {
+  post: '/content',
+  user: '/users',
+  'circle-post': '/circles/posts',
+  'circle-event': '/circles/events',
+};
+const targetLabel = (type: Report['targetType']) =>
+  Object.hasOwn(targetLabels, type) ? targetLabels[type] : '未知对象';
 
 function ReportDetail({
   report,
@@ -39,13 +48,12 @@ function ReportDetail({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const targetPage =
-    report.targetType === 'circle-post'
-      ? '/circles/posts'
-      : report.targetType === 'post'
-        ? '/content'
-        : '/users';
-  const targetPath = `${targetPage}?q=${encodeURIComponent(report.targetId)}&detail=${encodeURIComponent(report.targetId)}`;
+  const targetPage = Object.hasOwn(targetPages, report.targetType)
+    ? targetPages[report.targetType]
+    : '';
+  const targetPath = targetPage
+    ? `${targetPage}?q=${encodeURIComponent(report.targetId)}&detail=${encodeURIComponent(report.targetId)}`
+    : '';
   const save = async () => {
     if (busy || !note.trim() || report.status !== 'open') return;
     setBusy(true);
@@ -78,7 +86,7 @@ function ReportDetail({
       <dl className="detail-grid">
         <div>
           <dt>举报对象</dt>
-          <dd>{targetLabels[report.targetType]}</dd>
+          <dd>{targetLabel(report.targetType)}</dd>
         </div>
         <div>
           <dt>对象 ID</dt>
@@ -93,9 +101,11 @@ function ReportDetail({
           <dd className="pre-wrap">{report.reason}</dd>
         </div>
       </dl>
-      <Link className="button review-target" to={targetPath}>
-        查看被举报{targetLabels[report.targetType]} <ArrowUpRight size={16} />
-      </Link>
+      {targetPath && (
+        <Link className="button review-target" to={targetPath}>
+          查看被举报{targetLabel(report.targetType)} <ArrowUpRight size={16} />
+        </Link>
+      )}
       <div className="section-separator" />
       {report.status !== 'open' ? (
         <>
@@ -257,7 +267,7 @@ export default function ReportsPage() {
                           </td>
                           <td>
                             <div className="stacked-cell">
-                              <span>{targetLabels[report.targetType]}</span>
+                              <span>{targetLabel(report.targetType)}</span>
                               <small className="mono">{report.targetId}</small>
                             </div>
                           </td>
