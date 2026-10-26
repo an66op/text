@@ -32,6 +32,20 @@
 - `GET /posts/{id}/comments` → Comment 列表；`POST ...` `{body}` → Comment。
 - `POST /reports` `{targetType:'post'|'user',targetId,reason}` → Report。
 
+## 好友关系
+
+好友关系必须双方确认，成员目录、私聊和群组成员关系都不会自动变成好友。
+
+`FriendRequest = {id,from:PublicUser,to:PublicUser,note,status:'pending'|'accepted'|'declined'|'cancelled',createdAt,updatedAt}`。
+
+- `GET /friends` → `{items:[{user:PublicUser,since}],total}`，支持 q/limit/offset，按 since 降序及用户 ID 稳定排序。
+- `GET /friend-requests` 支持 `direction=incoming|outgoing`（默认 incoming）、`status=pending|accepted|declined|cancelled`（默认 pending）及通用分页；仅返回本人参与的申请，按创建时间降序及 ID 排序。
+- `POST /friend-requests` `{userId,note?}` → FriendRequest，备注最多300字。同方向重复待处理申请返回原对象与原备注；反向已有待处理申请409，须先处理；自己或已成为好友的对象不能再申请。
+- `POST /friend-requests/{id}/respond` `{action:'accept'|'decline'|'cancel'}` → FriendRequest。收件人接受/拒绝，发件人取消；重复相同终态幂等，不同决定409。接受与双向好友关系在同一事务提交。
+- `GET /relationships/{userId}` → `{status:'self'|'none'|'friends'|'incoming'|'outgoing',request?:FriendRequest,since?:string}`。
+- `DELETE /friends/{userId}` → `{ok:true}`，双向关系一起移除，重复幂等，原私聊与历史申请保留。再次成为好友需新申请并接受，重放旧接受结果不会恢复已移除的关系。
+- 发起/接受要求双方账号正常；取消、拒绝、移除可清理涉及停用账号的旧关系。好友列表隐藏停用成员，申请历史只向双方显示 PublicUser。
+
 ## 通讯
 
 `Conversation = {id,title,kind:'direct'|'group'|'channel',members:string[],ownerId,createdAt,lastMessage?:Message,unreadCount,readSeq,lastReadMessageId?}`。
@@ -39,9 +53,16 @@
 
 - `GET /conversations` → 用户已加入会话（附分页前 unreadTotal）；`POST /conversations` `{title,kind,memberIds:string[]}` → Conversation。
 - `GET /conversations/{id}/messages` 支持 beforeSeq / afterSeq，兼容 beforeId；返回升序 items、total、hasMore、nextBeforeSeq / nextBeforeId。
-- `POST /conversations/{id}/messages` `{body,clientId?}` → Message。clientId 按用户+会话去重，相同正文重复返回原消息、不同正文409；省略兼容旧客户端。仅成员可读写，频道仅频道主/已加入管理员可发布。
+- `POST /conversations/{id}/messages` `{body,clientId?}` → Message。clientId 按用户+会话去重，相同正文重复返回原消息、不同正文409；省略兼容旧客户端。仅成员可读写，频道仅当前频道主可发布，全站管理员身份不自动获得频道发布权。
+- `GET /conversations/{id}` → `{conversation:Conversation,memberProfiles:PublicUser[]}`，仅当前成员可读，不依赖会话列表分页。
+- `PATCH /conversations/{id}` `{title}` → Conversation；`POST /conversations/{id}/members` `{memberIds:string[]}` → Conversation，去重且总成员不超过200人，新成员可读原历史消息。
+- `DELETE /conversations/{id}/members/{userId}` → Conversation，不能移除当前所有者，重复移除幂等；清理该成员的个人已读水位，保留其原消息。
+- `POST /conversations/{id}/owner` `{userId}` → Conversation，只能转交给当前正常成员，旧所有者随即失去管理身份。
+- 上述修改仅群组/频道当前所有者可操作，不因全站 admin 角色绕过；私聊禁止管理成员、改名和转交。
+- `POST /conversations/{id}/leave` `{}` → `{ok:true}`，群组/频道的所有者需先转交，私聊不能退出；未知或已离开的会话统一返回无副作用成功，不泄露私有会话是否存在。
 - `POST /conversations/{id}/read` `{messageId}` → `{conversationId,readSeq,lastReadMessageId,unreadCount}`。只能标记同会话现存消息，水位只前进。
-- `GET /stream?after=eventId&account=userId` 升级 WebSocket。Cookie+精确Origin+成员鉴权；account可选，身份不符409。通知只含 type、eventId 和可选 conversationId/messageId；类型 ready / message.created / conversation.created / conversation.read / resync。通知不作为权威消息内容；客户端再GET。
+- `GET /stream?after=eventId&account=userId` 升级 WebSocket。Cookie+精确Origin+成员鉴权；account可选，身份不符409。通知只含 type、eventId 和可选 conversationId/messageId；类型 ready / message.created / conversation.created / conversation.updated / conversation.read / resync。通知不作为权威消息内容；客户端再GET。
+- 成员变更写事务 outbox；移出/退出后 API 按当前成员关系拒绝访问，WS 发送前再次检查。被移出者仅收到不含会话或消息 ID 的个人 resync，已有其它合法会话仍可继续收事件。
 - eventId 为十进制字符串的不透明游标。outbox事务提交后可推送、跨实例读取；最多保留2000事件/7天，过旧游标resync。每账号8连接、每实例256，15秒ping、30分钟重连，注销/封禁后关闭。
 - `GET /directory` → 已登录成员目录 PublicUser 列表，支持 q/分页；`GET /users/{handle}` → active成员 PublicUser。
 

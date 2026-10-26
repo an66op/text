@@ -27,6 +27,9 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	if done {
+		if err = migrateFriendships(ctx, tx); err != nil {
+			return err
+		}
 		return tx.Commit(ctx)
 	}
 	if _, err = tx.Exec(ctx, normalizedSchema); err != nil {
@@ -34,6 +37,9 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	if _, err = tx.Exec(ctx, normalizedGuards); err != nil {
 		return fmt.Errorf("create normalized guards: %w", err)
+	}
+	if err = migrateFriendships(ctx, tx); err != nil {
+		return err
 	}
 	var legacy bool
 	if err = tx.QueryRow(ctx, `SELECT to_regclass('gongming_app_state') IS NOT NULL`).Scan(&legacy); err != nil {

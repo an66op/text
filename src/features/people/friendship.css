@@ -1,0 +1,329 @@
+.friendship-tabs {
+  display: flex;
+  align-items: center;
+  gap: 27px;
+  padding: 5px 2px 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #9381ac12;
+  background: transparent;
+}
+.friendship-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  background: transparent;
+  border: 0;
+  padding: 10px 2px 14px;
+  color: #9e91ab;
+  font-size: 14px;
+  font-weight: 500;
+}
+.friendship-tabs > button.active {
+  color: var(--accent, #6260e8);
+  font-weight: 600;
+}
+.friendship-tabs > button.active::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 3px;
+  border-radius: 3px;
+  background: currentColor;
+  left: 50%;
+  bottom: -1px;
+  transform: translateX(-50%);
+}
+.friendship-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  padding: 0 4px;
+  color: #fff;
+  background: #db91a1;
+  font-size: 9px;
+  font-weight: 500;
+}
+.friendship-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: #8a79a3;
+  padding: 5px 0;
+  font-size: 11px;
+}
+.friendship-soft-button,
+.friendship-primary,
+.friendship-secondary,
+.friendship-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 11px;
+  padding: 10px 15px;
+  min-height: 38px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.friendship-soft-button,
+.friendship-secondary {
+  color: #8d7ba8;
+  background: #ebe6f680;
+}
+.friendship-primary {
+  color: #fff;
+  background: var(--accent, #6260e8);
+}
+.friendship-danger {
+  color: #b46d83;
+  background: #f3e1e8;
+}
+.friendship-friends-list {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.friendship-friends-list > a {
+  padding: 18px 4px;
+  border-bottom-color: #8e7da914;
+}
+.friendship-request-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 18px;
+}
+.friendship-request-tabs > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  color: #a392b3;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+.friendship-request-tabs > button.active {
+  background: #eae5f58a;
+  color: #8b78a6;
+}
+.friendship-request-tabs small {
+  font-size: 10px;
+  color: #b8a8c7;
+}
+.friendship-request-toolbar,
+.friendship-profile-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #b29fc0;
+  margin-bottom: 13px;
+}
+.friendship-request-list {
+  display: grid;
+  gap: 12px;
+}
+.friendship-request-card {
+  border: 1px solid #ffffffbb;
+  border-radius: 20px;
+  padding: 17px;
+  background: #ffffff42;
+}
+.friendship-request-person {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: inherit;
+  text-decoration: none;
+}
+.friendship-request-person > span:not(.platform-avatar) {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+}
+.friendship-request-person strong {
+  color: #665872;
+  font-size: 13px;
+  font-weight: 600;
+}
+.friendship-request-person small,
+.friendship-request-person time {
+  font-size: 10px;
+  color: #a998b8;
+}
+.friendship-request-person time {
+  align-self: flex-start;
+  padding-top: 4px;
+}
+.friendship-request-note {
+  color: #9b89aa;
+  line-height: 1.85;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 16px 0 14px;
+}
+.friendship-request-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.friendship-request-actions > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: auto;
+  font-size: 10px;
+  color: #b4a3bd;
+}
+.friendship-feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8ca393;
+  line-height: 1.8;
+  margin: 8px 0 16px;
+}
+.friendship-local-link {
+  color: #8a76a4;
+  text-decoration: none;
+}
+.people-footnote > span {
+  display: block;
+  margin-top: 8px;
+}
+.friendship-profile {
+  margin-top: 21px;
+  padding-top: 18px;
+  border-top: 1px solid #9784ab14;
+  text-align: left;
+}
+.friendship-relation-status {
+  color: #a28eb0;
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+  margin: 0 0 13px;
+}
+.friendship-add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 9px 16px;
+  border: 1px solid #dcd3e9;
+  border-radius: 13px;
+  background: transparent;
+  color: #8f7cac;
+  font-size: 12px;
+  margin: 0 auto;
+}
+.friendship-relation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  font-size: 12px;
+  color: #9d89ac;
+}
+.friendship-relation-row > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.friendship-profile-request-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.friendship-profile-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #9d86ac;
+  line-height: 1.9;
+  padding: 5px 13px;
+  border-left: 2px solid #ded4e9;
+  margin: 0 0 15px;
+}
+.friendship-request-form > label {
+  display: grid;
+  gap: 10px;
+  font-size: 11px;
+  color: #aa96b8;
+}
+.friendship-request-form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #e3d9eb;
+  border-radius: 12px;
+  background: transparent;
+  padding: 12px;
+  font: inherit;
+  color: #897197;
+  line-height: 1.8;
+}
+.friendship-request-form > div {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.friendship-request-form small {
+  font-size: 10px;
+  color: #b8a6c3;
+  margin-right: auto;
+}
+.friendship-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #30264236;
+  backdrop-filter: blur(10px);
+}
+.friendship-removal-dialog {
+  max-width: 350px;
+  border-radius: 24px;
+  padding: 25px;
+  border: 1px solid #ffffffcc;
+  background: #fcf8fff5;
+  box-shadow: 0 12px 55px #33223c1c;
+  text-align: left;
+}
+.friendship-removal-dialog h2 {
+  color: #6e557e;
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  overflow-wrap: anywhere;
+}
+.friendship-removal-dialog > p {
+  font-size: 12px;
+  color: #a18cab;
+  line-height: 1.9;
+  margin: 0 0 23px;
+  overflow-wrap: anywhere;
+}
+.friendship-removal-dialog > div:last-child {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}

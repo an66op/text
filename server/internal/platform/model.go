@@ -187,24 +187,26 @@ type Idempotency struct {
 	Result      Wallet `json:"result"`
 }
 type State struct {
-	Accounts      map[string]Account             `json:"accounts"`
-	Sessions      map[string]Session             `json:"sessions"`
-	Posts         map[string]StoredPost          `json:"posts"`
-	Comments      map[string]StoredComment       `json:"comments"`
-	Conversations map[string]StoredConversation  `json:"conversations"`
-	Messages      map[string]StoredMessage       `json:"messages"`
-	Documents     map[string]map[string]Document `json:"documents"`
-	Reports       map[string]Report              `json:"reports"`
-	Audits        []Audit                        `json:"audits"`
-	Wallets       map[string]StoredWallet        `json:"wallets"`
-	Idempotency   map[string]Idempotency         `json:"idempotency"`
-	Reads         map[string]ConversationRead    `json:"reads"`
-	Outbox        []MessageEvent                 `json:"outbox"`
-	EventSequence int64                          `json:"eventSequence"`
+	FriendRequests map[string]StoredFriendRequest `json:"friendRequests"`
+	Friendships    map[string]StoredFriendship    `json:"friendships"`
+	Accounts       map[string]Account             `json:"accounts"`
+	Sessions       map[string]Session             `json:"sessions"`
+	Posts          map[string]StoredPost          `json:"posts"`
+	Comments       map[string]StoredComment       `json:"comments"`
+	Conversations  map[string]StoredConversation  `json:"conversations"`
+	Messages       map[string]StoredMessage       `json:"messages"`
+	Documents      map[string]map[string]Document `json:"documents"`
+	Reports        map[string]Report              `json:"reports"`
+	Audits         []Audit                        `json:"audits"`
+	Wallets        map[string]StoredWallet        `json:"wallets"`
+	Idempotency    map[string]Idempotency         `json:"idempotency"`
+	Reads          map[string]ConversationRead    `json:"reads"`
+	Outbox         []MessageEvent                 `json:"outbox"`
+	EventSequence  int64                          `json:"eventSequence"`
 }
 
 func NewState() *State {
-	return &State{Accounts: map[string]Account{}, Sessions: map[string]Session{}, Posts: map[string]StoredPost{}, Comments: map[string]StoredComment{}, Conversations: map[string]StoredConversation{}, Messages: map[string]StoredMessage{}, Documents: map[string]map[string]Document{}, Reports: map[string]Report{}, Audits: []Audit{}, Wallets: map[string]StoredWallet{}, Idempotency: map[string]Idempotency{}, Reads: map[string]ConversationRead{}, Outbox: []MessageEvent{}}
+	return &State{FriendRequests: map[string]StoredFriendRequest{}, Friendships: map[string]StoredFriendship{}, Accounts: map[string]Account{}, Sessions: map[string]Session{}, Posts: map[string]StoredPost{}, Comments: map[string]StoredComment{}, Conversations: map[string]StoredConversation{}, Messages: map[string]StoredMessage{}, Documents: map[string]map[string]Document{}, Reports: map[string]Report{}, Audits: []Audit{}, Wallets: map[string]StoredWallet{}, Idempotency: map[string]Idempotency{}, Reads: map[string]ConversationRead{}, Outbox: []MessageEvent{}}
 }
 func newID(prefix string) string {
 	b := make([]byte, 16)

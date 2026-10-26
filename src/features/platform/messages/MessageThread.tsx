@@ -10,6 +10,8 @@ import {
   Users,
 } from 'lucide-react';
 import { ApiError, apiErrorMessage } from '@/shared/api/client';
+import { Link } from 'react-router';
+import { paths } from '@/shared/config/paths';
 import { platformApi } from '@/shared/api/platformApi';
 import type { Conversation, PlatformMessage, ReadMark } from '@/shared/api/types';
 import { useAuth } from '../useAuth';
@@ -67,8 +69,7 @@ export default function MessageThread({
     updateVersion,
   });
   const canSend =
-    !thread.accessDenied &&
-    (conversation.kind !== 'channel' || conversation.ownerId === userId || user?.role === 'admin');
+    !thread.accessDenied && (conversation.kind !== 'channel' || conversation.ownerId === userId);
   useEffect(() => {
     active.current = true;
     return () => {
@@ -132,7 +133,8 @@ export default function MessageThread({
       scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [thread.messages, thread.historyLoading, draft.state.pending]);
   const send = async (pending: PendingMessage) => {
-    if (sending.current || !canSend || !active.current) return;
+    const permission = thread.capturePermission();
+    if (sending.current || !canSend || !active.current || permission === null) return;
     sending.current = true;
     setSendingId(pending.clientId);
     setSendError('');
@@ -154,9 +156,14 @@ export default function MessageThread({
         );
       messagesChanged();
       if (!active.current) return;
+      if (!thread.apply([message], permission))
+        throw new ApiError(
+          '会话权限已更新，旧请求未用于恢复消息，请先重新确认会话权限',
+          'CONVERSATION_ACCESS_CHANGED',
+          409,
+        );
       following.current = true;
       setFollowingLatest(true);
-      thread.apply([message]);
       draft.remove([pending.clientId]);
       onSent(message);
       thread.refresh();
@@ -216,7 +223,13 @@ export default function MessageThread({
             · {conversation.members.length} 位成员
           </small>
         </div>
-        {conversation.kind === 'channel' ? <Radio size={20} /> : <Users size={20} />}
+        <Link
+          className="platform-thread-info"
+          to={paths.conversationDetails(conversation.id)}
+          aria-label="聊天信息"
+        >
+          {conversation.kind === 'channel' ? <Radio size={20} /> : <Users size={20} />}
+        </Link>
       </header>
       <div className="platform-thread-status">
         <ConnectionStatus status={streamStatus} />
@@ -351,7 +364,7 @@ export default function MessageThread({
           <p>
             {thread.accessDenied
               ? '当前无法访问这个会话'
-              : '你已加入频道，只有频道主和管理员可以发布消息'}
+              : '你已加入频道，只有当前频道主可以发布消息'}
           </p>
         )}
       </div>

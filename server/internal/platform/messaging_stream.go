@@ -2,6 +2,7 @@ package platform
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sort"
 	"strconv"
@@ -34,6 +35,14 @@ type StreamSnapshot struct {
 type StreamStore interface {
 	ReadStream(context.Context, []StreamRequest, int) (StreamSnapshot, error)
 }
+
+// A queued notification is re-authorized immediately before the socket write.
+// Poll-time authorization alone could leave stale private events in its queue.
+type StreamEventAuthorizer interface {
+	AuthorizeStream(context.Context, StreamRequest, string) (sessionValid bool, conversationMember bool, err error)
+}
+
+var errStreamSessionExpired = errors.New("stream session expired")
 
 // StreamEvent deliberately omits sender, member lists, bodies, email and tokens.
 type StreamEvent struct {
@@ -171,6 +180,12 @@ func (h *messageHub) deliver(sub *streamSubscriber, snapshot StreamSnapshot) {
 		if event.Seq <= cursor {
 			continue
 		}
+		if event.Type == "membership.revoked" {
+			if event.RecipientID == session.UserID {
+				pending = append(pending, StreamEvent{Type: "resync", EventID: strconv.FormatInt(event.Seq, 10)})
+			}
+			continue
+		}
 		if session.ConversationIDs[event.ConversationID] && (event.RecipientID == "" || event.RecipientID == session.UserID) {
 			pending = append(pending, StreamEvent{event.Type, strconv.FormatInt(event.Seq, 10), event.ConversationID, event.MessageID})
 		}
@@ -200,6 +215,31 @@ func (h *messageHub) deliver(sub *streamSubscriber, snapshot StreamSnapshot) {
 	h.mu.Lock()
 	sub.request.AfterSeq = cursor
 	h.mu.Unlock()
+}
+
+func (a *App) authorizeStream(ctx context.Context, request StreamRequest, conversationID string) (bool, bool, error) {
+	if store, ok := a.store.(StreamEventAuthorizer); ok {
+		return store.AuthorizeStream(ctx, request, conversationID)
+	}
+	valid, allowed := false, false
+	err := a.store.Read(ctx, func(s *State) error {
+		session, exists := s.Sessions[request.SessionHash]
+		if !exists || session.UserID != request.UserID || !session.ExpiresAt.After(a.now()) {
+			return nil
+		}
+		account, exists := s.Accounts[session.UserID]
+		if !exists || account.User.Status != "active" {
+			return nil
+		}
+		valid = true
+		if conversationID == "" {
+			allowed = true
+		} else {
+			allowed = member(s.Conversations[conversationID], request.UserID)
+		}
+		return nil
+	})
+	return valid, allowed, err
 }
 
 func (a *App) readStream(ctx context.Context, requests []StreamRequest, limit int) (StreamSnapshot, error) {
@@ -320,7 +360,25 @@ func (a *App) stream(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 	ctx = connection.CloseRead(ctx)
+	closeConnection := func(code websocket.StatusCode, reason string) {
+		timer := time.AfterFunc(time.Second, func() { _ = connection.CloseNow() })
+		_ = connection.Close(code, reason)
+		timer.Stop()
+	}
 	write := func(event StreamEvent) error {
+		authCtx, done := context.WithTimeout(ctx, 3*time.Second)
+		valid, allowed, err := a.authorizeStream(authCtx, StreamRequest{SessionHash: sub.request.SessionHash, UserID: sub.request.UserID}, event.ConversationID)
+		done()
+		if err != nil {
+			return err
+		}
+		if !valid {
+			closeConnection(websocket.StatusPolicyViolation, "session expired")
+			return errStreamSessionExpired
+		}
+		if !allowed {
+			return nil
+		}
 		sendCtx, done := context.WithTimeout(ctx, 5*time.Second)
 		defer done()
 		return wsjson.Write(sendCtx, connection, event)
@@ -335,9 +393,7 @@ func (a *App) stream(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case shutdown := <-sub.stop:
-			timer := time.AfterFunc(time.Second, func() { _ = connection.CloseNow() })
-			_ = connection.Close(shutdown.code, shutdown.reason)
-			timer.Stop()
+			closeConnection(shutdown.code, shutdown.reason)
 			return
 		case event := <-sub.events:
 			if err = write(event); err != nil {

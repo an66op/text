@@ -20,6 +20,7 @@ export const paths = {
   account: '/account',
   sync: '/account/sync',
   messages: '/messages',
+  conversationDetails: (id: string) => `/messages/${encodeURIComponent(id)}/details`,
   web3: '/web3',
   live: '/live',
   videos: '/videos',

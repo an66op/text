@@ -75,7 +75,7 @@ function SignedInMessages() {
         : 'all',
   );
   const streamStatus = usePlatformStream(user!.id, (event) => {
-    feed.refresh();
+    feed.refresh(event.type !== 'message.created' && event.type !== 'conversation.read');
     if (
       event.type !== 'conversation.read' &&
       (!event.conversationId || event.conversationId === selectedId)
@@ -138,7 +138,7 @@ function SignedInMessages() {
               </button>
             ))}
           </div>
-          <PlatformError message={feed.error} retry={feed.refresh} />
+          <PlatformError message={feed.error} retry={() => feed.refresh()} />
           {feed.loading ? (
             <p className="platform-empty" role="status">
               正在加载会话…
@@ -203,7 +203,7 @@ function SignedInMessages() {
               key={`${user!.id}:${selected.id}`}
               conversation={selected}
               onBack={() => choose('')}
-              onSent={() => feed.refresh()}
+              onSent={() => feed.refresh(false)}
               onRead={feed.read}
               updateVersion={messageUpdate}
               streamStatus={streamStatus}

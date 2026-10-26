@@ -7,7 +7,7 @@ export function useConversationFeed(userId: string) {
   const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const refreshRef = useRef<() => void>(() => {});
+  const refreshRef = useRef<(strict?: boolean) => void>(() => {});
   useEffect(() => {
     let active = true;
     let inFlight = false;
@@ -37,24 +37,25 @@ export function useConversationFeed(userId: string) {
       } finally {
         inFlight = false;
         if (active) {
+          if (current === generation) setLoading(false);
           if (dirty) void load();
-          else {
-            setLoading(false);
-            timeout = window.setTimeout(() => void load(), 5000);
-          }
+          else timeout = window.setTimeout(() => void load(), 5000);
         }
       }
     };
-    const invalidate = () => {
-      generation += 1;
+    const invalidate = (strict = true) => {
+      // Message/read notifications may outpace the network. Their current snapshot
+      // is still useful; only metadata/permission changes invalidate its generation.
+      if (strict) generation += 1;
       dirty = true;
       void load();
     };
+    const changed = () => invalidate(false);
     const visible = () => {
       if (!document.hidden) invalidate();
     };
     refreshRef.current = invalidate;
-    window.addEventListener('gongming:conversations-changed', invalidate);
+    window.addEventListener('gongming:conversations-changed', changed);
     window.addEventListener('focus', visible);
     document.addEventListener('visibilitychange', visible);
     void load();
@@ -62,13 +63,13 @@ export function useConversationFeed(userId: string) {
       active = false;
       controller?.abort();
       window.clearTimeout(timeout);
-      window.removeEventListener('gongming:conversations-changed', invalidate);
+      window.removeEventListener('gongming:conversations-changed', changed);
       window.removeEventListener('focus', visible);
       document.removeEventListener('visibilitychange', visible);
       refreshRef.current = () => {};
     };
   }, [userId]);
-  const refresh = useCallback(() => refreshRef.current(), []);
+  const refresh = useCallback((strict = true) => refreshRef.current(strict), []);
   const upsert = useCallback(
     (conversation: Conversation) =>
       setItems((previous) => [

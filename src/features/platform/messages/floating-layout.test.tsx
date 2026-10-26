@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
 import { platformApi } from '@/shared/api/platformApi';
 import type { Conversation, MessagePage, PlatformMessage } from '@/shared/api/types';
 import { AuthContext } from '../auth-context';
@@ -43,16 +44,18 @@ const message = (seq: number): PlatformMessage => ({
 });
 const view = () =>
   render(
-    <AuthContext.Provider value={signedIn()}>
-      <MessageThread
-        conversation={conversation}
-        onBack={vi.fn()}
-        onSent={vi.fn()}
-        onRead={vi.fn()}
-        updateVersion={0}
-        streamStatus="polling"
-      />
-    </AuthContext.Provider>,
+    <MemoryRouter>
+      <AuthContext.Provider value={signedIn()}>
+        <MessageThread
+          conversation={conversation}
+          onBack={vi.fn()}
+          onSent={vi.fn()}
+          onRead={vi.fn()}
+          updateVersion={0}
+          streamStatus="polling"
+        />
+      </AuthContext.Provider>
+    </MemoryRouter>,
   );
 beforeEach(() => {
   localStorage.clear();

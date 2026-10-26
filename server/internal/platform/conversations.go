@@ -174,8 +174,8 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.Kind == "channel" && c.OwnerID != u.ID && u.Role != "admin" {
-		return nil, forbidden("频道仅允许频道主或管理员发布")
+	if c.Kind == "channel" && c.OwnerID != u.ID {
+		return nil, forbidden("频道仅允许当前频道主发布")
 	}
 	var input struct {
 		Body     string `json:"body"`

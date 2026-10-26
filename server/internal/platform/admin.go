@@ -220,5 +220,5 @@ func (a *App) auditLog(s *State, _ *User, r *http.Request) (any, error) {
 	return list(r, items)
 }
 func (a *App) system(_ *State, _ *User, _ *http.Request) (any, error) {
-	return map[string]any{"version": Version, "storage": "PostgreSQL · transactional JSONB aggregate v1", "environment": a.cfg.Environment, "uptimeSeconds": int64(time.Since(a.started).Seconds()), "features": []string{"http-only-sessions", "community-posts", "moderation-audit", "member-conversations", "revisioned-personal-documents", "atomic-test-ledger", "request-idempotency"}}, nil
+	return map[string]any{"version": Version, "storage": "PostgreSQL · relational schema v3", "environment": a.cfg.Environment, "uptimeSeconds": int64(time.Since(a.started).Seconds()), "features": []string{"http-only-sessions", "community-posts", "moderation-audit", "member-conversations", "mutual-friendships", "conversation-membership-management", "cursor-message-history", "transactional-websocket-outbox", "revisioned-personal-documents", "atomic-test-ledger", "request-idempotency"}}, nil
 }

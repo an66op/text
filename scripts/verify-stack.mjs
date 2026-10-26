@@ -205,6 +205,11 @@ try {
       (await admin('/admin/audit?limit=100')).items.some((entry) => entry.targetId === post.id),
     );
     assert.ok((await admin('/admin/overview')).users >= 4);
+    const system = await admin('/admin/system');
+    assert.match(system.storage, /PostgreSQL · relational schema v\d+/);
+    assert.ok(system.features.includes('mutual-friendships'));
+    assert.ok(system.features.includes('conversation-membership-management'));
+    assert.ok(system.features.includes('transactional-websocket-outbox'));
     await admin(`/admin/users/${session.user.id}`, 'PATCH', { role: 'member' }, 403);
   });
   await check('退出后旧会话失效', async () => {

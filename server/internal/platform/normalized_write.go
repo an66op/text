@@ -194,7 +194,10 @@ func persistNormalized(ctx context.Context, tx pgx.Tx, before, after *State) err
 	if err := persistWallets(ctx, tx, before, after); err != nil {
 		return err
 	}
-	return persistMessaging(ctx, tx, before, after)
+	if err := persistMessaging(ctx, tx, before, after); err != nil {
+		return err
+	}
+	return persistFriendships(ctx, tx, before, after)
 }
 
 func flattenDocuments(s *State) map[string]Document {

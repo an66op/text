@@ -227,7 +227,7 @@ describe('account message reliability', () => {
         }),
     );
     const { result } = renderHook(() => useThreadMessages(member.id, first.id, 0));
-    act(() => result.current.apply([message(7)]));
+    act(() => result.current.apply([message(7)], result.current.capturePermission()));
     await act(async () => {
       finish({ items: [message(6)], total: 7, hasMore: true });
     });
@@ -258,5 +258,176 @@ describe('account message reliability', () => {
     expect(mergeMessages(result.current.messages, [message(7)]).map((entry) => entry.seq)).toEqual([
       5, 6, 7,
     ]);
+  });
+
+  it('revokes both read lanes before ignoring a delayed private history 200 that arrives after membership 404', async () => {
+    vi.mocked(platformApi.messages).mockResolvedValueOnce({
+      items: [message(6)],
+      total: 6,
+      hasMore: true,
+    });
+    const { result } = renderHook(() => useThreadMessages(member.id, first.id, 0));
+    await waitFor(() => expect(result.current.messages[0]?.seq).toBe(6));
+    let finishHistory!: (value: MessagePage) => void;
+    vi.mocked(platformApi.messages).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishHistory = resolve;
+        }),
+    );
+    let history!: Promise<void>;
+    act(() => {
+      history = result.current.loadOlder();
+    });
+    const historySignal = vi.mocked(platformApi.messages).mock.calls.at(-1)![1]!;
+    const oldPermission = result.current.capturePermission();
+    vi.mocked(platformApi.messages).mockRejectedValueOnce(
+      new ApiError('你已被移出会话', 'not_found', 404),
+    );
+    act(() => result.current.refresh());
+    await waitFor(() => expect(result.current.accessDenied).toBe(true));
+    expect(historySignal.aborted).toBe(true);
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.historyLoading).toBe(false);
+    await act(async () => {
+      finishHistory({ items: [message(1, first.id, 'private-history')], total: 6, hasMore: false });
+      await history;
+    });
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.error).toBe('你已被移出会话');
+    expect(result.current.accessDenied).toBe(true);
+    act(() => {
+      expect(result.current.apply([message(7, first.id, 'old-send-ack')], oldPermission)).toBe(
+        false,
+      );
+      expect(
+        result.current.apply(
+          [message(8, first.id, 'unconfirmed-update')],
+          result.current.capturePermission(),
+        ),
+      ).toBe(false);
+    });
+    expect(result.current.messages).toEqual([]);
+  });
+
+  it('keeps a delayed successful send unconfirmed after the server revokes membership', async () => {
+    let finishSend!: (value: PlatformMessage) => void;
+    const send = vi.spyOn(platformApi, 'sendMessage').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishSend = resolve;
+        }),
+    );
+    render(scene());
+    await screen.findByText('服务器消息 1');
+    fireEvent.change(screen.getByRole('textbox', { name: '服务器消息内容' }), {
+      target: { value: '撤销权限前发出的消息' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '发送服务器消息' }));
+    const clientId = send.mock.calls[0][2];
+    vi.mocked(platformApi.messages).mockRejectedValueOnce(
+      new ApiError('你已被移出会话', 'not_found', 404),
+    );
+    act(() => window.dispatchEvent(new Event('focus')));
+    await screen.findByText('当前无法访问这个会话');
+    await act(async () => {
+      finishSend({
+        ...message(2),
+        sender: member,
+        body: '撤销权限前发出的消息',
+        clientId,
+      });
+    });
+    expect(screen.queryByText('服务器消息 1')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('撤销权限前发出的消息', { selector: 'article:not(.pending) p' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('article', { name: '消息尚未确认' })).toBeInTheDocument();
+    expect(readMessageDraft(messageDraftKey(member.id, first.id)).pending[0]).toMatchObject({
+      clientId,
+      error: expect.stringContaining('会话权限已更新'),
+    });
+    expect(send).toHaveBeenCalledOnce();
+  });
+
+  it('keeps revoked access until a new server read succeeds and never accepts an older epoch after recovery', async () => {
+    vi.useFakeTimers();
+    vi.mocked(platformApi.messages).mockResolvedValueOnce({
+      items: [message(6)],
+      total: 6,
+      hasMore: true,
+    });
+    const { result } = renderHook(() => useThreadMessages(member.id, first.id, 0));
+    await act(async () => {});
+    const oldPermission = result.current.capturePermission();
+    let finishHistory!: (value: MessagePage) => void;
+    vi.mocked(platformApi.messages).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishHistory = resolve;
+        }),
+    );
+    let history!: Promise<void>;
+    act(() => {
+      history = result.current.loadOlder();
+    });
+    vi.mocked(platformApi.messages).mockRejectedValueOnce(
+      new ApiError('成员已移除', 'forbidden', 403),
+    );
+    await act(async () => result.current.refresh());
+    expect(result.current.accessDenied).toBe(true);
+    let finishRecovery!: (value: MessagePage) => void;
+    vi.mocked(platformApi.messages).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRecovery = resolve;
+        }),
+    );
+    act(() => result.current.refresh());
+    expect(result.current.accessDenied).toBe(true);
+    expect(result.current.messages).toEqual([]);
+    await act(async () => {
+      finishRecovery({
+        items: [message(10, first.id, 'fresh-authorized-history')],
+        total: 1,
+        hasMore: false,
+      });
+    });
+    expect(result.current.accessDenied).toBe(false);
+    expect(result.current.messages.map((entry) => entry.body)).toEqual([
+      'fresh-authorized-history',
+    ]);
+    await act(async () => {
+      finishHistory({
+        items: [message(1, first.id, 'revoked-private-history')],
+        total: 6,
+        hasMore: false,
+      });
+      await history;
+    });
+    act(() => {
+      expect(
+        result.current.apply([message(7, first.id, 'old-ack-after-rejoin')], oldPermission),
+      ).toBe(false);
+    });
+    expect(result.current.messages.map((entry) => entry.body)).toEqual([
+      'fresh-authorized-history',
+    ]);
+    vi.mocked(platformApi.messages).mockResolvedValueOnce({
+      items: [message(11, first.id, 'new-live-message')],
+      total: 2,
+      hasMore: false,
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3500);
+    });
+    expect(result.current.messages.map((entry) => entry.body)).toEqual([
+      'fresh-authorized-history',
+      'new-live-message',
+    ]);
+    expect(platformApi.messages).toHaveBeenLastCalledWith(first.id, expect.any(AbortSignal), {
+      afterSeq: 10,
+    });
   });
 });

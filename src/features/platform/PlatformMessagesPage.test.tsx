@@ -66,9 +66,17 @@ describe('account communications', () => {
   it('shows a member-only channel as read-only while allowing owners to publish', async () => {
     const rendered = view('/messages?conversation=channel-one');
     await screen.findByText('欢迎加入频道');
-    expect(screen.getByText('你已加入频道，只有频道主和管理员可以发布消息')).toBeInTheDocument();
+    expect(screen.getByText('你已加入频道，只有当前频道主可以发布消息')).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '服务器消息内容' })).not.toBeInTheDocument();
     rendered.unmount();
+    const admin = view('/messages?conversation=channel-one', { ...member, role: 'admin' });
+    await screen.findByText('欢迎加入频道');
+    expect(screen.queryByRole('textbox', { name: '服务器消息内容' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '聊天信息' })).toHaveAttribute(
+      'href',
+      '/messages/channel-one/details',
+    );
+    admin.unmount();
     view('/messages?conversation=channel-one', otherMember);
     await screen.findByText('欢迎加入频道');
     expect(screen.getByRole('textbox', { name: '服务器消息内容' })).toBeInTheDocument();

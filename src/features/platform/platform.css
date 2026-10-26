@@ -1264,6 +1264,19 @@
 }
 
 /* Account messaging keeps its own viewport; lists and message history scroll independently. */
+.platform-thread-info {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: #9d8eb1;
+  border-radius: 50%;
+  text-decoration: none;
+  margin-right: -7px;
+}
+.platform-thread-info:hover {
+  background: #ffffff70;
+}
 .platform-messages-page {
   display: flex;
   flex-direction: column;

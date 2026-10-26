@@ -5,6 +5,8 @@ import (
 )
 
 func (a *App) routes(mux *http.ServeMux) {
+	a.registerConversationManagementRoutes(mux)
+	a.registerFriendshipRoutes(mux)
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.store.Ping(r.Context()); err != nil {
 			writeError(w, &APIError{503, "unavailable", "服务暂时不可用"})

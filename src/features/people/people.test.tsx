@@ -10,6 +10,7 @@ import type { PublicUser } from '@/shared/api/types';
 import ContactsPage from './ContactsPage';
 import UserProfilePage from './UserProfilePage';
 import { peopleApi } from './people-api';
+import { friendshipApi } from './friendship-api';
 
 function Destination() {
   const location = useLocation();
@@ -25,12 +26,15 @@ beforeEach(() => {
   vi.spyOn(peopleApi, 'directory').mockResolvedValue({ items: [otherMember], total: 1 });
   vi.spyOn(peopleApi, 'user').mockResolvedValue(otherMember);
   vi.spyOn(peopleApi, 'posts').mockResolvedValue({ items: [], total: 0 });
+  vi.spyOn(friendshipApi, 'friends').mockResolvedValue({ items: [], total: 0 });
+  vi.spyOn(friendshipApi, 'requests').mockResolvedValue({ items: [], total: 0 });
+  vi.spyOn(friendshipApi, 'relationship').mockResolvedValue({ status: 'none' });
 });
 afterEach(() => vi.restoreAllMocks());
 describe('real member directory and identities', () => {
   it('shows server member profiles and links local contacts separately', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/contacts?tab=discover']}>
         <AuthContext.Provider value={signedIn()}>
           <ContactsPage />
         </AuthContext.Provider>
@@ -55,7 +59,7 @@ describe('real member directory and identities', () => {
       )
       .mockResolvedValue({ items: [{ ...otherMember, name: '新账号目录' }], total: 1 });
     const layout = (who: typeof member) => (
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/contacts?tab=discover']}>
         <AuthContext.Provider value={signedIn(who)}>
           <ContactsPage />
         </AuthContext.Provider>

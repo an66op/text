@@ -13,6 +13,20 @@ import { frontendUrl } from '../config';
 import { useResource } from '../use-resource';
 import { Badge, ErrorState, Loading, Notice, PageHeading } from '../ui';
 
+const capabilityLabels: Record<string, string> = {
+  'http-only-sessions': '安全账号会话',
+  'community-posts': '社区动态与互动',
+  'moderation-audit': '内容审核与操作审计',
+  'member-conversations': '私聊、群组与频道',
+  'mutual-friendships': '好友申请与双向关系',
+  'conversation-membership-management': '会话成员与所有者管理',
+  'cursor-message-history': '稳定消息历史与已读水位',
+  'transactional-websocket-outbox': '实时消息与断线重放',
+  'revisioned-personal-documents': '个人备份与版本冲突保护',
+  'atomic-test-ledger': '原子测试积分账本',
+  'request-idempotency': '重复请求去重',
+};
+
 function uptime(value: number) {
   if (!Number.isFinite(value) || value < 0) return '未知';
   const days = Math.floor(value / 86400);
@@ -108,7 +122,7 @@ export default function SystemPage() {
                         <span className="capability-check">
                           <Check size={14} />
                         </span>
-                        <span>{feature}</span>
+                        <span>{capabilityLabels[feature] || feature}</span>
                         <Badge tone="good">已启用</Badge>
                       </li>
                     ))}

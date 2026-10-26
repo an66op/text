@@ -90,7 +90,7 @@ func (s *PostgresStore) ReadStream(ctx context.Context, requests []StreamRequest
 		return result, err
 	}
 	if len(users) > 0 {
-		events, err := tx.Query(ctx, `SELECT e.id,e.seq,e.type,e.conversation_id,COALESCE(e.message_id,''),COALESCE(e.recipient_id,''),e.created_at FROM gongming_message_outbox e WHERE e.seq>$1 AND EXISTS(SELECT 1 FROM gongming_conversation_members m WHERE m.conversation_id=e.conversation_id AND m.user_id=ANY($2::text[]) AND (e.recipient_id IS NULL OR e.recipient_id=m.user_id)) ORDER BY e.seq LIMIT $3`, after, users, limit)
+		events, err := tx.Query(ctx, `SELECT e.id,e.seq,e.type,e.conversation_id,COALESCE(e.message_id,''),COALESCE(e.recipient_id,''),e.created_at FROM gongming_message_outbox e WHERE e.seq>$1 AND ((e.type='membership.revoked' AND e.recipient_id=ANY($2::text[])) OR (e.type<>'membership.revoked' AND EXISTS(SELECT 1 FROM gongming_conversation_members m WHERE m.conversation_id=e.conversation_id AND m.user_id=ANY($2::text[]) AND (e.recipient_id IS NULL OR e.recipient_id=m.user_id)))) ORDER BY e.seq LIMIT $3`, after, users, limit)
 		if err != nil {
 			return result, err
 		}
@@ -108,4 +108,12 @@ func (s *PostgresStore) ReadStream(ctx context.Context, requests []StreamRequest
 		}
 	}
 	return result, tx.Commit(ctx)
+}
+
+// AuthorizeStream checks the latest committed session and membership at send
+// time without loading messages or holding a transaction across a network write.
+func (s *PostgresStore) AuthorizeStream(ctx context.Context, request StreamRequest, conversationID string) (bool, bool, error) {
+	var valid, allowed bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.user_id=$2 AND s.expires_at>now() AND u.status='active'), ($3='' OR EXISTS(SELECT 1 FROM gongming_conversation_members WHERE conversation_id=$3 AND user_id=$2))`, request.SessionHash, request.UserID, conversationID).Scan(&valid, &allowed)
+	return valid, valid && allowed, err
 }

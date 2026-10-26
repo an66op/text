@@ -9,6 +9,7 @@ import { apiRequest, apiErrorMessage, isAbort } from '@/shared/api/client';
 import type { PlatformPost, PublicUser } from '@/shared/api/types';
 import { paths } from '@/shared/config/paths';
 import { peopleApi } from './people-api';
+import FriendshipActions from './FriendshipActions';
 import './people.css';
 
 export default function UserProfilePage() {
@@ -157,6 +158,7 @@ function UserProfile({ handle }: { handle: string }) {
                     </button>
                   </div>
                 )}
+                <FriendshipActions person={person} />
               </section>
             )}
             <PlatformError message={error} retry={() => setRevision((value) => value + 1)} />
