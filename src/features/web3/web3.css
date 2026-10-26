@@ -1,0 +1,392 @@
+.web3-page {
+  min-height: 100%;
+  color: var(--text);
+  padding-bottom: 30px;
+}
+.web3-content {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: 8px 20px 24px;
+  display: grid;
+  gap: 18px;
+}
+.web3-intro {
+  padding: 8px 0 4px;
+}
+.web3-eyebrow {
+  color: #747086;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+}
+.web3-intro h1 {
+  margin: 10px 0;
+  font-size: 27px;
+  letter-spacing: -1px;
+  font-weight: 650;
+}
+.web3-intro p,
+.web3-note {
+  color: #8a879b;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0;
+}
+.web3-balance {
+  background:
+    radial-gradient(ellipse at 110% 0, #8579dc77, transparent 65%),
+    linear-gradient(135deg, #24213c, #423855);
+  border-radius: 25px;
+  padding: 24px;
+  color: #fff;
+  box-shadow: 0 14px 35px #38304a20;
+}
+.web3-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #d2c9ef;
+  font-size: 11px;
+}
+.web3-card-top span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.web3-card-top i,
+.web3-connected i {
+  width: 5px;
+  height: 5px;
+  background: #a3e9cc;
+  border-radius: 50%;
+}
+.web3-balance > p {
+  margin: 28px 0 8px;
+  color: #c5bad7;
+  font-size: 12px;
+}
+.web3-balance h2 {
+  margin: 0 0 25px;
+  font-size: 39px;
+  letter-spacing: -1.5px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.web3-balance h2 small {
+  font-size: 13px;
+  margin-left: 9px;
+  letter-spacing: 1px;
+  color: #c4b8df;
+}
+.web3-balance-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #b3a8c7;
+}
+.web3-panel {
+  padding: 20px;
+  background: #ffffffa6;
+  border: 1px solid #fff;
+  border-radius: 22px;
+}
+.web3-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.web3-section-title h2,
+.web3-review h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+.web3-section-title > svg {
+  color: #9990b1;
+}
+.web3-section-title > span {
+  color: #9690a5;
+  font-size: 11px;
+}
+.web3-faucet {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 0;
+}
+.web3-soft-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: #7a6dd0;
+  background: #ebe8f6;
+  border-radius: 16px;
+}
+.web3-faucet > div {
+  flex: 1;
+}
+.web3-faucet strong {
+  font-size: 13px;
+}
+.web3-faucet p {
+  font-size: 11px;
+  color: #8e889e;
+  margin: 6px 0 0;
+}
+.web3-faucet > button {
+  border: 0;
+  border-radius: 20px;
+  color: #7566bb;
+  background: #e9e4f4;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.web3-transfer {
+  display: grid;
+  gap: 15px;
+}
+.web3-transfer .web3-section-title {
+  margin-bottom: 0;
+}
+.web3-transfer label {
+  display: grid;
+  gap: 9px;
+  font-size: 11px;
+  color: #8d859b;
+}
+.web3-transfer input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #e8e4ef;
+  border-radius: 12px;
+  background: #f8f7fbaa;
+  padding: 13px;
+  font-size: 14px;
+  color: #3b354b;
+  outline: none;
+}
+.web3-transfer input:focus {
+  border-color: #a190d0;
+  box-shadow: 0 0 0 3px #c5b8e520;
+}
+.web3-amount-input {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.web3-amount-input input {
+  padding-right: 55px;
+}
+.web3-amount-input > span {
+  position: absolute;
+  right: 14px;
+  color: #958ba8;
+}
+.web3-primary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: #7665b7;
+  font-size: 13px;
+  font-weight: 600;
+}
+.web3-page button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.web3-page button {
+  cursor: pointer;
+}
+.web3-review {
+  border-color: #d8cee9;
+  background: #f2edf9;
+  display: grid;
+  gap: 12px;
+}
+.web3-review p {
+  margin: 0;
+  font-size: 14px;
+}
+.web3-review small {
+  color: #9a8fa9;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.web3-secondary {
+  border: 0;
+  color: #81718e;
+  background: transparent;
+  font-size: 12px;
+  padding: 6px;
+}
+.web3-success {
+  color: #518576;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.web3-browser > .web3-note {
+  margin-top: -5px;
+}
+.web3-wallet-disclosure.web3-note {
+  margin: 15px 0 0;
+  font-size: 10px;
+  padding-top: 13px;
+  border-top: 1px solid #ece7f1;
+}
+.web3-no-wallet {
+  margin-top: 18px;
+  border: 1px dashed #ddd6e8;
+  border-radius: 15px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 22px 10px;
+  color: #aaa0b9;
+}
+.web3-no-wallet span {
+  font-size: 12px;
+}
+.web3-no-wallet small {
+  font-size: 10px;
+}
+.web3-wallet-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.web3-wallet-options button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px;
+  border: 1px solid #e7e0ef;
+  border-radius: 12px;
+  background: #f7f5fb;
+  color: #6a5d80;
+  font-size: 12px;
+}
+.web3-wallet-options button span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.web3-connected {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.web3-connected > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #647c70;
+  font-size: 12px;
+}
+.web3-connected code {
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+  font-size: 12px;
+  color: #5c536c;
+  padding: 12px;
+  background: #f0edf5;
+  border-radius: 12px;
+}
+.web3-connected small {
+  color: #9a90a8;
+  font-size: 11px;
+}
+.web3-connected > div {
+  display: flex;
+  gap: 10px;
+}
+.web3-connected button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  border: 0;
+  border-radius: 8px;
+  background: #ece7f3;
+  color: #8c789e;
+  padding: 8px 10px;
+}
+.web3-ledger article {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 0;
+  border-bottom: 1px solid #f0ecf4;
+}
+.web3-ledger article:last-child {
+  border: 0;
+  padding-bottom: 0;
+}
+.web3-ledger-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  background: #edf4ef;
+  color: #6b9b84;
+  border-radius: 12px;
+}
+.web3-ledger-icon.out {
+  background: #f2eefa;
+  color: #9b84b9;
+}
+.web3-ledger article > div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.web3-ledger strong {
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.web3-ledger small {
+  color: #afa5b7;
+  font-size: 10px;
+}
+.web3-ledger b {
+  font-size: 13px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.web3-ledger b.positive {
+  color: #628d7d;
+}
+.web3-account-link {
+  justify-self: center;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #9a8da9;
+  font-size: 11px;
+  text-decoration: none;
+}
+@media (max-width: 360px) {
+  .web3-content {
+    padding-inline: 14px;
+  }
+  .web3-balance {
+    padding: 20px;
+  }
+  .web3-balance h2 {
+    font-size: 34px;
+  }
+}

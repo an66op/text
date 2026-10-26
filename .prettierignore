@@ -2,6 +2,9 @@ node_modules
 dist
 coverage
 public
+.runtime
+server
+admin/dist
 package-lock.json
 *.tsbuildinfo
 *.jpg

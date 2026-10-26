@@ -5,6 +5,7 @@ import {
   ChevronRight,
   History,
   Send,
+  Sparkles,
   TrendingUp,
 } from 'lucide-react';
 import { Link } from 'react-router';
@@ -60,6 +61,14 @@ export default function WalletPage() {
             </Link>
           </div>
         </section>
+        <Link className="wallet-earn-entry" to={paths.web3}>
+          <Sparkles size={23} />
+          <span>
+            <strong>Web3 实验室</strong>
+            <small>服务器测试积分 · 浏览器钱包连接</small>
+          </span>
+          <ChevronRight size={18} />
+        </Link>
         <Link className="wallet-earn-entry" to="/wallet/earn">
           <TrendingUp size={23} />
           <span>

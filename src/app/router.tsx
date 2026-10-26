@@ -14,6 +14,12 @@ import { circlePaths } from '@/features/circles/routes';
 import LegacyCircleRedirect from '@/features/circles/LegacyCircleRedirect';
 import {
   SocialPage,
+  AuthPage,
+  PlatformAccountPage,
+  ServerWorldPage,
+  PlatformMessagesPage,
+  Web3LabPage,
+  AccountSyncPage,
   SocialRoutePage,
   DiscoveryPage,
   MomentsPage,
@@ -143,7 +149,14 @@ export const appRoutes: RouteObject[] = [
       ).map(([path, kind, title, section]) =>
         page(path, <ContentRoutePage kind={kind} />, title, section),
       ),
-      page(paths.world, <ContentPage moduleName="世界" />, '世界'),
+      page(paths.world, <ServerWorldPage />, '世界'),
+      page(paths.localWorld, <ContentPage moduleName="世界" />, '本机世界'),
+      page(paths.login, <AuthPage kind="login" />, '登录', 'me'),
+      page(paths.register, <AuthPage kind="register" />, '注册', 'me'),
+      page(paths.account, <PlatformAccountPage />, '账号', 'me'),
+      page(paths.sync, <AccountSyncPage />, '账号备份', 'me'),
+      page(paths.messages, <PlatformMessagesPage />, '在线会话', 'social'),
+      page(paths.web3, <Web3LabPage />, 'Web3', 'me'),
       page('/world/posts/:postId', <ContentDetailPage kind="post" />, '动态详情'),
       ...[
         [paths.live, '直播'],

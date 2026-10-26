@@ -1,8 +1,9 @@
-import { ArrowUpRight, ChevronRight, MapPin, Settings, Wallet } from 'lucide-react';
+import { ArrowUpRight, ChevronRight, Cloud, MapPin, Settings, Wallet } from 'lucide-react';
 import { Link } from 'react-router';
 import { paths } from '@/shared/config/paths';
 import { avatar } from '@/shared/lib/media';
 import { useProfile } from './useProfile';
+import { useAuth } from '@/features/platform/useAuth';
 import './profile.css';
 
 const services = [
@@ -12,6 +13,7 @@ const services = [
 
 export default function ProfilePage() {
   const { profile } = useProfile();
+  const { user } = useAuth();
   return (
     <div className="profile-home">
       <div className="profile-home-content">
@@ -37,6 +39,14 @@ export default function ProfilePage() {
             </Link>
           </div>
         </section>
+        <Link to={paths.account} className="profile-server-account">
+          <Cloud size={19} />
+          <span>
+            <strong>{user ? `共鸣账号 · @${user.handle}` : '登录共鸣账号'}</strong>
+            <small>{user ? '管理账号资料、在线内容与备份' : '让你的内容与消息随你同行'}</small>
+          </span>
+          <ChevronRight size={17} />
+        </Link>
         <div className="profile-section-heading">
           <h2>我的空间</h2>
           <span>生活，各有喜欢</span>

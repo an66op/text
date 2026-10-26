@@ -580,3 +580,29 @@
     border-color: var(--line);
   }
 }
+.profile-server-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  margin: 16px 0 24px;
+  background: #ffffff80;
+  border: 1px solid #ffffffc9;
+  border-radius: 18px;
+  text-decoration: none;
+  color: #827496;
+}
+.profile-server-account > span {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+}
+.profile-server-account strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #65546f;
+}
+.profile-server-account small {
+  font-size: 10px;
+  color: #a194ad;
+}

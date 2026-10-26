@@ -1,0 +1,178 @@
+import {
+  Check,
+  CircleDot,
+  Database,
+  ExternalLink,
+  RefreshCw,
+  Server,
+  ShieldCheck,
+  Wallet,
+} from 'lucide-react';
+import type { SystemInfo } from '../types';
+import { frontendUrl } from '../config';
+import { useResource } from '../use-resource';
+import { Badge, ErrorState, Loading, Notice, PageHeading } from '../ui';
+
+function uptime(value: number) {
+  if (!Number.isFinite(value) || value < 0) return '未知';
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  return days
+    ? `${days} 天 ${hours} 小时`
+    : hours
+      ? `${hours} 小时 ${minutes} 分钟`
+      : `${minutes} 分钟`;
+}
+
+export default function SystemPage() {
+  const { data, loading, error, reload } = useResource<SystemInfo>('/admin/system');
+  const health = useResource<Record<string, unknown>>('/health');
+  const refresh = () => {
+    reload();
+    health.reload();
+  };
+  const environmentLabel =
+    data?.environment === 'production'
+      ? '生产环境'
+      : data?.environment === 'development'
+        ? '开发环境'
+        : data?.environment || '未知';
+
+  return (
+    <>
+      <PageHeading
+        eyebrow="INFRASTRUCTURE"
+        title="系统状态"
+        description="检查运行环境与服务能力，清楚区分真实功能与实验边界。"
+        actions={
+          <button className="button" disabled={loading || health.loading} onClick={refresh}>
+            <RefreshCw size={16} />
+            重新检查
+          </button>
+        }
+      />
+      {loading ? (
+        <Loading />
+      ) : error ? (
+        <ErrorState message={error} onRetry={refresh} />
+      ) : (
+        data && (
+          <>
+            <div className="system-grid">
+              <section className="panel system-card">
+                <span className="system-icon">
+                  <Server size={21} />
+                </span>
+                <p>Go API</p>
+                <h2>{health.loading ? '检查中' : health.error ? '健康检查失败' : '服务可达'}</h2>
+                <Badge tone={health.loading ? 'neutral' : health.error ? 'danger' : 'good'}>
+                  {health.loading ? '正在检查' : health.error ? '需要关注' : '已响应'}
+                </Badge>
+                <small>版本 {data.version || '未提供'}</small>
+              </section>
+              <section className="panel system-card">
+                <span className="system-icon purple">
+                  <Database size={21} />
+                </span>
+                <p>数据存储</p>
+                <h2>{data.storage || '未提供'}</h2>
+                <small>以服务端返回的存储类型为准</small>
+              </section>
+              <section className="panel system-card">
+                <span className="system-icon lime">
+                  <CircleDot size={21} />
+                </span>
+                <p>运行时长</p>
+                <h2>{uptime(data.uptimeSeconds)}</h2>
+                <Badge tone={data.environment === 'production' ? 'good' : 'warning'}>
+                  {environmentLabel}
+                </Badge>
+                <small>从当前 API 进程启动开始计算</small>
+              </section>
+            </div>
+            {health.error && <Notice>{health.error}</Notice>}
+            <div className="system-columns">
+              <section className="panel capabilities-panel">
+                <header className="panel-heading">
+                  <div>
+                    <h2>已启用服务能力</h2>
+                    <p>直接读取当前 API 的能力列表</p>
+                  </div>
+                  <ShieldCheck size={20} />
+                </header>
+                {data.features.length ? (
+                  <ul className="capability-list">
+                    {data.features.map((feature) => (
+                      <li key={feature}>
+                        <span className="capability-check">
+                          <Check size={14} />
+                        </span>
+                        <span>{feature}</span>
+                        <Badge tone="good">已启用</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="panel-copy">服务端未提供能力列表。</p>
+                )}
+              </section>
+              <section className="panel boundaries-panel">
+                <header className="panel-heading">
+                  <div>
+                    <h2>环境与实验边界</h2>
+                    <p>上线前必须独立完成配置与验收</p>
+                  </div>
+                  <Wallet size={20} />
+                </header>
+                <div className="boundary-item">
+                  <strong>Web3 测试账本</strong>
+                  <p>
+                    测试 GEM
+                    仅用于验证领取与转账流程，没有真实资产价值。工作台不会索取助记词或私钥。
+                  </p>
+                </div>
+                <div className="boundary-item">
+                  <strong>开发示例账号</strong>
+                  <p>默认凭据只用于本地体验。生产部署必须关闭种子数据、使用独立密钥和数据库。</p>
+                </div>
+                <div className="boundary-item">
+                  <strong>真实接入逐项验收</strong>
+                  <p>
+                    AI、支付、链上交易和外部内容服务需配置各自服务并验证后开放，不能把界面演示当作线上能力。
+                  </p>
+                </div>
+              </section>
+            </div>
+            <section className="panel environment-details">
+              <header className="panel-heading">
+                <div>
+                  <h2>本地服务入口</h2>
+                  <p>开发环境下的独立应用与 API</p>
+                </div>
+              </header>
+              <div className="service-links">
+                <a href={frontendUrl} target="_blank" rel="noopener noreferrer">
+                  <span>
+                    <strong>共鸣前台</strong>
+                    <small>React / Vite / TypeScript</small>
+                  </span>
+                  <span className="mono">:5173</span>
+                  <ExternalLink size={16} />
+                </a>
+                <a href="/api/v1/health" target="_blank" rel="noopener noreferrer">
+                  <span>
+                    <strong>API 健康检查</strong>
+                    <small>当前同源代理</small>
+                  </span>
+                  <span className="mono">/api/v1/health</span>
+                  <ExternalLink size={16} />
+                </a>
+              </div>
+            </section>
+          </>
+        )
+      )}
+    </>
+  );
+}

@@ -75,7 +75,7 @@ export default function PostActionsPage() {
                   onClick={() => {
                     deletePost(post.id);
                     notify('动态已删除');
-                    navigate(post.target === 'world' ? paths.world : paths.moments, {
+                    navigate(post.target === 'world' ? paths.localWorld : paths.moments, {
                       replace: true,
                     });
                   }}

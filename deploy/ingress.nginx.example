@@ -1,0 +1,38 @@
+# Host-level HTTPS ingress example, outside the Compose network.
+# Replace domains and install valid certificates first. Both origins must match
+# APP_ORIGIN / ADMIN_ORIGIN in the deployment environment file exactly.
+server {
+    listen 80;
+    server_name app.example.com admin.example.com;
+    return 308 https://$host$request_uri;
+}
+server {
+    listen 443 ssl;
+    server_name app.example.com;
+    ssl_certificate /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    client_max_body_size 1m;
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header Origin $http_origin;
+        proxy_read_timeout 30s;
+    }
+}
+server {
+    listen 443 ssl;
+    server_name admin.example.com;
+    ssl_certificate /etc/letsencrypt/live/admin.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/admin.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    client_max_body_size 1m;
+    location / {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header Origin $http_origin;
+        proxy_read_timeout 30s;
+    }
+}

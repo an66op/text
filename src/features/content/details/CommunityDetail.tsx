@@ -61,7 +61,7 @@ export default function CommunityDetail({ item }: { item: CatalogItem }) {
         <h3>组织交流</h3>
         <Link
           className="content-link-row"
-          to={`${paths.world}?topic=${encodeURIComponent(item.title)}`}
+          to={`${paths.localWorld}?topic=${encodeURIComponent(item.title)}`}
         >
           分享你最近的一个小确幸
           <ChevronRight size={18} />

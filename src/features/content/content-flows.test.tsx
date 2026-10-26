@@ -72,7 +72,7 @@ const routeCases: [ContentRouteKind, string, string, string][] = [
     '/organizations/:contentId/events/:eventId',
     '活动详情',
   ],
-  ['topics', '/world/topics', '/world/topics', '世界话题'],
+  ['topics', '/world/topics', '/world/topics', '本机话题'],
 ];
 describe('content flows are independent pages', () => {
   it.each(routeCases)(
@@ -106,7 +106,7 @@ describe('publishing and dynamic management', () => {
     );
     fireEvent.change(screen.getByLabelText('发布板块'), { target: { value: 'world' } });
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
-    expect(screen.getByTestId('destination')).toHaveTextContent('/world');
+    expect(screen.getByTestId('destination')).toHaveTextContent('/world/demo');
     expect(screen.getByTestId('new-post')).toHaveTextContent('今天的测试动态');
     const post = JSON.parse(localStorage.getItem('posts') ?? '[]')[0];
     expect(post).toMatchObject({ target: 'world', owner: true, audience: 'public' });

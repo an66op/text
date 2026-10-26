@@ -86,7 +86,7 @@ export default function ComposePage() {
     });
     setDraft('');
     notify('发布成功');
-    navigate(target === 'world' ? paths.world : paths.moments, { replace: true });
+    navigate(target === 'world' ? paths.localWorld : paths.moments, { replace: true });
   }
   return (
     <>

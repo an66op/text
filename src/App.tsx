@@ -6,6 +6,7 @@ import { ProfileProvider } from '@/features/profile/profile-store';
 import { SocialProvider } from '@/features/social/SocialProvider';
 import { ToastProvider } from '@/shared/ui/ToastProvider';
 import { CircleProvider } from '@/features/circles/CircleProvider';
+import { AuthProvider } from '@/features/platform/AuthProvider';
 
 export default function App() {
   return (
@@ -15,7 +16,9 @@ export default function App() {
           <ContentProvider>
             <CircleProvider>
               <SocialProvider>
-                <RouterProvider router={router} />
+                <AuthProvider>
+                  <RouterProvider router={router} />
+                </AuthProvider>
               </SocialProvider>
             </CircleProvider>
           </ContentProvider>

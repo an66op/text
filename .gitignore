@@ -6,6 +6,9 @@ dist
 .env.*
 !.env.example
 coverage
+.runtime/
+admin/dist/
+server/api
 *.log
 /preview-*.png
 /preview-*.jpg

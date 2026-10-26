@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev:all": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "dev:admin": "npm --prefix admin run dev",
+    "dev:server": "cd server && APP_ENV=development go run ./cmd/api",
+    "db:up": "node scripts/database.mjs up",
+    "db:down": "node scripts/database.mjs down",
+    "db:status": "node scripts/database.mjs status",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
@@ -13,7 +19,12 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "build:admin": "npm --prefix admin run build",
+    "test:server": "cd server && go test -race ./...",
+    "test:admin": "npm --prefix admin run test",
+    "verify:stack": "node scripts/verify-stack.mjs",
+    "check:all": "npm run check && npm run build:admin && npm run test:admin && npm run test:server"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

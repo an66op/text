@@ -27,7 +27,7 @@ export default function ContentDetailPage({ kind }: { kind: DetailKind }) {
         : undefined;
   const fallback =
     kind === 'post'
-      ? paths.world
+      ? paths.localWorld
       : kind === 'watch'
         ? paths.videos
         : kind === 'read'
@@ -37,7 +37,7 @@ export default function ContentDetailPage({ kind }: { kind: DetailKind }) {
             : paths.organizations;
   const backTo = post
     ? post.target === 'world' || post.kind === '世界'
-      ? paths.world
+      ? paths.localWorld
       : paths.moments
     : item
       ? kind === 'read'

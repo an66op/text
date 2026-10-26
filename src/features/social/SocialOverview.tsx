@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Radio, Search, ShieldCheck, UserPlus, Users, X } from 'lucide-react';
+import { Cloud, Plus, Radio, Search, ShieldCheck, UserPlus, Users, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import ConversationList from './ConversationList';
 import ContactsPanel from './ContactsPanel';
@@ -93,6 +93,10 @@ export default function SocialOverview({
                       onClick={() => setPlusOpen(false)}
                     />
                     <div className="im-plus-menu">
+                      <Link to="/messages" onClick={() => setPlusOpen(false)}>
+                        <Cloud size={18} />
+                        在线会话
+                      </Link>
                       <button onClick={() => openAction('group')}>
                         <Users size={18} />
                         发起群聊

@@ -56,8 +56,9 @@ describe('real application routes', () => {
     fireEvent.click(worldLink);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/world'));
-    expect(await screen.findByRole('button', { name: '搜索当前版块' })).toBeInTheDocument();
-    expect(screen.getByText('世界')).toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: '搜索世界帖子' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '世界', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '本机内容' })).toHaveAttribute('href', '/world/demo');
 
     await act(() => router.navigate(-1));
     expect(router.state.location.pathname).toBe('/discover');

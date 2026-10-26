@@ -1,5 +1,12 @@
 import { lazy } from 'react';
 
+export const AuthPage = lazy(() => import('@/features/platform/AuthPage'));
+export const PlatformAccountPage = lazy(() => import('@/features/platform/PlatformAccountPage'));
+export const ServerWorldPage = lazy(() => import('@/features/platform/ServerWorldPage'));
+export const PlatformMessagesPage = lazy(() => import('@/features/platform/PlatformMessagesPage'));
+export const Web3LabPage = lazy(() => import('@/features/web3/Web3LabPage'));
+export const AccountSyncPage = lazy(() => import('@/features/sync/AccountSyncPage'));
+
 export const SocialPage = lazy(() => import('@/features/social/SocialPage'));
 export const SocialRoutePage = lazy(() => import('@/features/social/SocialRoutePage'));
 export const DiscoveryPage = lazy(() => import('@/features/discovery/DiscoveryPage'));
