@@ -72,11 +72,13 @@ describe('hosted image moderation', () => {
       .fn()
       .mockImplementation((url: string) =>
         Promise.resolve(
-          url.endsWith('/auth/me')
-            ? ok(session())
-            : url.endsWith('/admin/system')
-              ? ok(system)
-              : ok({ items: [{ ...asset, status: 'blocked' }], total: 1 }),
+          url.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : url.endsWith('/auth/me')
+              ? ok(session())
+              : url.endsWith('/admin/system')
+                ? ok(system)
+                : ok({ items: [{ ...asset, status: 'blocked' }], total: 1 }),
         ),
       );
     vi.stubGlobal('fetch', fetch);
@@ -114,6 +116,10 @@ describe('hosted image moderation', () => {
     let current = asset;
     let writes = 0;
     const fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith('/auth/context'))
+        return Promise.resolve(
+          ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+        );
       if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
       if (url.endsWith('/admin/system')) return Promise.resolve(ok(system));
       if (options?.method === 'PATCH') {
@@ -174,13 +180,15 @@ describe('hosted image moderation', () => {
       .fn()
       .mockImplementation((url: string, options?: RequestInit) =>
         Promise.resolve(
-          url.endsWith('/auth/me')
-            ? ok(session())
-            : url.endsWith('/admin/system')
-              ? ok(system)
-              : options?.method === 'PATCH'
-                ? ok({ ...asset, note: '补充核实依据' })
-                : ok({ items: [asset], total: 1 }),
+          url.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : url.endsWith('/auth/me')
+              ? ok(session())
+              : url.endsWith('/admin/system')
+                ? ok(system)
+                : options?.method === 'PATCH'
+                  ? ok({ ...asset, note: '补充核实依据' })
+                  : ok({ items: [asset], total: 1 }),
         ),
       );
     vi.stubGlobal('fetch', fetch);
@@ -202,6 +210,10 @@ describe('hosted image moderation', () => {
   it('persists search/filter/pagination in the route and can retry a failed read', async () => {
     let unavailable = true;
     const fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/auth/context'))
+        return Promise.resolve(
+          ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+        );
       if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
       if (url.endsWith('/admin/system')) return Promise.resolve(ok(system));
       return Promise.resolve(
@@ -251,11 +263,13 @@ describe('hosted image moderation', () => {
         .fn()
         .mockImplementation((url: string) =>
           Promise.resolve(
-            url.endsWith('/auth/me')
-              ? ok(session())
-              : url.endsWith('/admin/system')
-                ? ok(system)
-                : ok({ items: populated ? [asset] : [], total: populated ? 1 : 0 }),
+            url.endsWith('/auth/context')
+              ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+              : url.endsWith('/auth/me')
+                ? ok(session())
+                : url.endsWith('/admin/system')
+                  ? ok(system)
+                  : ok({ items: populated ? [asset] : [], total: populated ? 1 : 0 }),
           ),
         ),
     );
@@ -340,6 +354,10 @@ describe('hosted image moderation', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+        if (url.endsWith('/auth/context'))
+          return Promise.resolve(
+            ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+          );
         if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
         if (url.endsWith('/admin/system')) return Promise.resolve(ok(system));
         if (options?.method === 'PATCH')
@@ -371,27 +389,29 @@ describe('hosted image moderation', () => {
       'fetch',
       vi.fn().mockImplementation((url: string) =>
         Promise.resolve(
-          url.endsWith('/auth/me')
-            ? ok(session())
-            : url.endsWith('/admin/system')
-              ? ok(system)
-              : ok({
-                  items: [
-                    {
-                      id: 'post-1',
-                      author: asset.owner,
-                      body: '包含托管图片的帖子',
-                      images: [asset.url],
-                      topic: '',
-                      status: 'pending',
-                      createdAt: asset.createdAt,
-                      likeCount: 0,
-                      liked: false,
-                      commentCount: 0,
-                    },
-                  ],
-                  total: 1,
-                }),
+          url.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : url.endsWith('/auth/me')
+              ? ok(session())
+              : url.endsWith('/admin/system')
+                ? ok(system)
+                : ok({
+                    items: [
+                      {
+                        id: 'post-1',
+                        author: asset.owner,
+                        body: '包含托管图片的帖子',
+                        images: [asset.url],
+                        topic: '',
+                        status: 'pending',
+                        createdAt: asset.createdAt,
+                        likeCount: 0,
+                        liked: false,
+                        commentCount: 0,
+                      },
+                    ],
+                    total: 1,
+                  }),
         ),
       ),
     );

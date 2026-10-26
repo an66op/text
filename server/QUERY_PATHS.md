@@ -20,7 +20,11 @@ are explicit `id/handle/name/avatar/bio` projections; email and operational role
 are not selected into message responses. Cookie SHA-256 lookup, expiry, active
 account checks, and `X-Gongming-Account` mismatch protection run in the same SQL
 transaction as each operation. The common HTTP middleware still enforces Origin,
-body limits, request deadlines, and request rate limits.
+body limits, request deadlines, and request rate limits. Since schema 9 it also
+checks browser/session context matching on all authenticated HTTP surfaces.
+The narrow actor query repeats the context predicate inside its own snapshot;
+media and WebSocket authorization use the same credential boundary. This adds
+authentication SQL and is outside the historical benchmark below.
 
 Substring searches use the complete Go Unicode simple-lower mapping through
 PostgreSQL `translate`, rather than locale-dependent SQL `lower`. This preserves
@@ -85,10 +89,10 @@ Its initial handshake still uses State authentication once.
 
 `POST /conversations` (including direct-conversation deduplication), rename,
 add/remove member, transfer owner, and leave retain the full State adapter.
-Authentication/profile, posts/comments/reports, directory, friendships,
-documents, wallet, and admin endpoints also retain it unless separately migrated
+Password authentication/profile, posts/comments/reports, directory, friendships,
+documents, test-ledger wallet, and admin endpoints also retain it unless separately migrated
 by their owning domain. Device-session routes have their own implementation;
-messaging SQL needs only the retained `token_hash/user_id/expires_at` columns.
+messaging SQL also checks the session's browser context and current pointer.
 
 Other migrated domains now have their own narrow paths: private-image GET/HEAD,
 notification list/badge/read operations, and all ten circle-event endpoints
@@ -103,6 +107,20 @@ existing adapter, so these migrations do not remove every page's broad-read
 cost. Event-row locks, circle management/quota locks, and per-recipient notice
 counters also retain serialization points. The messaging benchmark below does
 not measure these newer domains.
+
+Wallet identity uses four SQL-only tables: browser contexts, SIWE challenges,
+wallet bindings, and wallet session proofs. Ordinary State never hydrates those
+histories. Browser password authentication adds a transaction hook before loading
+State to lock/CAS the browser generation, and a hook after persisting sessions to
+revoke the prior pointer and publish the next one atomically. Wallet operations
+use the same browser → user/session → challenge → binding → related sessions
+order and retry complete serializable transactions. No wallet signing prompt,
+external RPC or Cookie emission runs inside the retry callback. An active address is globally
+unique; account version changes invalidate stale credential challenges. Details
+and capability limits are in [wallet identity](../docs/WALLET_IDENTITY_SERVICE.md).
+The broad password-auth snapshot remains a cost; contexts/challenges currently
+have issuance limits and expiry checks, without automatic retention cleanup or
+production capacity claims.
 
 Thus broad snapshot costs and serializable predicate conflicts still exist for
 those operations. The five messaging routes avoid cross-domain hydration, but

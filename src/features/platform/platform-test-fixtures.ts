@@ -42,6 +42,7 @@ export function signedIn(user = member): AuthState {
     login: async () => {},
     register: async () => {},
     logout: async () => {},
+    loginWallet: async () => true,
     updateProfile: async () => {},
   };
 }

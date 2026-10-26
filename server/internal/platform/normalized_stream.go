@@ -21,10 +21,12 @@ func (s *PostgresStore) ReadStream(ctx context.Context, requests []StreamRequest
 	}
 	hashes := make([]string, 0, len(requests))
 	expected := map[string]string{}
+	browsers := map[string]string{}
 	after := requests[0].AfterSeq
 	for _, request := range requests {
 		hashes = append(hashes, request.SessionHash)
 		expected[request.SessionHash] = request.UserID
+		browsers[request.SessionHash] = request.BrowserHash
 		if request.AfterSeq < after {
 			after = request.AfterSeq
 		}
@@ -34,17 +36,23 @@ func (s *PostgresStore) ReadStream(ctx context.Context, requests []StreamRequest
 		return result, err
 	}
 	defer tx.Rollback(ctx)
-	rows, err := tx.Query(ctx, `SELECT s.token_hash,s.user_id,s.expires_at,(u.status='active' AND s.expires_at>now()) FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=ANY($1::text[])`, hashes)
+	rows, err := tx.Query(ctx, `SELECT s.token_hash,s.user_id,s.expires_at,(u.status='active' AND s.expires_at>now()),COALESCE(s.browser_context_hash,''),COALESCE(b.current_session_hash,''),COALESCE(b.expires_at>now(),false) FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id LEFT JOIN gongming_auth_browser_contexts b ON b.hash=s.browser_context_hash WHERE s.token_hash=ANY($1::text[])`, hashes)
 	if err != nil {
 		return result, err
 	}
 	users := []string{}
 	for rows.Next() {
-		var hash string
+		var hash, source, current string
+		var browserActive bool
 		v := StreamSession{ConversationIDs: map[string]bool{}}
-		if err = rows.Scan(&hash, &v.UserID, &v.ExpiresAt, &v.Active); err != nil {
+		if err = rows.Scan(&hash, &v.UserID, &v.ExpiresAt, &v.Active, &source, &current, &browserActive); err != nil {
 			rows.Close()
 			return result, err
+		}
+		if source != "" {
+			v.Active = v.Active && source == browsers[hash] && current == hash && browserActive
+		} else {
+			v.Active = v.Active && browsers[hash] == ""
 		}
 		if expected[hash] != v.UserID {
 			continue
@@ -114,6 +122,6 @@ func (s *PostgresStore) ReadStream(ctx context.Context, requests []StreamRequest
 // time without loading messages or holding a transaction across a network write.
 func (s *PostgresStore) AuthorizeStream(ctx context.Context, request StreamRequest, conversationID string) (bool, bool, error) {
 	var valid, allowed bool
-	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.user_id=$2 AND s.expires_at>now() AND u.status='active'), ($3='' OR EXISTS(SELECT 1 FROM gongming_conversation_members WHERE conversation_id=$3 AND user_id=$2))`, request.SessionHash, request.UserID, conversationID).Scan(&valid, &allowed)
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.user_id=$2 AND s.expires_at>now() AND u.status='active' AND `+browserSessionPredicate("s", "$4")+`), ($3='' OR EXISTS(SELECT 1 FROM gongming_conversation_members WHERE conversation_id=$3 AND user_id=$2))`, request.SessionHash, request.UserID, conversationID, request.BrowserHash).Scan(&valid, &allowed)
 	return valid, valid && allowed, err
 }

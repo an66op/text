@@ -73,6 +73,7 @@ func normalizeLegacySessionMetadata(s *State) {
 }
 
 type DeviceSession struct {
+	AuthMethod string     `json:"authMethod"`
 	ID         string     `json:"id"`
 	Device     string     `json:"device"`
 	CreatedAt  *time.Time `json:"createdAt"`
@@ -104,7 +105,7 @@ func (a *App) deviceSessions(s *State, u *User, r *http.Request) (any, error) {
 		if session.UserID != u.ID || !session.ExpiresAt.After(a.now()) {
 			continue
 		}
-		items = append(items, DeviceSession{ID: session.ID, Device: session.Device, CreatedAt: utcSessionTime(session.CreatedAt), LastSeenAt: utcSessionTime(session.LastSeenAt), ExpiresAt: session.ExpiresAt.UTC(), Current: hash == currentHash, Legacy: session.Legacy})
+		items = append(items, DeviceSession{AuthMethod: sessionAuthMethod(session), ID: session.ID, Device: session.Device, CreatedAt: utcSessionTime(session.CreatedAt), LastSeenAt: utcSessionTime(session.LastSeenAt), ExpiresAt: session.ExpiresAt.UTC(), Current: hash == currentHash, Legacy: session.Legacy})
 	}
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].Current != items[j].Current {

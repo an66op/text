@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { WalletLoginProof } from '@/features/walletidentity/types';
 import type { PlatformUser } from '@/shared/api/types';
 
 export type AuthState = {
@@ -15,6 +16,7 @@ export type AuthState = {
     handle: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  loginWallet: (proof: WalletLoginProof, signal?: AbortSignal) => Promise<boolean>;
   updateProfile: (value: { name?: string; bio?: string; avatar?: string }) => Promise<void>;
 };
 
@@ -31,5 +33,6 @@ export const AuthContext = createContext<AuthState>({
   login: noProvider,
   register: noProvider,
   logout: noProvider,
+  loginWallet: noProvider,
   updateProfile: noProvider,
 });

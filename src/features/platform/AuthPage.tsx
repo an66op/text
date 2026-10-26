@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Fingerprint, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import PageHeader from '@/shared/ui/PageHeader';
@@ -20,9 +20,18 @@ export default function AuthPage({ kind = 'login' }: { kind?: 'login' | 'registe
   const [handle, setHandle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const active = useRef(true),
+    dispatching = useRef(false);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   const submit = async (event?: FormEvent, demo = false) => {
     event?.preventDefault();
-    if (busy) return;
+    if (dispatching.current || !active.current) return;
+    dispatching.current = true;
     setBusy(true);
     setError('');
     try {
@@ -38,11 +47,12 @@ export default function AuthPage({ kind = 'login' }: { kind?: 'login' | 'registe
           demo ? 'demo@gongming.local' : email.trim(),
           demo ? 'Demo2026!' : password,
         );
-      navigate(destination, { replace: true });
+      if (active.current) navigate(destination, { replace: true });
     } catch (caught) {
-      setError(apiErrorMessage(caught));
+      if (active.current) setError(apiErrorMessage(caught));
     } finally {
-      setBusy(false);
+      dispatching.current = false;
+      if (active.current) setBusy(false);
     }
   };
   return (
@@ -135,6 +145,14 @@ export default function AuthPage({ kind = 'login' }: { kind?: 'login' | 'registe
         >
           {register ? '已有账号？去登录' : '第一次来？创建账号'}
         </Link>
+        {!register && (
+          <Link
+            className="platform-switch"
+            to={`/login/wallet?returnTo=${encodeURIComponent(destination)}`}
+          >
+            使用已绑定钱包登录
+          </Link>
+        )}
         {import.meta.env.DEV && (
           <div className="platform-demo-access">
             <span>先体验完整流程</span>

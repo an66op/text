@@ -109,7 +109,7 @@ func sessionList(c *client, expected int, secrets []string) (map[string]map[stri
 	if expected >= 0 {
 		must(len(items) == expected, "Device session list includes missing or foreign sessions")
 	}
-	allowed := map[string]bool{"id": true, "device": true, "createdAt": true, "lastSeenAt": true, "expiresAt": true, "current": true, "legacy": true}
+	allowed := map[string]bool{"id": true, "device": true, "createdAt": true, "lastSeenAt": true, "expiresAt": true, "current": true, "legacy": true, "authMethod": true}
 	rows := map[string]map[string]any{}
 	currentID, currentCount := "", 0
 	for _, raw := range items {
@@ -127,6 +127,8 @@ func sessionList(c *client, expected int, secrets []string) (map[string]map[stri
 		current, currentOK := row["current"].(bool)
 		legacy, legacyOK := row["legacy"].(bool)
 		must(currentOK && legacyOK, "Device session flags are invalid")
+		method, methodOK := row["authMethod"].(string)
+		must(methodOK && (method == "unknown" || method == "password" || method == "wallet"), "Device authentication source is invalid")
 		for _, key := range []string{"createdAt", "lastSeenAt", "expiresAt"} {
 			if row[key] == nil {
 				must(legacy && key != "expiresAt", "New session lacks establishment metadata")

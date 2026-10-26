@@ -75,7 +75,7 @@ func persistNormalized(ctx context.Context, tx pgx.Tx, before, after *State) err
 		return err
 	}
 	if err := syncEntities(before.Sessions, after.Sessions, func(key string, v Session) error {
-		return execRow(ctx, tx, `INSERT INTO gongming_sessions(token_hash,user_id,expires_at,public_id,device,created_at,last_seen_at,legacy) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(token_hash) DO UPDATE SET user_id=EXCLUDED.user_id,expires_at=EXCLUDED.expires_at,public_id=EXCLUDED.public_id,device=EXCLUDED.device,created_at=EXCLUDED.created_at,last_seen_at=EXCLUDED.last_seen_at,legacy=EXCLUDED.legacy`, key, v.UserID, v.ExpiresAt, v.ID, v.Device, v.CreatedAt, v.LastSeenAt, v.Legacy)
+		return persistSessionMetadata(ctx, tx, key, v)
 	}, func(key string) error {
 		return execRow(ctx, tx, `DELETE FROM gongming_sessions WHERE token_hash=$1`, key)
 	}); err != nil {

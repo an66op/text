@@ -48,6 +48,9 @@ func (s *PostgresStore) Read(ctx context.Context, fn func(*State) error) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err = verifyBrowserSnapshot(ctx, tx); err != nil {
+		return err
+	}
 	state, err := loadNormalized(ctx, tx)
 	if err != nil {
 		return err
@@ -89,6 +92,13 @@ func (s *PostgresStore) updateOnce(ctx context.Context, fn func(*State) error) e
 		return err
 	}
 	defer tx.Rollback(ctx)
+	m, _ := ctx.Value(browserMutationKey{}).(*browserMutation)
+	if err = lockBrowserMutation(ctx, tx, m); err != nil {
+		return err
+	}
+	if err = verifyBrowserSnapshot(ctx, tx); err != nil {
+		return err
+	}
 	state, err := loadNormalized(ctx, tx)
 	if err != nil {
 		return err
@@ -105,6 +115,9 @@ func (s *PostgresStore) updateOnce(ctx context.Context, fn func(*State) error) e
 		return err
 	}
 	if err = persistNormalized(ctx, tx, before, state); err != nil {
+		return err
+	}
+	if err = finishBrowserMutation(ctx, tx, m); err != nil {
 		return err
 	}
 	if err = persistCircleEventSeeds(ctx, tx, state.EventSeedDrafts); err != nil {

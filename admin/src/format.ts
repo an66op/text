@@ -112,8 +112,11 @@ export function actionLabel(action: Audit['action']): string {
     'system.bootstrap': '初始化管理员',
     'auth.login': '账号登录',
     'auth.register': '注册账号',
+    'wallet.bind': '绑定本人钱包',
+    'wallet.unbind': '解绑本人钱包',
+    'wallet.login': '钱包签名登录',
   };
-  return labels[action] || action;
+  return Object.hasOwn(labels, action) ? labels[action] : action;
 }
 
 export function safeOffset(value: string | null, limit = 20): number {

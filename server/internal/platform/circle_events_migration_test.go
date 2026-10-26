@@ -44,7 +44,7 @@ func TestCircleEventV7MigrationPreservesRowsFilesCookieAndFailureRollback(t *tes
 			t.Fatal(err)
 		}
 	}
-	if err = persistNormalized(ctx, tx, NewState(), memory.state); err != nil {
+	if err = persistHistoricalFixture(ctx, tx, 7, memory.state); err != nil {
 		t.Fatal(err)
 	}
 	draft := NotificationDraft{RecipientID: "user_demo", ActorID: "user_friend", Kind: "world-like", ReferenceID: "post_design", EventKey: "v7-old-notice", CreatedAt: now}
@@ -68,9 +68,15 @@ func TestCircleEventV7MigrationPreservesRowsFilesCookieAndFailureRollback(t *tes
 	}
 	rows.Close()
 	before := map[string]string{}
+	projections := map[string]string{}
 	for _, table := range tables {
 		var value string
-		if err = s.pool.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(obj ORDER BY obj::text),'[]'::jsonb)::text FROM (SELECT to_jsonb(t)||jsonb_build_object('__xmin',t.xmin::text) obj FROM `+table+` t)x`).Scan(&value); err != nil {
+		projection, projectionErr := freezeMigrationProjection(ctx, s, table)
+		if projectionErr != nil {
+			t.Fatal(projectionErr)
+		}
+		projections[table] = projection
+		if err = s.pool.QueryRow(ctx, projection).Scan(&value); err != nil {
 			t.Fatal(err)
 		}
 		before[table] = value
@@ -95,7 +101,7 @@ func TestCircleEventV7MigrationPreservesRowsFilesCookieAndFailureRollback(t *tes
 	}
 	for table, value := range before {
 		var after string
-		if err = s.pool.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(obj ORDER BY obj::text),'[]'::jsonb)::text FROM (SELECT to_jsonb(t)||jsonb_build_object('__xmin',t.xmin::text) obj FROM `+table+` t)x`).Scan(&after); err != nil || after != value {
+		if err = s.pool.QueryRow(ctx, projections[table]).Scan(&after); err != nil || after != value {
 			t.Fatalf("schema8 rewrote old %s: %v", table, err)
 		}
 	}

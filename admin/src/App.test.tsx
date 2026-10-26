@@ -82,7 +82,13 @@ describe('admin console operational flows', () => {
   it('fills demo credentials without logging in and shows actual login failures', async () => {
     const fetch = vi
       .fn()
+      .mockResolvedValueOnce(
+        ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+      )
       .mockResolvedValueOnce(failure(401, '请先登录'))
+      .mockResolvedValueOnce(
+        ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+      )
       .mockResolvedValueOnce(failure(401, '密码错误'));
     vi.stubGlobal('fetch', fetch);
     mount('/users');
@@ -90,20 +96,28 @@ describe('admin console operational flows', () => {
     fireEvent.click(screen.getByRole('button', { name: '填入示例' }));
     expect(screen.getByLabelText('邮箱')).toHaveValue('admin@gongming.local');
     expect(screen.getByLabelText('密码')).toHaveValue('Admin2026!');
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole('button', { name: '安全登录' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('密码错误');
     expect(screen.queryByRole('navigation', { name: '运营导航' })).not.toBeInTheDocument();
   });
 
   it('blocks a member account from operational routes before requesting admin data', async () => {
-    const fetch = vi.fn().mockResolvedValue(ok(session(member)));
+    const fetch = vi
+      .fn()
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          url.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : ok(session(member)),
+        ),
+      );
     vi.stubGlobal('fetch', fetch);
     mount('/overview');
     expect(
       await screen.findByRole('heading', { name: '当前账号没有运营权限' }),
     ).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('keeps moderator user management read-only', async () => {
@@ -113,9 +127,11 @@ describe('admin console operational flows', () => {
         .fn()
         .mockImplementation((url: string) =>
           Promise.resolve(
-            url.endsWith('/auth/me')
-              ? ok(session({ ...admin, role: 'moderator' }))
-              : ok({ items: [member], total: 1 }),
+            url.endsWith('/auth/context')
+              ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+              : url.endsWith('/auth/me')
+                ? ok(session({ ...admin, role: 'moderator' }))
+                : ok({ items: [member], total: 1 }),
           ),
         ),
     );
@@ -128,6 +144,10 @@ describe('admin console operational flows', () => {
 
   it('requires the exact handle for sensitive edits and preserves failed server authorization', async () => {
     const fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith('/auth/context'))
+        return Promise.resolve(
+          ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+        );
       if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
       if (options?.method === 'PATCH')
         return Promise.resolve(failure(403, '最后一位管理员不能降级'));
@@ -155,6 +175,10 @@ describe('admin console operational flows', () => {
   it('submits actual content visibility only after a second confirmation', async () => {
     let state = post.status;
     const fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith('/auth/context'))
+        return Promise.resolve(
+          ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+        );
       if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
       if (options?.method === 'PATCH') {
         state = 'hidden';
@@ -178,6 +202,10 @@ describe('admin console operational flows', () => {
 
   it('requires a report handling note, submits it, and does not silently moderate the target', async () => {
     const fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith('/auth/context'))
+        return Promise.resolve(
+          ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+        );
       if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
       if (options?.method === 'PATCH')
         return Promise.resolve(
@@ -210,7 +238,13 @@ describe('admin console operational flows', () => {
       vi
         .fn()
         .mockImplementation((url: string) =>
-          Promise.resolve(url.endsWith('/auth/me') ? ok(session()) : failure(401, '登录已失效')),
+          Promise.resolve(
+            url.endsWith('/auth/context')
+              ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+              : url.endsWith('/auth/me')
+                ? ok(session())
+                : failure(401, '登录已失效'),
+          ),
         ),
     );
     mount('/content?status=pending');
@@ -224,7 +258,13 @@ describe('admin console operational flows', () => {
       vi
         .fn()
         .mockImplementation((url: string) =>
-          Promise.resolve(url.endsWith('/auth/me') ? ok(session()) : ok(overview)),
+          Promise.resolve(
+            url.endsWith('/auth/context')
+              ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+              : url.endsWith('/auth/me')
+                ? ok(session())
+                : ok(overview),
+          ),
         ),
     );
     mount('/overview');

@@ -1,5 +1,9 @@
 import { lazy } from 'react';
 
+export const WalletLoginPage = lazy(() => import('@/features/walletidentity/WalletLoginPage'));
+export const WalletBindingsPage = lazy(
+  () => import('@/features/walletidentity/WalletBindingsPage'),
+);
 export const AuthPage = lazy(() => import('@/features/platform/AuthPage'));
 export const PlatformAccountPage = lazy(() => import('@/features/platform/PlatformAccountPage'));
 export const MyUploadsPage = lazy(() => import('@/features/platform/media/MyUploadsPage'));

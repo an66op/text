@@ -35,10 +35,21 @@ func (a *App) newSession(s *State, user User, userAgent string) (string, time.Ti
 	token := newID("") + newID("")
 	expires := now.Add(a.cfg.SessionTTL)
 	created, seen := now, now
-	s.Sessions[tokenHash(token)] = Session{UserID: user.ID, ExpiresAt: expires, ID: newID("session_"), Device: sessionDevice(userAgent), CreatedAt: &created, LastSeenAt: &seen, Legacy: false}
+	s.Sessions[tokenHash(token)] = Session{UserID: user.ID, ExpiresAt: expires, ID: newID("session_"), Device: sessionDevice(userAgent), CreatedAt: &created, LastSeenAt: &seen, Legacy: false, AuthMethod: "password"}
 	return token, expires
 }
 func (a *App) register(w http.ResponseWriter, r *http.Request) {
+	r, mutation, browserErr := prepareBrowserMutation(r, a.now(), false)
+	if browserErr != nil {
+		writeError(w, browserErr)
+		return
+	}
+	if mutation != nil {
+		if _, ok := a.store.(*PostgresStore); !ok {
+			writeError(w, &APIError{503, "unavailable", "浏览器身份需要 PostgreSQL"})
+			return
+		}
+	}
 	if !a.limiter.allow("register:"+clientIP(r), 6, time.Hour, a.now()) {
 		writeError(w, &APIError{429, "rate_limited", "注册过于频繁，请稍后再试"})
 		return
@@ -72,16 +83,31 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 		u := User{ID: newID("user_"), Handle: input.Handle, Name: name, Email: input.Email, Avatar: "", Bio: "", Role: "member", Status: "active", CreatedAt: a.now()}
 		s.Accounts[u.ID] = Account{u, passwordHash}
 		token, expires = a.newSession(s, u, r.UserAgent())
+		expires = applyBrowserPasswordSession(r, s, token, expires)
 		return map[string]any{"user": u, "expiresAt": expires}, nil
 	})
 	if err != nil {
 		writeError(w, err)
 		return
 	}
+	if mutation != nil {
+		result.(map[string]any)["authGeneration"] = mutation.Generation
+	}
 	a.setSessionCookie(w, token, expires)
 	writeJSON(w, 201, result)
 }
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
+	r, mutation, browserErr := prepareBrowserMutation(r, a.now(), false)
+	if browserErr != nil {
+		writeError(w, browserErr)
+		return
+	}
+	if mutation != nil {
+		if _, ok := a.store.(*PostgresStore); !ok {
+			writeError(w, &APIError{503, "unavailable", "浏览器身份需要 PostgreSQL"})
+			return
+		}
+	}
 	if !a.limiter.allow("login:"+clientIP(r), 15, 15*time.Minute, a.now()) {
 		w.Header().Set("Retry-After", "900")
 		writeError(w, &APIError{429, "rate_limited", "登录尝试过多，请 15 分钟后再试"})
@@ -122,18 +148,33 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 			return nil, forbidden("此账号已停用，请联系平台运营")
 		}
 		token, expires = a.newSession(s, account.User, r.UserAgent())
+		expires = applyBrowserPasswordSession(r, s, token, expires)
 		return map[string]any{"user": account.User, "expiresAt": expires}, nil
 	})
 	if err != nil {
 		writeError(w, err)
 		return
 	}
+	if mutation != nil {
+		result.(map[string]any)["authGeneration"] = mutation.Generation
+	}
 	a.setSessionCookie(w, token, expires)
 	writeJSON(w, 200, result)
 }
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
+	r, mutation, browserErr := prepareBrowserMutation(r, a.now(), false)
+	if browserErr != nil {
+		writeError(w, browserErr)
+		return
+	}
+	if mutation != nil {
+		if _, ok := a.store.(*PostgresStore); !ok {
+			writeError(w, &APIError{503, "unavailable", "浏览器身份需要 PostgreSQL"})
+			return
+		}
+	}
 	_, err := a.execute(r, true, "", func(s *State, _ *User) (any, error) {
-		if cookie, e := r.Cookie(cookieName); e == nil {
+		if cookie, e := r.Cookie(cookieName); mutation == nil && e == nil {
 			delete(s.Sessions, tokenHash(cookie.Value))
 		}
 		return nil, nil

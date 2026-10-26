@@ -17,6 +17,7 @@ import (
 // hydrate every post, message or wallet when no event has been committed.
 type StreamRequest struct {
 	SessionHash string
+	BrowserHash string
 	UserID      string
 	AfterSeq    int64
 }
@@ -341,7 +342,7 @@ func (a *App) stream(w http.ResponseWriter, r *http.Request) {
 		initial.Type = "resync"
 	}
 	initial.EventID = strconv.FormatInt(after, 10)
-	sub, err := a.streamHub.add(StreamRequest{SessionHash: tokenHash(cookie.Value), UserID: userID, AfterSeq: after})
+	sub, err := a.streamHub.add(StreamRequest{SessionHash: tokenHash(cookie.Value), BrowserHash: browserHash(r), UserID: userID, AfterSeq: after})
 	if err != nil {
 		writeError(w, err)
 		return
@@ -367,7 +368,7 @@ func (a *App) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	write := func(event StreamEvent) error {
 		authCtx, done := context.WithTimeout(ctx, 3*time.Second)
-		valid, allowed, err := a.authorizeStream(authCtx, StreamRequest{SessionHash: sub.request.SessionHash, UserID: sub.request.UserID}, event.ConversationID)
+		valid, allowed, err := a.authorizeStream(authCtx, StreamRequest{SessionHash: sub.request.SessionHash, BrowserHash: sub.request.BrowserHash, UserID: sub.request.UserID}, event.ConversationID)
 		done()
 		if err != nil {
 			return err

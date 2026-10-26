@@ -320,7 +320,7 @@ function Web3AccountPage() {
             <h2>连接浏览器钱包</h2>
             <Link2 size={20} />
           </div>
-          <p className="web3-note">读取公开地址与网络。连接后可展示你的链上身份。</p>
+          <p className="web3-note">读取公开地址与网络。公开连接不会登录共鸣账号。</p>
           {browser.address ? (
             <div className="web3-connected">
               <span>
@@ -373,9 +373,15 @@ function Web3AccountPage() {
           )}
           <PlatformError message={browser.error} />
           <p className="web3-note web3-wallet-disclosure">
-            公开地址与上方测试账本分别管理。尚未开放签名登录、真实资产交易和收益产品。
+            公开连接、钱包登录与上方测试积分分别管理。这里不提供真实资产交易和收益产品。
           </p>
         </section>
+        <Link
+          className="web3-account-link"
+          to={auth.user ? '/account/wallets' : '/login/wallet?returnTo=%2Fweb3'}
+        >
+          {auth.user ? '管理钱包身份' : '使用已绑定钱包登录'} <ChevronRight size={16} />
+        </Link>
         <section className="web3-panel">
           <div className="web3-section-title">
             <h2>测试积分记录</h2>

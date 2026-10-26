@@ -15,6 +15,8 @@ import LegacyCircleRedirect from '@/features/circles/LegacyCircleRedirect';
 import {
   SocialPage,
   AuthPage,
+  WalletLoginPage,
+  WalletBindingsPage,
   PlatformAccountPage,
   MyUploadsPage,
   NotificationsPage,
@@ -176,6 +178,8 @@ export const appRoutes: RouteObject[] = [
       page(paths.localWorld, <ContentPage moduleName="世界" />, '本机世界'),
       page(paths.login, <AuthPage kind="login" />, '登录', 'me'),
       page(paths.register, <AuthPage kind="register" />, '注册', 'me'),
+      page(paths.walletLogin, <WalletLoginPage />, '钱包登录', 'me'),
+      page(paths.walletBindings, <WalletBindingsPage />, '钱包身份', 'me'),
       page(paths.account, <PlatformAccountPage />, '账号', 'me'),
       page(paths.uploads, <MyUploadsPage />, '我的上传', 'me'),
       page(paths.notifications, <NotificationsPage />, '通知', 'social'),

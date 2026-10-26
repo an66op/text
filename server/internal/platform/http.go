@@ -22,7 +22,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.8.0"
+const Version = "0.9.0"
 const cookieName = "gongming_session"
 
 type Config struct {
@@ -32,6 +32,8 @@ type Config struct {
 	SessionTTL     time.Duration
 	BcryptCost     int
 	MediaDirectory string
+	WalletOrigins  []string
+	WalletChains   []string
 }
 
 func (c Config) Validate() error {
@@ -56,7 +58,7 @@ func (c Config) Validate() error {
 			return errors.New("production origins require https")
 		}
 	}
-	return nil
+	return c.validateWalletSettings()
 }
 
 type App struct {
@@ -143,7 +145,13 @@ func (a *App) middleware(next http.Handler) http.Handler {
 				writeError(w, &APIError{500, "internal_error", "服务暂时不可用"})
 			}
 		}()
-		next.ServeHTTP(w, r.WithContext(ctx))
+		r = r.WithContext(ctx)
+		if err := a.browserSessionGate(r); err != nil {
+			writeError(w, err)
+			return
+		}
+		r = r.WithContext(context.WithValue(r.Context(), browserGateKey{}, browserCredential{SessionHash: sessionRequestHash(r), BrowserHash: browserCredentialHash(r), Bypass: explicitAuthenticationPath(r.URL.Path)}))
+		next.ServeHTTP(w, r)
 	})
 }
 func clientIP(r *http.Request) string {
@@ -252,7 +260,7 @@ func tokenHash(raw string) string {
 	return hex.EncodeToString(sum[:])
 }
 func (a *App) setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/api/v1", Expires: expires, MaxAge: int(a.cfg.SessionTTL.Seconds()), HttpOnly: true, Secure: a.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/api/v1", Expires: expires, MaxAge: max(1, int(expires.Sub(a.now()).Seconds())), HttpOnly: true, Secure: a.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
 }
 func trimText(value string, max int) (string, error) {
 	value = strings.TrimSpace(value)

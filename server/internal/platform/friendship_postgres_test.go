@@ -247,7 +247,7 @@ func installVersionTwo(t *testing.T, ctx context.Context, s *PostgresStore, with
 		memory.state.CircleComments = nil
 		memory.state.CircleInvites = nil
 		memory.state.CircleInviteRedemptions = nil
-		if err = persistNormalized(ctx, tx, NewState(), memory.state); err != nil {
+		if err = persistHistoricalFixture(ctx, tx, 2, memory.state); err != nil {
 			t.Fatal(err)
 		}
 	}

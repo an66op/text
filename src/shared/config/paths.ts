@@ -17,6 +17,8 @@ export const paths = {
   localWorld: '/world/demo',
   login: '/login',
   register: '/register',
+  walletLogin: '/login/wallet',
+  walletBindings: '/account/wallets',
   account: '/account',
   uploads: '/account/uploads',
   notifications: '/notifications',

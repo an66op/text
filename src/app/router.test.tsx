@@ -184,6 +184,16 @@ describe('real application routes', () => {
     }
   });
 
+  it('keeps wallet authentication and credential management on secondary account routes', () => {
+    for (const path of [paths.walletLogin, paths.walletBindings]) {
+      const route = matchRoutes(appRoutes, path)?.at(-1)?.route;
+      expect(route?.path).toBe(path);
+      expect(route?.handle).toMatchObject({ section: 'me', level: 'secondary' });
+    }
+    expect(paths.walletLogin).toBe('/login/wallet');
+    expect(paths.walletBindings).toBe('/account/wallets');
+  });
+
   it('keeps online circles distinct from the local directory and old deep links', () => {
     const route = (url: string) => matchRoutes(appRoutes, url)?.at(-1)?.route.path;
     expect(route('/circles')).toBe('/circles');

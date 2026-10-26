@@ -11,6 +11,7 @@ import {
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/shared/api/client';
+import { advanceAccountEpoch } from '@/shared/api/account-guard';
 import SettingsRoutePage from '@/features/profile/SettingsRoutePage';
 import { AuthContext, type AuthState } from '../auth-context';
 import { member, otherMember, signedIn } from '../platform-test-fixtures';
@@ -24,6 +25,7 @@ const current: SessionDevice = {
   device: 'Safari · macOS',
   current: true,
   legacy: false,
+  authMethod: 'password',
   createdAt: '2026-10-27T01:00:00Z',
   lastSeenAt: '2026-10-27T01:30:00Z',
   expiresAt: '2026-11-27T01:00:00Z',
@@ -33,12 +35,14 @@ const remote: SessionDevice = {
   id: 'session-remote',
   device: 'iPhone · Safari',
   current: false,
+  authMethod: 'wallet',
 };
 const legacy: SessionDevice = {
   ...remote,
   id: 'session-legacy',
   device: '',
   legacy: true,
+  authMethod: 'unknown',
   createdAt: null,
   lastSeenAt: null,
 };
@@ -68,6 +72,48 @@ afterEach(() => {
 });
 
 describe('real login device management', () => {
+  it('shows only the server-reported login source and links own wallet management without requesting bindings', async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    render(page());
+    await screen.findByRole('heading', { name: remote.device });
+    const passwordDevice = screen
+      .getByRole('heading', { name: current.device })
+      .closest('article')!;
+    const walletDevice = screen.getByRole('heading', { name: remote.device }).closest('article')!;
+    const unknownDevice = screen.getByRole('heading', { name: '旧会话' }).closest('article')!;
+    expect(within(passwordDevice).getByText('密码登录')).toBeInTheDocument();
+    expect(within(walletDevice).getByText('钱包签名')).toBeInTheDocument();
+    expect(within(unknownDevice).getByText('历史未知')).toBeInTheDocument();
+    expect(within(unknownDevice).queryByText('密码登录')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /钱包身份/ })).toHaveAttribute(
+      'href',
+      '/account/wallets',
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: `撤销${remote.device}` }));
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      '撤销设备不会解绑钱包；已绑定的钱包仍可重新签名登录。',
+    );
+  });
+
+  it('rejects a retained confirmation and ignores a delayed list after the same account epoch changes', async () => {
+    const revoke = vi.spyOn(sessionApi, 'revoke');
+    const { result } = renderHook(() => useSessionDevices(member.id, vi.fn()));
+    await waitFor(() => expect(result.current.items).toHaveLength(3));
+    const pending = deferred<SessionDevices>();
+    vi.mocked(sessionApi.list).mockReturnValueOnce(pending.promise);
+    act(() => result.current.refresh());
+    advanceAccountEpoch();
+    await act(async () =>
+      pending.resolve({ items: [{ ...remote, device: '不应出现的新来源' }], total: 1 }),
+    );
+    expect(result.current.items.map((item) => item.device)).not.toContain('不应出现的新来源');
+    await act(async () => {
+      expect(await result.current.revoke({ kind: 'one', device: remote })).toBe(false);
+    });
+    expect(revoke).not.toHaveBeenCalled();
+  });
   it('requires a concrete confirmation and removes a remote device only after the server confirms', async () => {
     const pending = deferred<RevokeSessionResult>();
     const revoke = vi.spyOn(sessionApi, 'revoke').mockReturnValue(pending.promise);

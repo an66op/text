@@ -253,7 +253,7 @@ func TestCircleV5MigrationPreservesOldMediaRowsAndRollsBack(t *testing.T) {
 	if err = migrateMedia(ctx, tx); err != nil {
 		t.Fatal(err)
 	}
-	if err = persistNormalized(ctx, tx, NewState(), memory.state); err != nil {
+	if err = persistHistoricalFixture(ctx, tx, 5, memory.state); err != nil {
 		t.Fatal(err)
 	}
 	id := newID("media_")
@@ -275,9 +275,15 @@ func TestCircleV5MigrationPreservesOldMediaRowsAndRollsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := map[string]string{}
+	projections := map[string]string{}
 	for _, table := range []string{"gongming_users", "gongming_sessions", "gongming_posts", "gongming_media_assets"} {
 		var data string
-		if err = s.pool.QueryRow(ctx, `SELECT jsonb_agg(to_jsonb(t))::text FROM (SELECT *,xmin::text AS version FROM `+table+`) t`).Scan(&data); err != nil {
+		projection, projectionErr := freezeMigrationProjection(ctx, s, table)
+		if projectionErr != nil {
+			t.Fatal(projectionErr)
+		}
+		projections[table] = projection
+		if err = s.pool.QueryRow(ctx, projection).Scan(&data); err != nil {
 			t.Fatal(err)
 		}
 		before[table] = data
@@ -305,11 +311,7 @@ func TestCircleV5MigrationPreservesOldMediaRowsAndRollsBack(t *testing.T) {
 	}
 	for table, data := range before {
 		var after string
-		expression := "to_jsonb(t)"
-		if table == "gongming_media_assets" {
-			expression = "to_jsonb(t)-'scope'-'circle_id'"
-		}
-		if err = s.pool.QueryRow(ctx, `SELECT jsonb_agg(`+expression+`)::text FROM (SELECT *,xmin::text AS version FROM `+table+`) t`).Scan(&after); err != nil || after != data {
+		if err = s.pool.QueryRow(ctx, projections[table]).Scan(&after); err != nil || after != data {
 			t.Fatalf("schema6 rewrote old rows in %s", table)
 		}
 	}

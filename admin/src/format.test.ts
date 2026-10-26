@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { fileSize, safeImageUrl, safeOffset, safeReturnTo } from './format';
+import { actionLabel, fileSize, safeImageUrl, safeOffset, safeReturnTo } from './format';
 
 describe('admin navigation and media guards', () => {
+  it('labels wallet security events without interpreting target IDs as wallet owners', () => {
+    expect(actionLabel('wallet.bind')).toBe('绑定本人钱包');
+    expect(actionLabel('wallet.unbind')).toBe('解绑本人钱包');
+    expect(actionLabel('wallet.login')).toBe('钱包签名登录');
+    expect(actionLabel('__proto__')).toBe('__proto__');
+    expect(actionLabel('future.action')).toBe('future.action');
+  });
   it('keeps login returns inside known console routes', () => {
     expect(safeReturnTo('/reports?status=open&detail=r1')).toBe('/reports?status=open&detail=r1');
     expect(safeReturnTo('/media?status=blocked')).toBe('/media?status=blocked');

@@ -110,17 +110,17 @@ func (a *App) messagingSQLOnce(s *PostgresStore, r *http.Request, op messagingOp
 
 // Reads authenticate within their repeatable snapshot. Writes also share-lock
 // the actor and session, so suspension/revocation cannot commit in the middle of
-// a successful send/read transaction. Only the old three session columns are
-// required; device-session metadata remains the authentication domain's concern.
+// a successful send/read transaction. Browser provenance/current-pointer checks
+// are shared with State, media and stream authorization.
 func (a *App) messagingSQLActor(r *http.Request, tx pgx.Tx, lock bool) (PublicUser, error) {
 	u := PublicUser{}
 	valid := false
 	if cookie, err := r.Cookie(cookieName); err == nil {
-		query := `SELECT u.id,u.handle,u.name,u.avatar,u.bio FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>$2 AND u.status='active'`
+		query := `SELECT u.id,u.handle,u.name,u.avatar,u.bio FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>$2 AND u.status='active' AND ` + browserSessionPredicate("s", "$3")
 		if lock {
 			query += ` FOR SHARE OF u,s`
 		}
-		err = tx.QueryRow(r.Context(), query, tokenHash(cookie.Value), a.now()).Scan(&u.ID, &u.Handle, &u.Name, &u.Avatar, &u.Bio)
+		err = tx.QueryRow(r.Context(), query, tokenHash(cookie.Value), a.now(), browserCredentialHash(r)).Scan(&u.ID, &u.Handle, &u.Name, &u.Avatar, &u.Bio)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return u, err
 		}

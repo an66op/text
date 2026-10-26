@@ -135,6 +135,33 @@
   line-height: 1.7;
   font-size: 11px;
 }
+.session-wallet-management {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 18px;
+  padding: 15px 13px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.session-wallet-management span {
+  flex: 1;
+  min-width: 0;
+}
+.session-wallet-management strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.session-wallet-management small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 5px;
+}
 .session-devices-empty {
   text-align: center;
   color: var(--platform-muted);

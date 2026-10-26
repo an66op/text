@@ -24,7 +24,9 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const guarded = !['/auth/me', '/auth/login', '/auth/register'].includes(path.split('?')[0]);
+  const guarded = !['/auth/me', '/auth/context', '/auth/login', '/auth/register'].includes(
+    path.split('?')[0],
+  );
   const requestAccount = expectedAccount();
   const epoch = accountEpoch();
   const changed = () => requestAccount !== expectedAccount() || epoch !== accountEpoch();
@@ -77,7 +79,9 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       if (!response.ok) {
         if (response.status === 409 && result.error?.code === 'account_changed') accountChanged();
         throw new ApiError(
-          result.error?.message ||
+          (result.error?.code === 'auth_context_changed'
+            ? '浏览器登录状态已变化，正在重新验证账号。请重新确认后再操作。'
+            : result.error?.message) ||
             (response.status === 403 ? '当前账号没有此操作权限。' : '请求未完成，请重试。'),
           response.status,
           result.error?.code || 'request_failed',

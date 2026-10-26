@@ -33,7 +33,16 @@ export function apiErrorMessage(error: unknown) {
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  const guarded = !['/auth/me', '/auth/login', '/auth/register'].includes(path.split('?')[0]);
+  const route = path.split('?')[0];
+  const guarded = ![
+    '/auth/me',
+    '/auth/login',
+    '/auth/register',
+    '/auth/context',
+    '/auth/wallet/config',
+  ].includes(route);
+  const walletAuthentication =
+    route === '/auth/wallet/challenge' || route === '/auth/wallet/verify';
   const requestAccount = expectedAccount();
   const requestEpoch = accountEpoch();
   if (guarded && requestAccount) headers.set('X-Gongming-Account', requestAccount);
@@ -62,7 +71,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       assertRequestActive(signal);
       if (guarded && changedDuringRequest())
         throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
-      if (response.status === 401 && guarded)
+      if (response.status === 401 && guarded && !walletAuthentication)
         unauthorizedListeners.forEach((listener) => listener());
       let envelope: unknown;
       try {
@@ -76,7 +85,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
         throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
       if (!response.ok) {
         const serverError = (envelope as { error?: { message?: string; code?: string } })?.error;
-        if (response.status === 409 && serverError?.code === 'account_changed') accountChanged();
+        if (
+          response.status === 409 &&
+          ['account_changed', 'auth_context_changed'].includes(serverError?.code || '')
+        )
+          accountChanged();
         throw new ApiError(
           serverError?.message ||
             (response.status === 401 ? '请先登录，再继续操作' : '服务请求失败'),

@@ -1,4 +1,5 @@
 import { apiQuery, apiRequest } from './client';
+import { authContextHeaders, browserAuthRequest } from './auth-context';
 import type {
   Conversation,
   ConversationKind,
@@ -19,11 +20,41 @@ const idPath = (value: string) => encodeURIComponent(value);
 
 export const platformApi = {
   me: (signal?: AbortSignal) => apiRequest<Session>('/auth/me', { signal }),
-  login: (email: string, password: string) =>
-    apiRequest<Session>('/auth/login', { method: 'POST', body: body({ email, password }) }),
-  register: (value: { email: string; password: string; name: string; handle: string }) =>
-    apiRequest<Session>('/auth/register', { method: 'POST', body: body(value) }),
-  logout: () => apiRequest<{ ok: true }>('/auth/logout', { method: 'POST' }),
+  login: (email: string, password: string, signal?: AbortSignal) =>
+    browserAuthRequest(
+      (context) =>
+        apiRequest<Session>('/auth/login', {
+          method: 'POST',
+          body: body({ email, password }),
+          signal,
+          headers: authContextHeaders(context),
+        }),
+      signal,
+    ),
+  register: (
+    value: { email: string; password: string; name: string; handle: string },
+    signal?: AbortSignal,
+  ) =>
+    browserAuthRequest(
+      (context) =>
+        apiRequest<Session>('/auth/register', {
+          method: 'POST',
+          body: body(value),
+          signal,
+          headers: authContextHeaders(context),
+        }),
+      signal,
+    ),
+  logout: (signal?: AbortSignal) =>
+    browserAuthRequest(
+      (context) =>
+        apiRequest<{ ok: true }>('/auth/logout', {
+          method: 'POST',
+          signal,
+          headers: authContextHeaders(context),
+        }),
+      signal,
+    ),
   updateMe: (value: { name?: string; bio?: string; avatar?: string }) =>
     apiRequest<PlatformUser>('/me', { method: 'PATCH', body: body(value) }),
   health: (signal?: AbortSignal) => apiRequest<Health>('/health', { signal }),

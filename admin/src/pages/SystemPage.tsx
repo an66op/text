@@ -44,6 +44,10 @@ const capabilityLabels: Record<string, string> = {
   'event-waitlists': '限额报名与顺序候补递补',
   'event-registration-receipts': '报名回执去重与取消保护',
   'circle-event-moderation': '独立活动治理与审计',
+  'wallet-identity': '本人钱包绑定与身份管理',
+  'siwe-eoa-authentication': 'EOA 钱包签名登录',
+  'browser-auth-cas': '浏览器认证版本与并发保护',
+  'wallet-session-revocation': '解绑钱包与来源会话撤销',
 };
 
 function uptime(value: number) {
@@ -169,6 +173,15 @@ export default function SystemPage() {
                   <strong>开发示例账号</strong>
                   <p>默认凭据只用于本地体验。生产部署必须关闭种子数据、使用独立密钥和数据库。</p>
                 </div>
+                {data.features.includes('wallet-identity') && (
+                  <div className="boundary-item">
+                    <strong>钱包身份与资产分开</strong>
+                    <p>
+                      本人可在前台使用密码管理 EOA
+                      钱包绑定，签名登录不创建账号，也不代表持有平台资产。工作台只展示能力与安全审计，不代绑、代签或转移他人钱包；合约钱包与密码重设尚未接入。
+                    </p>
+                  </div>
+                )}
                 {data.features.includes('private-image-storage') && (
                   <div className="boundary-item">
                     <strong>私有图片已接通</strong>

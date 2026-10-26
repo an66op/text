@@ -39,6 +39,7 @@ type Account struct {
 	PasswordHash string `json:"passwordHash"`
 }
 type Session struct {
+	AuthMethod string     `json:"authMethod,omitempty"`
 	UserID     string     `json:"userId"`
 	ExpiresAt  time.Time  `json:"expiresAt"`
 	ID         string     `json:"id"`

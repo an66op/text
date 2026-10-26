@@ -1,11 +1,12 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest } from '@/shared/api/client';
-import { expectedAccount } from '@/shared/api/account-guard';
+import { accountChanged, accountEpoch, expectedAccount } from '@/shared/api/account-guard';
 import { AuthProvider } from './AuthProvider';
 import { useAuth } from './useAuth';
 import { otherMember, session } from './platform-test-fixtures';
 import type { AuthState } from './auth-context';
+import { walletIdentityApi } from '@/features/walletidentity/api';
 
 function Probe() {
   const auth = useAuth();
@@ -23,13 +24,222 @@ function Probe() {
 }
 const response = (data: unknown, status = 200) =>
   new Response(JSON.stringify(status >= 400 ? { error: data } : { data }), { status });
+function authFetch(fetcher: (...args: never[]) => unknown) {
+  vi.stubGlobal('fetch', (path: string, init?: RequestInit) =>
+    path.endsWith('/auth/context')
+      ? Promise.resolve(response({ generation: 'test_context', expiresAt: '2099-01-01T00:00:00Z' }))
+      : fetcher(path as never, init as never),
+  );
+}
 const secondSession = { ...session, user: otherMember };
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
 describe('server authentication lifecycle', () => {
+  it.each(['broken', 'missing', 'server-error'] as const)(
+    'reconciles a wallet login with an unconfirmed %s receipt without another verify',
+    async (kind) => {
+      let reads = 0;
+      const fetcher = vi
+        .fn()
+        .mockImplementation((path: string) =>
+          Promise.resolve(
+            path.endsWith('/auth/me')
+              ? response(++reads === 1 ? session : secondSession)
+              : kind === 'broken'
+                ? new Response('broken', { status: 200 })
+                : kind === 'missing'
+                  ? new Response(JSON.stringify({ unexpected: true }), { status: 200 })
+                  : response({ code: 'internal_error', message: '结果未确认' }, 500),
+          ),
+        );
+      authFetch(fetcher);
+      const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+      await waitFor(() => expect(result.current.user?.id).toBe(session.user.id));
+      await act(async () => {
+        await result.current
+          .loginWallet({
+            id: 'challenge_one',
+            message: 'message',
+            signature: 'signature',
+            contextGeneration: 'test_context',
+            expectedEpoch: accountEpoch(),
+          })
+          .catch(() => {});
+      });
+      await waitFor(() => expect(result.current.user?.id).toBe(secondSession.user.id));
+      expect(reads).toBe(2);
+      expect(
+        fetcher.mock.calls.filter(([path]) => path.endsWith('/auth/wallet/verify')),
+      ).toHaveLength(1);
+    },
+  );
+  it('prepares browser context before checking a legacy cookie and does not read identity on context failure', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response({ generation: 'first_context', expiresAt: session.expiresAt }),
+      )
+      .mockResolvedValueOnce(response(session));
+    vi.stubGlobal('fetch', fetcher);
+    const view = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    await waitFor(() => expect(view.result.current.user?.id).toBe(session.user.id));
+    expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/auth/context',
+      '/api/v1/auth/me',
+    ]);
+    expect((fetcher.mock.calls[0][1].headers as Headers).get('X-Gongming-Browser')).toBe('1');
+    view.unmount();
+    fetcher.mockReset().mockRejectedValue(new TypeError('offline'));
+    const retry = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    await waitFor(() => expect(retry.result.current.status).toBe('unavailable'));
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0][0]).toBe('/api/v1/auth/context');
+  });
+
+  it('single-flights final wallet verification with password authentication', async () => {
+    authFetch(vi.fn().mockResolvedValue(response(session)));
+    let finish!: (value: typeof session) => void;
+    const verify = vi.spyOn(walletIdentityApi, 'login').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    await waitFor(() => expect(result.current.user?.id).toBe(session.user.id));
+    let pending!: Promise<boolean>;
+    act(() => {
+      pending = result.current.loginWallet({
+        id: 'challenge_one',
+        message: 'message',
+        signature: 'signature',
+        contextGeneration: 'test_context',
+        expectedEpoch: accountEpoch(),
+      });
+    });
+    await expect(result.current.login('second@example.test', 'Example2026!')).rejects.toThrow(
+      '账号操作正在处理中',
+    );
+    await act(async () => {
+      finish(secondSession);
+      expect(await pending).toBe(true);
+    });
+    expect(verify).toHaveBeenCalledOnce();
+    expect(result.current.user?.id).toBe(secondSession.user.id);
+  });
+
+  it('does not accept a late wallet login receipt after an external account change signal', async () => {
+    let reads = 0;
+    authFetch(
+      vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(response(++reads === 1 ? session : secondSession)),
+        ),
+    );
+    let finish!: (value: typeof session) => void;
+    vi.spyOn(walletIdentityApi, 'login').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    await waitFor(() => expect(result.current.user?.id).toBe(session.user.id));
+    let pending!: Promise<boolean>;
+    act(() => {
+      pending = result.current.loginWallet({
+        id: 'challenge_one',
+        message: 'message',
+        signature: 'signature',
+        contextGeneration: 'test_context',
+        expectedEpoch: accountEpoch(),
+      });
+      accountChanged();
+    });
+    await act(async () => {
+      finish(session);
+      expect(await pending).toBe(false);
+    });
+    await waitFor(() => expect(result.current.user?.id).toBe(secondSession.user.id));
+    expect(reads).toBe(2);
+  });
+
+  it('keeps a valid account after a failed wallet login returns 401', async () => {
+    authFetch(
+      vi
+        .fn()
+        .mockImplementation((path: string) =>
+          Promise.resolve(
+            path.endsWith('/auth/me')
+              ? response(session)
+              : response({ code: 'unauthorized', message: '钱包登录未完成' }, 401),
+          ),
+        ),
+    );
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    await waitFor(() => expect(result.current.user?.id).toBe(session.user.id));
+    await act(async () => {
+      await expect(
+        result.current.loginWallet({
+          id: 'challenge_one',
+          message: 'message',
+          signature: 'signature',
+          contextGeneration: 'test_context',
+          expectedEpoch: accountEpoch(),
+        }),
+      ).rejects.toMatchObject({ status: 401 });
+    });
+    expect(result.current.user?.id).toBe(session.user.id);
+    expect(result.current.status).toBe('authenticated');
+  });
+
+  it('rechecks an aborted final wallet verification once without repeating the write', async () => {
+    let reads = 0;
+    const fetcher = vi
+      .fn()
+      .mockImplementation((path: string) =>
+        path.endsWith('/auth/me')
+          ? Promise.resolve(response(++reads === 1 ? session : secondSession))
+          : new Promise(() => {}),
+      );
+    authFetch(fetcher);
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    await waitFor(() => expect(result.current.user?.id).toBe(session.user.id));
+    const controller = new AbortController();
+    let pending!: Promise<boolean>;
+    act(() => {
+      pending = result.current.loginWallet(
+        {
+          id: 'challenge_one',
+          message: 'message',
+          signature: 'signature',
+          contextGeneration: 'test_context',
+          expectedEpoch: accountEpoch(),
+        },
+        controller.signal,
+      );
+    });
+    const caught = pending.catch((error) => error);
+    await waitFor(() =>
+      expect(
+        fetcher.mock.calls.filter(([path]) => path.endsWith('/auth/wallet/verify')),
+      ).toHaveLength(1),
+    );
+    await act(async () => {
+      controller.abort();
+      await caught;
+    });
+    await waitFor(() => expect(result.current.user?.id).toBe(secondSession.user.id));
+    expect(reads).toBe(2);
+    expect(
+      fetcher.mock.calls.filter(([path]) => path.endsWith('/auth/wallet/verify')),
+    ).toHaveLength(1);
+  });
   it.each<{ name: string; invoke: (auth: AuthState) => Promise<void> }>([
     { name: 'login', invoke: (auth) => auth.login('old@example.test', 'Example2026!') },
     {
@@ -43,6 +253,18 @@ describe('server authentication lifecycle', () => {
         }),
     },
     { name: 'logout', invoke: (auth) => auth.logout() },
+    {
+      name: 'loginWallet',
+      invoke: async (auth) => {
+        await auth.loginWallet({
+          id: 'challenge_one',
+          message: 'message',
+          signature: 'signature',
+          contextGeneration: 'test_context',
+          expectedEpoch: accountEpoch(),
+        });
+      },
+    },
     { name: 'updateProfile', invoke: (auth) => auth.updateProfile({ name: '旧页面的编辑' }) },
   ])(
     'rejects retained $name after provider A unmounts without sending requests as account B',
@@ -51,7 +273,7 @@ describe('server authentication lifecycle', () => {
         .fn()
         .mockResolvedValueOnce(response(session))
         .mockResolvedValueOnce(response(secondSession));
-      vi.stubGlobal('fetch', fetcher);
+      authFetch(fetcher);
       const first = renderHook(() => useAuth(), { wrapper: AuthProvider });
       await waitFor(() => expect(first.result.current.user?.id).toBe(session.user.id));
       const oldAuth = first.result.current;
@@ -75,7 +297,7 @@ describe('server authentication lifecycle', () => {
             finish = resolve;
           }),
     );
-    vi.stubGlobal('fetch', fetcher);
+    authFetch(fetcher);
     const first = renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(first.result.current.user?.id).toBe(session.user.id));
     let mutation!: Promise<void>;
@@ -83,7 +305,7 @@ describe('server authentication lifecycle', () => {
       mutation = first.result.current.login('old@example.test', 'Example2026!');
     });
     await act(async () => first.result.current.refresh());
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     first.unmount();
     const second = renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(second.result.current.user?.id).toBe(secondSession.user.id));
@@ -108,13 +330,14 @@ describe('server authentication lifecycle', () => {
         });
       return Promise.resolve(response({ code: 'unauthorized', message: '原会话已撤销' }, 401));
     });
-    vi.stubGlobal('fetch', fetcher);
+    authFetch(fetcher);
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(result.current.user?.id).toBe(session.user.id));
     let login!: Promise<void>;
     act(() => {
       login = result.current.login('new@example.test', 'Example2026!');
     });
+    await waitFor(() => expect(finishLogin).toBeTypeOf('function'));
     await act(async () => {
       await apiRequest('/posts/one/like', { method: 'POST' }).catch(() => {});
     });
@@ -144,7 +367,7 @@ describe('server authentication lifecycle', () => {
             finishLogin = resolve;
           }),
     );
-    vi.stubGlobal('fetch', fetcher);
+    authFetch(fetcher);
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
     await act(async () => {});
     expect(result.current.user?.id).toBe(session.user.id);
@@ -172,8 +395,7 @@ describe('server authentication lifecycle', () => {
   });
 
   it('keeps an authenticated account during a temporary validation network failure', async () => {
-    vi.stubGlobal(
-      'fetch',
+    authFetch(
       vi.fn().mockResolvedValueOnce(response(session)).mockRejectedValue(new TypeError('offline')),
     );
     render(
@@ -190,7 +412,7 @@ describe('server authentication lifecycle', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(response({ code: 'unauthorized', message: '请登录' }, 401));
-    vi.stubGlobal('fetch', fetchMock);
+    authFetch(fetchMock);
     render(
       <AuthProvider>
         <Probe />
@@ -203,7 +425,7 @@ describe('server authentication lifecycle', () => {
   });
 
   it('marks API unavailable without fabricating a member identity', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+    authFetch(vi.fn().mockRejectedValue(new TypeError('offline')));
     render(
       <AuthProvider>
         <Probe />
@@ -222,7 +444,7 @@ describe('server authentication lifecycle', () => {
           })
         : Promise.resolve(response(session)),
     );
-    vi.stubGlobal('fetch', fetchMock);
+    authFetch(fetchMock);
     render(
       <AuthProvider>
         <Probe />
@@ -231,7 +453,7 @@ describe('server authentication lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
     await screen.findByText('authenticated:示例成员');
     await act(async () => {
-      finishMe(response({ code: 'unauthorized', message: '旧检查' }, 401));
+      finishMe?.(response({ code: 'unauthorized', message: '旧检查' }, 401));
     });
     expect(screen.getByText('authenticated:示例成员')).toBeInTheDocument();
   });
@@ -246,7 +468,7 @@ describe('server authentication lifecycle', () => {
             : response({ code: 'unauthorized', message: 'expired' }, 401),
         ),
       );
-    vi.stubGlobal('fetch', fetchMock);
+    authFetch(fetchMock);
     render(
       <AuthProvider>
         <Probe />
@@ -262,7 +484,7 @@ describe('server authentication lifecycle', () => {
 
   it('expires cookie-backed UI sessions at the server expiry time', async () => {
     const expiresAt = new Date(Date.now() + 1000).toISOString();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...session, expiresAt })));
+    authFetch(vi.fn().mockResolvedValue(response({ ...session, expiresAt })));
     render(
       <AuthProvider>
         <Probe />

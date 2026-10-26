@@ -164,7 +164,7 @@ func (a *App) authorizeMediaSQL(r *http.Request, s *PostgresStore) (StoredMediaA
 	userID := ""
 	isStaff := false
 	if cookie, err := r.Cookie(cookieName); err == nil {
-		err = tx.QueryRow(r.Context(), `SELECT u.id,u.role IN ('admin','moderator') FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>$2 AND u.status='active'`, tokenHash(cookie.Value), a.now()).Scan(&userID, &isStaff)
+		err = tx.QueryRow(r.Context(), `SELECT u.id,u.role IN ('admin','moderator') FROM gongming_sessions s JOIN gongming_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>$2 AND u.status='active' AND `+browserSessionPredicate("s", "$3"), tokenHash(cookie.Value), a.now(), browserCredentialHash(r)).Scan(&userID, &isStaff)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return v, err
 		}

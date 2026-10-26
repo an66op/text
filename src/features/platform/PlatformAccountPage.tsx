@@ -264,6 +264,13 @@ function AccountPage() {
             </span>
             <ArrowUpRight size={17} />
           </Link>
+          <Link to="/account/wallets">
+            <span>
+              <ShieldCheck size={21} />
+              钱包身份
+            </span>
+            <ArrowUpRight size={17} />
+          </Link>
           <Link to="/web3">
             <span>
               <ShieldCheck size={21} />

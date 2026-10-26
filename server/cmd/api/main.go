@@ -44,6 +44,16 @@ func run() error {
 			cfg.Origins = append(cfg.Origins, strings.TrimSpace(origin))
 		}
 	}
+	for _, v := range strings.Split(os.Getenv("WALLET_ORIGINS"), ",") {
+		if strings.TrimSpace(v) != "" {
+			cfg.WalletOrigins = append(cfg.WalletOrigins, strings.TrimSpace(v))
+		}
+	}
+	for _, v := range strings.Split(os.Getenv("WALLET_CHAINS"), ",") {
+		if strings.TrimSpace(v) != "" {
+			cfg.WalletChains = append(cfg.WalletChains, strings.TrimSpace(v))
+		}
+	}
 	if err := cfg.Validate(); err != nil {
 		return err
 	}

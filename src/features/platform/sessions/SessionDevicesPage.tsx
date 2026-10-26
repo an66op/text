@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Monitor, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  Monitor,
+  RefreshCw,
+  ShieldCheck,
+  Smartphone,
+  Wallet,
+} from 'lucide-react';
+import { Link } from 'react-router';
+import { accountEpoch } from '@/shared/api/account-guard';
 import PageHeader from '@/shared/ui/PageHeader';
 import ActionDialog from '@/shared/ui/ActionDialog';
 import { LoginNotice, PlatformError } from '../PlatformUi';
@@ -12,6 +22,8 @@ import './sessions.css';
 type Confirmation = { kind: 'one'; device: SessionDevice } | { kind: 'others'; ids: string[] };
 const deviceName = (device: SessionDevice) =>
   device.legacy ? '旧会话' : device.device.trim() || '未知设备';
+const authMethodLabel = (method: SessionDevice['authMethod']) =>
+  method === 'password' ? '密码登录' : method === 'wallet' ? '钱包签名' : '历史未知';
 const time = (value: string) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -48,7 +60,12 @@ export default function SessionDevicesPage() {
         </div>
       </section>
     );
-  return <SignedInDevices key={`${auth.user.id}:${auth.expiresAt}`} userId={auth.user.id} />;
+  return (
+    <SignedInDevices
+      key={`${auth.user.id}:${auth.expiresAt}:${auth.user.role}:${auth.user.status}:${accountEpoch()}`}
+      userId={auth.user.id}
+    />
+  );
 }
 
 function SignedInDevices({ userId }: { userId: string }) {
@@ -158,6 +175,10 @@ function SignedInDevices({ userId }: { userId: string }) {
                 <small>会话 {device.id.slice(-8)}</small>
                 <dl>
                   <div>
+                    <dt>登录来源</dt>
+                    <dd>{authMethodLabel(device.authMethod)}</dd>
+                  </div>
+                  <div>
                     <dt>创建时间</dt>
                     <dd>{device.createdAt ? time(device.createdAt) : '未记录'}</dd>
                   </div>
@@ -204,6 +225,17 @@ function SignedInDevices({ userId }: { userId: string }) {
         <p className="session-devices-footnote">
           每项代表一次登录会话，设备名称仅供辨认；“最近验证”不代表每次使用时间。旧会话可能没有完整记录。
         </p>
+        <Link className="session-wallet-management" to="/account/wallets">
+          <Wallet size={20} />
+          <span>
+            <strong>钱包身份</strong>
+            <small>管理本人的绑定与钱包登录凭证</small>
+          </span>
+          <ChevronRight size={17} />
+        </Link>
+        <p className="session-devices-footnote">
+          撤销设备只结束该登录会话，不会解绑钱包。已绑定的钱包仍可签名登录；要取消该凭证，请进入钱包身份解绑。
+        </p>
       </div>
       {confirmation && (
         <ActionDialog
@@ -236,6 +268,7 @@ function SignedInDevices({ userId }: { userId: string }) {
               个登录设备，保留当前设备。它们需要重新登录才能继续访问账号。
             </p>
           )}
+          <p>撤销设备不会解绑钱包；已绑定的钱包仍可重新签名登录。</p>
           <PlatformError message={attempted ? devices.mutationError : ''} />
         </ActionDialog>
       )}

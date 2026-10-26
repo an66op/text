@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiErrorMessage, isAbort } from '@/shared/api/client';
+import { accountEpoch } from '@/shared/api/account-guard';
 import { sessionApi } from './session-api';
 import type { SessionDevice } from './session-types';
 
@@ -19,6 +20,8 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
   const revokeRef = useRef<(target: SessionRemoval) => Promise<boolean>>(async () => false);
   useEffect(() => {
     let active = true;
+    const epoch = accountEpoch();
+    const inScope = () => active && epoch === accountEpoch();
     let generation = 0;
     let dirty = false;
     let revoked = false;
@@ -35,10 +38,10 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
     setMessage('');
     setCurrentRevoked(false);
     const schedule = () => {
-      if (active && !revoked) timer = window.setTimeout(poll, 30000);
+      if (inScope() && !revoked) timer = window.setTimeout(poll, 30000);
     };
     const load = async () => {
-      if (!active || revoked || read || mutation) return;
+      if (!inScope() || revoked || read || mutation) return;
       window.clearTimeout(timer);
       dirty = false;
       const controller = new AbortController();
@@ -47,17 +50,17 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
       const current = generation;
       try {
         const result = await sessionApi.list(controller.signal);
-        if (active && !controller.signal.aborted && current === generation) {
+        if (inScope() && !controller.signal.aborted && current === generation) {
           setItems(result.items);
           setError('');
         }
       } catch (caught) {
-        if (active && current === generation && !controller.signal.aborted && !isAbort(caught))
+        if (inScope() && current === generation && !controller.signal.aborted && !isAbort(caught))
           setError(apiErrorMessage(caught));
       } finally {
         if (read === controller) {
           read = null;
-          if (active) {
+          if (inScope()) {
             if (current === generation) {
               setLoading(false);
               setRefreshing(false);
@@ -73,7 +76,7 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
       else void load();
     };
     const refresh = () => {
-      if (!active || revoked) return;
+      if (!inScope() || revoked) return;
       dirty = true;
       void load();
     };
@@ -88,7 +91,7 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
       }
     };
     revokeRef.current = async (target) => {
-      if (!active || mutation || revoked) return false;
+      if (!inScope() || mutation || revoked) return false;
       window.clearTimeout(timer);
       generation += 1;
       read?.abort();
@@ -98,7 +101,7 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
       const controller = new AbortController();
       mutation = controller;
       const current = generation;
-      const valid = () => active && !controller.signal.aborted && current === generation;
+      const valid = () => inScope() && !controller.signal.aborted && current === generation;
       setBusy(true);
       setMutationError('');
       setMessage('');
@@ -138,7 +141,7 @@ export function useSessionDevices(userId: string, onCurrentRevoked: () => Promis
       } finally {
         if (mutation === controller) {
           mutation = null;
-          if (active) {
+          if (inScope()) {
             setBusy(false);
             setLoading(false);
             if (!revoked) void load();

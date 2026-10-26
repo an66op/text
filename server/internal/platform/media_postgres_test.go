@@ -295,16 +295,21 @@ func TestMediaV4MigrationAtomicPreservesRowsAndCookie(t *testing.T) {
 	if err = migrateDeviceSessions(ctx, tx); err != nil {
 		t.Fatal(err)
 	}
-	if err = persistNormalized(ctx, tx, NewState(), memory.state); err != nil {
+	if err = persistHistoricalFixture(ctx, tx, 4, memory.state); err != nil {
 		t.Fatal(err)
 	}
 	if err = tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
 	versions := map[string]string{}
+	projections := map[string]string{}
 	for _, table := range []string{"gongming_users", "gongming_posts", "gongming_sessions"} {
 		var raw []byte
-		query := `SELECT jsonb_agg(to_jsonb(row))::text FROM (SELECT *,xmin::text AS row_version FROM ` + table + `) row`
+		query, projectionErr := freezeMigrationProjection(ctx, s, table)
+		if projectionErr != nil {
+			t.Fatal(projectionErr)
+		}
+		projections[table] = query
 		if err = s.pool.QueryRow(ctx, query).Scan(&raw); err != nil {
 			t.Fatal(err)
 		}
@@ -333,7 +338,7 @@ func TestMediaV4MigrationAtomicPreservesRowsAndCookie(t *testing.T) {
 	}
 	for table, before := range versions {
 		var raw []byte
-		query := `SELECT jsonb_agg(to_jsonb(row))::text FROM (SELECT *,xmin::text AS row_version FROM ` + table + `) row`
+		query := projections[table]
 		if err = s.pool.QueryRow(ctx, query).Scan(&raw); err != nil || string(raw) != before {
 			t.Fatalf("v5 rewrote existing %s rows or IDs", table)
 		}

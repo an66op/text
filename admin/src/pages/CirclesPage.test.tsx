@@ -91,6 +91,10 @@ function mockService(
   handler: (url: string, options?: RequestInit) => Response | Promise<Response>,
 ) {
   const fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+    if (url.endsWith('/auth/context'))
+      return Promise.resolve(
+        ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' }),
+      );
     if (url.endsWith('/auth/me')) return Promise.resolve(ok(session()));
     if (url.endsWith('/admin/system')) return Promise.resolve(ok(system));
     return Promise.resolve(handler(url, options));
@@ -128,7 +132,10 @@ describe('independent platform circle governance', () => {
     expect(screen.queryByRole('button', { name: '加入圈子' })).not.toBeInTheDocument();
     expect(
       fetch.mock.calls.every(
-        ([url]) => (url as string).includes('/admin/') || (url as string).endsWith('/auth/me'),
+        ([url]) =>
+          (url as string).includes('/admin/') ||
+          (url as string).endsWith('/auth/me') ||
+          (url as string).endsWith('/auth/context'),
       ),
     ).toBe(true);
   });

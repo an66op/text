@@ -3,11 +3,18 @@ import { ApiError, apiErrorMessage, onUnauthorized } from '@/shared/api/client';
 import { platformApi } from '@/shared/api/platformApi';
 import {
   advanceAccountEpoch,
+  accountEpoch,
   onAccountChanged,
   setExpectedAccount,
 } from '@/shared/api/account-guard';
 import type { Session } from '@/shared/api/types';
 import { AuthContext, type AuthState } from './auth-context';
+import {
+  isUnconfirmedAuthWrite,
+  prepareAuthContext,
+  withAuthBrowserLock,
+} from '@/shared/api/auth-context';
+import { walletIdentityApi } from '@/features/walletidentity/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -20,6 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queuedRefresh = useRef(false);
   const channel = useRef<BroadcastChannel | null>(null);
   const lastValidation = useRef(0);
+  const contextReady = useRef(false);
+  const controllers = useRef(new Set<AbortController>());
   const broadcast = useCallback(() => {
     try {
       channel.current?.postMessage('session.changed');
@@ -43,8 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const current = ++generation.current;
     lastValidation.current = Date.now();
+    const controller = new AbortController();
+    controllers.current.add(controller);
     try {
-      const next = await platformApi.me();
+      if (!contextReady.current) {
+        await withAuthBrowserLock(() => prepareAuthContext(controller.signal), controller.signal);
+        if (!mounted.current || current !== generation.current) return;
+        contextReady.current = true;
+      }
+      const next = await platformApi.me(controller.signal);
       if (current !== generation.current) return;
       accept(next);
       setStatus('authenticated');
@@ -55,10 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (guest || !latestSession.current) accept(null);
       setStatus(guest ? 'guest' : latestSession.current ? 'authenticated' : 'unavailable');
       setError(guest ? '' : apiErrorMessage(caught));
+    } finally {
+      controllers.current.delete(controller);
     }
   }, [accept]);
   useEffect(() => {
     mounted.current = true;
+    const requests = controllers.current;
     void refresh();
     const off = onUnauthorized(() => {
       generation.current += 1;
@@ -67,7 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError('登录已失效，请重新登录');
       if (mutation.current) queuedRefresh.current = true;
     });
-    const changed = onAccountChanged(() => void refresh());
+    const reconcile = () => {
+      if (mutation.current) generation.current += 1;
+      void refresh();
+    };
+    const changed = onAccountChanged(reconcile);
     const revalidate = () => {
       if (!document.hidden && Date.now() - lastValidation.current > 5000) void refresh();
     };
@@ -76,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         channel.current = new BroadcastChannel('gongming-session');
-        channel.current.onmessage = () => void refresh();
+        channel.current.onmessage = reconcile;
       } catch {
         channel.current = null;
       }
@@ -84,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted.current = false;
       generation.current += 1;
+      requests.forEach((controller) => controller.abort());
+      requests.clear();
       off();
       changed();
       window.removeEventListener('focus', revalidate);
@@ -111,6 +136,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkExpiry();
     return () => window.clearTimeout(timer);
   }, [session, accept]);
+  const runMutation = useCallback(
+    async (operation: (signal: AbortSignal) => Promise<Session | null>) => {
+      if (!mounted.current) throw new Error('账号页面已关闭');
+      if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
+      mutation.current = true;
+      advanceAccountEpoch();
+      const current = ++generation.current;
+      const controller = new AbortController();
+      controllers.current.add(controller);
+      try {
+        const next = await operation(controller.signal);
+        if (!mounted.current || current !== generation.current) return false;
+        accept(next);
+        contextReady.current = true;
+        setStatus(next ? 'authenticated' : 'guest');
+        setError('');
+        broadcast();
+        return true;
+      } catch (caught) {
+        if (!mounted.current) return false;
+        // A timed out auth write may already have set a cookie. Read it once;
+        // never retry the credential replacement automatically.
+        if (isUnconfirmedAuthWrite(caught)) queuedRefresh.current = true;
+        throw caught;
+      } finally {
+        controllers.current.delete(controller);
+        mutation.current = false;
+        if (queuedRefresh.current) {
+          queuedRefresh.current = false;
+          if (mounted.current) void refresh();
+        }
+      }
+    },
+    [accept, broadcast, refresh],
+  );
   const value = useMemo<AuthState>(
     () => ({
       user: session?.user ?? null,
@@ -119,78 +179,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       login: async (email, password) => {
-        if (!mounted.current) throw new Error('账号页面已关闭');
-        if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
-        mutation.current = true;
-        advanceAccountEpoch();
-        const current = ++generation.current;
-        try {
-          const next = await platformApi.login(email, password);
-          if (current !== generation.current) return;
-          accept(next);
-          setStatus('authenticated');
-          setError('');
-          broadcast();
-        } finally {
-          mutation.current = false;
-          if (queuedRefresh.current) {
-            queuedRefresh.current = false;
-            void refresh();
-          }
-        }
+        await runMutation((signal) => platformApi.login(email, password, signal));
       },
       register: async (input) => {
-        if (!mounted.current) throw new Error('账号页面已关闭');
-        if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
-        mutation.current = true;
-        advanceAccountEpoch();
-        const current = ++generation.current;
-        try {
-          const next = await platformApi.register(input);
-          if (current !== generation.current) return;
-          accept(next);
-          setStatus('authenticated');
-          setError('');
-          broadcast();
-        } finally {
-          mutation.current = false;
-          if (queuedRefresh.current) {
-            queuedRefresh.current = false;
-            void refresh();
-          }
-        }
+        await runMutation((signal) => platformApi.register(input, signal));
       },
       logout: async () => {
+        await runMutation(async (signal) => {
+          await platformApi.logout(signal);
+          return null;
+        });
+      },
+      loginWallet: async (proof, signal) => {
         if (!mounted.current) throw new Error('账号页面已关闭');
-        if (mutation.current) throw new Error('账号操作正在处理中，请稍后再试');
-        mutation.current = true;
-        advanceAccountEpoch();
-        const current = ++generation.current;
-        try {
-          await platformApi.logout();
-          if (current !== generation.current) return;
-          accept(null);
-          setStatus('guest');
-          setError('');
-          broadcast();
-        } finally {
-          mutation.current = false;
-          if (queuedRefresh.current) {
-            queuedRefresh.current = false;
-            void refresh();
-          }
-        }
+        if (proof.expectedEpoch !== accountEpoch() || signal?.aborted)
+          throw new Error('账号状态已变化，请重新确认');
+        return runMutation(async (requestSignal) => {
+          const combined = signal ? AbortSignal.any([signal, requestSignal]) : requestSignal;
+          return walletIdentityApi.login(proof, combined);
+        });
       },
       updateProfile: async (input) => {
         if (!mounted.current) throw new Error('账号页面已关闭');
         const current = generation.current;
         const user = await platformApi.updateMe(input);
-        if (current !== generation.current) return;
+        if (!mounted.current || current !== generation.current) return;
         if (latestSession.current) accept({ ...latestSession.current, user });
         broadcast();
       },
     }),
-    [session, status, error, refresh, accept, broadcast],
+    [session, status, error, refresh, accept, broadcast, runMutation],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

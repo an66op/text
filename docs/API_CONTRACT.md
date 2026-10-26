@@ -1,6 +1,6 @@
 # 共鸣全栈 API 约定
 
-前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），本轮源码目标 Go API 0.8.0（8080）、PostgreSQL schema v8（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。本文是接口约定；运行升级、全检和恢复验收另见 [运行记录](STACK_STATUS.md)。
+前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），本轮源码目标 Go API 0.9.0（8080）、PostgreSQL schema v9（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。本文是接口约定；运行升级、全检和恢复验收另见 [运行记录](STACK_STATUS.md)。
 
 ## 通用
 
@@ -19,10 +19,21 @@
 - `GET /auth/me` → `{user,expiresAt}`；`POST /auth/logout` → `{ok:true}`。
 - `PATCH /me` `{name?,bio?,avatar?}` → User。
 - `GET /me/sessions` → `{items:DeviceSession[],total}`，仅本人未过期会话，当前优先，再按创建时间倒序和 ID 排序。
-- `DeviceSession = {id,device,createdAt:string|null,lastSeenAt:string|null,expiresAt,current:boolean,legacy:boolean}`。ID 是独立非秘密随机定位符；device 仅为不可信的粗粒度系统/浏览器提示。旧会话时间未知为 null；lastSeenAt 当前仅记录登录验证，界面称「最近验证」，不代表在线或每次访问时间。不返回 token、摘要、IP、原始 UA。
+- `DeviceSession = {id,device,createdAt:string|null,lastSeenAt:string|null,expiresAt,current:boolean,legacy:boolean,authMethod:'unknown'|'password'|'wallet'}`。ID 是独立非秘密随机定位符；device 仅为不可信的粗粒度系统/浏览器提示。旧会话时间未知为 null，认证来源未知为unknown；lastSeenAt 当前仅记录登录验证，界面称「最近验证」，不代表在线或每次访问时间。不返回 token、摘要、IP、原始 UA。
 - `DELETE /me/sessions/{id}` → `{ok:true,current:boolean}`。只能撤销本人有效会话，未知/过期/已撤销/其它账号统一404；成功撤销当前会话后清 Cookie，失败不能清。受影响 WebSocket 将关闭。
 - `POST /me/sessions/revoke-others` `{}` → `{revoked:number}`，只撤销本人其它有效会话，保留当前会话；重复请求可返回0。上述写入仍要求 Origin、正常账号与预期账号匹配。
 - 本地种子：成员 `demo@gongming.local` / `Demo2026!`；管理员 `admin@gongming.local` / `Admin2026!`。仅开发环境启用种子，生产禁止默认凭据。
+
+浏览器首次准备 `GET /auth/context`（`X-Gongming-Browser:1`）获取公开generation与HttpOnly上下文Cookie，初次启用需重新登录。浏览器登录/注册/退出以及钱包确认携带Browser模式与 `X-Gongming-Auth-Generation`；事务CAS失败409，不自动重发。新会话固定绑定原context，所有HTTP/媒体/WS入口检查其匹配，成功认证撤销该context原会话；旧CLI仅在没有浏览器上下文时兼容。完整并发、首次双初始化、Cookie迟到及失败关闭规则见 [钱包身份契约](WALLET_IDENTITY_SERVICE.md)。
+
+## 钱包身份
+
+- `GET /auth/wallet/config` → 是否启用、精确Origins、十进制链号、最多5绑定、300秒有效期及`contractWallets:false`。
+- `POST /auth/wallet/challenge` `{purpose:'login'|'bind',address,chainId:string,password?:string}` → 完整SIWE文本与challenge元数据。bind要求当前会话及当前密码复核；login只针对已经绑定的已有账号。
+- `POST /auth/wallet/verify` `{id,message,signature}` → login返回`{user,expiresAt}`，bind返回`{binding:{id,address,boundAt}}`；服务端签名校验与一次性消费原子提交。
+- `GET /me/wallet-bindings` → `{items,maxBindings:5,hasPassword:true}`；`DELETE /me/wallet-bindings/{id}` `{password}` → `{ok:true,revokedSessions,currentSessionRevoked}`。仅本人可操作，解绑撤销从该绑定登录的会话，不清除可能被新登录替换的Cookie。
+
+仅EVM EOA personal_sign，验证域、URI、用途、链、时间、nonce、原浏览器/账号/session版本与secp256k1签名；同地址跨链为同一身份。失败签名/密码复核403，不把有效账号全局退出；旧/过期/已消费证明409。不自动注册、合并账号、重设密码或验证ERC-1271；公开连接不构成认证。页面`/login/wallet`与`/account/wallets`；[完整DTO、安全与持久化约定](WALLET_IDENTITY_SERVICE.md)。
 
 ## 全站社区
 
@@ -162,7 +173,7 @@ PostgreSQL 的列表/详情/历史/发送/已读使用专用 SQL，不读取帖�
 - `GET /wallet` → `{network:'Gongming Testnet',assets:[{symbol,name,balance,decimals}],address,transactions:LedgerEntry[]}`。
 - `POST /wallet/faucet` `{requestId}` → Wallet；每账号24小时一次1000测试GEM，重复requestId返回原结果。
 - `POST /wallet/transfer` `{recipientHandle,amount,requestId}` → Wallet；金额为 GEM 最小单位整数字符串，decimals=2，同一事务扣款/入账，重复requestId不重扣。
-- 不接入真实资产、不索取私钥。浏览器钱包连接后仅读取公开地址与链号，真实签名认证/链上交易在专用后续阶段实现并单独验证。
+- 不接入真实资产、不索取私钥。公开连接仅读取地址与链号，签名身份由上述独立服务验证；测试账本不读取钱包余额或链上交易。
 
 ## 运维
 

@@ -6,6 +6,7 @@ export type SessionDevice = {
   expiresAt: string;
   current: boolean;
   legacy: boolean;
+  authMethod: 'unknown' | 'password' | 'wallet';
 };
 
 export type SessionDevices = { items: SessionDevice[]; total: number };

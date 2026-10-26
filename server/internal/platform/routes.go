@@ -5,6 +5,7 @@ import (
 )
 
 func (a *App) routes(mux *http.ServeMux) {
+	a.registerWalletIdentityRoutes(mux)
 	a.registerCircleEventRoutes(mux)
 	a.registerNotificationRoutes(mux)
 	a.registerCircleRoutes(mux)
