@@ -40,6 +40,7 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/bootstrap_admin_password
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_HANDLE: ${BOOTSTRAP_ADMIN_HANDLE:-}
+      MEDIA_DIRECTORY: /var/lib/gongming/media
     secrets:
       - postgres_password
       - bootstrap_admin_password
@@ -59,6 +60,8 @@ services:
       retries: 10
       start_period: 30s
     networks: [database, edge]
+    volumes:
+      - media-data:/var/lib/gongming/media
     read_only: true
     cap_drop: [ALL]
     security_opt:
@@ -135,6 +138,7 @@ networks:
 
 volumes:
   postgres-data: {}
+  media-data: {}
 
 secrets:
   postgres_admin_password:

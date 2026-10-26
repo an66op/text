@@ -38,7 +38,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const requestEpoch = accountEpoch();
   if (guarded && requestAccount) headers.set('X-Gongming-Account', requestAccount);
   headers.set('Accept', 'application/json');
-  if (init.body) headers.set('Content-Type', 'application/json');
+  // Let the browser supply the multipart boundary. Both JSON and uploads share
+  // the same cookie, account-generation, cancellation and deadline handling.
+  if (init.body instanceof FormData) headers.delete('Content-Type');
+  else if (init.body) headers.set('Content-Type', 'application/json');
   const changedDuringRequest = () =>
     requestEpoch !== accountEpoch() || requestAccount !== expectedAccount();
   try {

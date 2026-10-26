@@ -27,6 +27,9 @@ const capabilityLabels: Record<string, string> = {
   'revisioned-personal-documents': '个人备份与版本冲突保护',
   'atomic-test-ledger': '原子测试积分账本',
   'request-idempotency': '重复请求去重',
+  'private-image-storage': '私有图片存储与权限读取',
+  'reviewed-image-posts': '托管图片投稿审核',
+  'media-moderation': '图片屏蔽与引用联动处置',
 };
 
 function uptime(value: number) {
@@ -152,6 +155,15 @@ export default function SystemPage() {
                   <strong>开发示例账号</strong>
                   <p>默认凭据只用于本地体验。生产部署必须关闭种子数据、使用独立密钥和数据库。</p>
                 </div>
+                {data.features.includes('private-image-storage') && (
+                  <div className="boundary-item">
+                    <strong>私有图片已接通</strong>
+                    <p>
+                      JPEG / PNG 通过真实 API 上传到私有目录并按权限读取。托管图片投稿需审核；
+                      屏蔽图片会同时隐藏已发布的引用帖子，恢复图片不会自动恢复帖子。
+                    </p>
+                  </div>
+                )}
                 <div className="boundary-item">
                   <strong>真实接入逐项验收</strong>
                   <p>

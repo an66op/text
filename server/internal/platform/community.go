@@ -69,15 +69,15 @@ func (a *App) createPost(s *State, u *User, r *http.Request) (any, error) {
 	if len(input.Images) > 9 || utf8.RuneCountInString(input.Topic) > 40 {
 		return nil, bad("最多 9 张图片，话题最多 40 字")
 	}
-	for _, image := range input.Images {
-		if image == "" || !validImage(image) {
-			return nil, bad("图片必须为有效的 http(s) 地址")
-		}
+	images, hosted, err := a.validatePostMedia(s, u.ID, input.Images, r)
+	if err != nil {
+		return nil, err
 	}
-	if input.Images == nil {
-		input.Images = []string{}
+	status := "published"
+	if hosted {
+		status = "pending"
 	}
-	p := StoredPost{newID("post_"), u.ID, body, input.Images, strings.TrimSpace(input.Topic), "published", a.now(), map[string]bool{}}
+	p := StoredPost{newID("post_"), u.ID, body, images, strings.TrimSpace(input.Topic), status, a.now(), map[string]bool{}}
 	s.Posts[p.ID] = p
 	return s.post(p, u.ID), nil
 }

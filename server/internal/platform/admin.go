@@ -163,6 +163,11 @@ func (a *App) adminUpdatePost(s *State, u *User, r *http.Request) (any, error) {
 	if input.Status != "published" && input.Status != "hidden" && input.Status != "pending" {
 		return nil, bad("内容状态不正确")
 	}
+	if input.Status == "published" {
+		if _, _, err := a.validatePostMedia(s, p.AuthorID, p.Images, r); err != nil {
+			return nil, conflict("动态包含不可发布的托管图片，请先处理图片审核")
+		}
+	}
 	p.Status = input.Status
 	s.Posts[p.ID] = p
 	s.audit(u, "post.moderate", p.ID, "status="+p.Status, a.now())
@@ -220,5 +225,5 @@ func (a *App) auditLog(s *State, _ *User, r *http.Request) (any, error) {
 	return list(r, items)
 }
 func (a *App) system(_ *State, _ *User, _ *http.Request) (any, error) {
-	return map[string]any{"version": Version, "storage": "PostgreSQL · relational schema v4", "environment": a.cfg.Environment, "uptimeSeconds": int64(time.Since(a.started).Seconds()), "features": []string{"http-only-sessions", "device-session-revocation", "community-posts", "moderation-audit", "member-conversations", "mutual-friendships", "conversation-membership-management", "cursor-message-history", "domain-sql-messaging", "transactional-websocket-outbox", "revisioned-personal-documents", "atomic-test-ledger", "request-idempotency"}}, nil
+	return map[string]any{"version": Version, "storage": "PostgreSQL · relational schema v5", "environment": a.cfg.Environment, "uptimeSeconds": int64(time.Since(a.started).Seconds()), "features": []string{"http-only-sessions", "private-image-storage", "reviewed-image-posts", "media-moderation", "device-session-revocation", "community-posts", "moderation-audit", "member-conversations", "mutual-friendships", "conversation-membership-management", "cursor-message-history", "domain-sql-messaging", "transactional-websocket-outbox", "revisioned-personal-documents", "atomic-test-ledger", "request-idempotency"}}, nil
 }

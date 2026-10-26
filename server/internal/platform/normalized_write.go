@@ -81,6 +81,9 @@ func persistNormalized(ctx context.Context, tx pgx.Tx, before, after *State) err
 	}); err != nil {
 		return err
 	}
+	if err := persistMedia(ctx, tx, before, after); err != nil {
+		return err
+	}
 	if err := syncEntities(before.Posts, after.Posts, func(id string, v StoredPost) error {
 		old := before.Posts[id]
 		old.Likes = nil
@@ -161,6 +164,9 @@ func persistNormalized(ctx context.Context, tx pgx.Tx, before, after *State) err
 		return err
 	}
 	if err := persistDocuments(ctx, tx, before, after); err != nil {
+		return err
+	}
+	if err := persistPostMedia(ctx, tx, before, after); err != nil {
 		return err
 	}
 	if err := syncEntities(before.Reports, after.Reports, func(_ string, v Report) error {

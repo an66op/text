@@ -17,6 +17,7 @@ ENV VITE_FRONTEND_URL=${VITE_FRONTEND_URL}
 # The admin is built with the root lockfile, which pins its shared dependencies.
 COPY admin/package.json admin/tsconfig.json admin/vite.config.ts admin/index.html ./admin/
 COPY admin/src ./admin/src
+COPY src/shared/api ./src/shared/api
 RUN npm --prefix admin run build
 
 FROM nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60 AS static-base
@@ -45,6 +46,7 @@ FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c03
 COPY --from=api-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=api-build /out/api /usr/local/bin/gongming-api
 COPY --chmod=0555 deploy/api-entrypoint.sh /usr/local/bin/api-entrypoint
+RUN mkdir -p /var/lib/gongming/media && chown 65532:65532 /var/lib/gongming/media && chmod 0700 /var/lib/gongming/media
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/api-entrypoint"]

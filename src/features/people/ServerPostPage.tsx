@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
+import { RefreshCw } from 'lucide-react';
 import PageHeader from '@/shared/ui/PageHeader';
 import { apiRequest, apiErrorMessage, isAbort } from '@/shared/api/client';
 import { useAuth } from '@/features/platform/useAuth';
@@ -41,9 +42,32 @@ function ServerPostDetail({ postId }: { postId: string }) {
   }, [postId, user?.id, revision]);
   return (
     <section className="platform-page people-post-detail">
-      <PageHeader title="动态" backTo="/world" />
+      <PageHeader
+        title="动态"
+        backTo="/world"
+        action={
+          <button
+            type="button"
+            aria-label="刷新动态状态"
+            disabled={loading}
+            onClick={() => setRevision((value) => value + 1)}
+          >
+            <RefreshCw size={18} />
+          </button>
+        }
+      />
       <div className="people-profile-content">
         <PlatformError message={error} retry={() => setRevision((value) => value + 1)} />
+        {post && post.status !== 'published' && (
+          <div className="people-post-status" role="status">
+            <strong>{post.status === 'pending' ? '等待审核' : '暂不公开'}</strong>
+            <p>
+              {post.status === 'pending'
+                ? '这条动态已保存，审核通过后会出现在世界。你可以刷新查看进度。'
+                : '这条动态已被隐藏，公开列表和图片访问均按当前审核状态控制。'}
+            </p>
+          </div>
+        )}
         {loading ? (
           <p className="people-empty" role="status">
             正在加载动态…

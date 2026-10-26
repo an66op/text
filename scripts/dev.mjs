@@ -10,6 +10,7 @@ let stopping = false;
 const baseEnv = { ...process.env, APP_ENV: 'development' };
 const managedDsn = `postgres://gongming:gongming_dev@127.0.0.1:${process.env.PGPORT || '55432'}/gongming?sslmode=disable`;
 baseEnv.DATABASE_URL ||= managedDsn;
+baseEnv.MEDIA_DIRECTORY ||= join(root, '.runtime/media');
 const apiAddress = process.env.API_ADDR || '127.0.0.1:8080';
 const apiUrl = new URL(
   `http://${apiAddress.startsWith(':') ? `127.0.0.1${apiAddress}` : apiAddress}`,

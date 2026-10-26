@@ -8,6 +8,7 @@
 
 - `Dockerfile` 多阶段分别构建 frontend、admin、api；两套 React 都使用根目录 `package-lock.json` 的锁定依赖。Admin 新增依赖时须同步根锁文件，避免本地偶然存在而容器缺失。
 - API 用 Go 1.27.3 构建静态可执行程序；运行时非 root。Nginx 非 root 监听 8080，前后台只读文件系统，临时目录为 tmpfs。
+- API 的 `media-data` 命名卷挂载于 `/var/lib/gongming/media`，目录由镜像预建为UID65532、0700；媒体0600，不通过Nginx静态暴露。代理接收最多9MiB请求，Go仍单独限制图片8MiB加64KiB表单开销、普通JSON1MiB。admin构建复制了跨项目共用的API/账号保护模块。
 - Node 26.12.1、Go 1.27.3、Nginx 1.31.8、Postgres 16.15、Alpine 3.24 官方多架构镜像都固定 registry index digest。2026-10-27 通过 Docker Registry V2 manifest 验证了这些 digest 存在且覆盖 Linux amd64/arm64。更新镜像时应重新验证、扫描和运行容器验收，不能仅更改标签。
 - `database` 私有网络只连 DB/API；`edge` 连 API/两套静态服务。DB 初始化创建非超级用户 gongming 作为应用数据库 owner，超级用户密码独立且只挂给 DB；API 没有服务器级建库/建角色权限。DB 使用持久化命名卷，前后台仅绑定宿主机 `127.0.0.1:8081`、`127.0.0.1:8082`，由宿主机 HTTPS ingress 对外提供服务。
 
@@ -69,6 +70,8 @@ TLS 由外层 ingress 终止，Compose 内部 API/PG 使用隔离 bridge 明文�
 生产 API 拒绝包含 `user_demo` / `user_admin` 开发种子的数据库；不设置 APP_ENV=development，不注入 Demo2026!/Admin2026! 或 gongming_dev，不复用 `.runtime/postgres` 数据目录。数据库凭据和运行时配置不进入前台 Vite 构建，浏览器只能调用同源 `/api`。
 
 ## 数据保护与升级
+
+已有上传图片后，PostgreSQL dump不足以独立恢复产品：须在全部写入实例停机时，将数据库与媒体卷作为同一检查点备份、校验和恢复。`media-data` 不能在容器更新时丢弃，`down -v`也会销毁图片。当前 `media:backup` / `media:restore-check` 是限定本机开发库的演练工具，不能直接用于生产卷。自托管目录不是S3/CDN，也没有自动孤儿清理；多实例必须共享可靠媒体存储。详见 [媒体说明](../docs/MEDIA_STORAGE.md)。
 
 PostgreSQL 数据存放于 `gongming_postgres-data` 命名卷。`docker compose down` 保留数据；`down -v` 会销毁数据，仅空测试环境允许。任何更新前需备份并在独立环境验证恢复：
 

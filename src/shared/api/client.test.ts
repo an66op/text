@@ -8,6 +8,27 @@ afterEach(() => {
 });
 
 describe('Go API client', () => {
+  it('lets the browser set multipart boundaries while keeping account protection', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ data: { id: 'image' } })));
+    vi.stubGlobal('fetch', fetchMock);
+    setExpectedAccount('account-A');
+    const data = new FormData();
+    data.append('file', new File(['image'], 'photo.png', { type: 'image/png' }));
+    data.append('clientId', 'upload-request-one');
+    await apiRequest('/media/images', {
+      method: 'POST',
+      body: data,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const options = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(options.body).toBe(data);
+    expect(options.credentials).toBe('include');
+    expect(new Headers(options.headers).get('Content-Type')).toBeNull();
+    expect(new Headers(options.headers).get('X-Gongming-Account')).toBe('account-A');
+    expect(options.signal).toBeInstanceOf(AbortSignal);
+  });
   it('never invalidates a new account when an old request finally returns 401', async () => {
     let finish!: (response: Response) => void;
     vi.stubGlobal(

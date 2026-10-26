@@ -1,4 +1,5 @@
-import type { Audit, PostStatus, ReportStatus, UserRole, UserStatus } from './types';
+import type { Audit, MediaStatus, PostStatus, ReportStatus, UserRole, UserStatus } from './types';
+import { hostedImageId } from '../../src/shared/api/media-url';
 
 export const roleLabels: Record<UserRole, string> = {
   member: '成员',
@@ -16,9 +17,18 @@ export const reportStatusLabels: Record<ReportStatus, string> = {
   resolved: '已处理',
   dismissed: '已驳回',
 };
+export const mediaStatusLabels: Record<MediaStatus, string> = { ready: '可用', blocked: '已屏蔽' };
 
 export function number(value: number): string {
   return new Intl.NumberFormat('zh-CN').format(value);
+}
+
+export function fileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '大小未知';
+  if (bytes < 1024) return `${number(bytes)} B`;
+  const unit = bytes < 1024 * 1024 ? 'KiB' : 'MiB';
+  const value = bytes / (unit === 'KiB' ? 1024 : 1024 * 1024);
+  return `${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(value)} ${unit}`;
 }
 
 export function dateTime(value: string): string {
@@ -49,6 +59,11 @@ export function actionLabel(action: Audit['action']): string {
     'post.update': '审核内容',
     'post.moderate': '审核内容',
     'post.updated': '审核内容',
+    'media.update': '审核图片',
+    'media.updated': '审核图片',
+    'media.moderate': '审核图片',
+    'media.upload': '上传图片',
+    'media.delete': '删除图片',
     'report.update': '处理举报',
     'report.resolve': '处理举报',
     'report.updated': '处理举报',
@@ -68,13 +83,16 @@ export function safeOffset(value: string | null, limit = 20): number {
 
 export function safeReturnTo(value: unknown): string {
   return typeof value === 'string' &&
-    /^\/(overview|users|content|reports|audit|system)(\?|$)/.test(value) &&
+    /^\/(overview|users|content|media|reports|audit|system)(\?|$)/.test(value) &&
     !Array.from(value).some((character) => character.charCodeAt(0) < 32 || character === '\\')
     ? value
     : '/overview';
 }
 
 export function safeImageUrl(value: string): string {
+  // Only this exact same-origin media route may bypass absolute URL parsing.
+  // Queries, fragments, encoded segments and alternate relative paths are refused.
+  if (hostedImageId(value)) return value;
   try {
     const url = new URL(value);
     return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';

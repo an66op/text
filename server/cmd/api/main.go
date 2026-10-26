@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +28,14 @@ func run() error {
 		origins = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
 	}
 	cfg := platform.Config{Environment: environment, CookieSecure: platform.Env("COOKIE_SECURE", "true") == "true", BcryptCost: 12}
+	cfg.MediaDirectory = os.Getenv("MEDIA_DIRECTORY")
+	if cfg.MediaDirectory == "" && environment == "development" {
+		var err error
+		cfg.MediaDirectory, err = filepath.Abs("../.runtime/media")
+		if err != nil {
+			return err
+		}
+	}
 	if environment == "development" && os.Getenv("COOKIE_SECURE") == "" {
 		cfg.CookieSecure = false
 	}
@@ -36,6 +45,9 @@ func run() error {
 		}
 	}
 	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	if err := platform.PrepareMediaDirectory(cfg.MediaDirectory); err != nil {
 		return err
 	}
 	dsn := os.Getenv("DATABASE_URL")

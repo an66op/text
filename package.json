@@ -13,6 +13,8 @@
     "db:status": "node scripts/database.mjs status",
     "db:backup": "node --env-file-if-exists=.env scripts/database-backup.mjs backup",
     "db:restore-check": "node --env-file-if-exists=.env scripts/database-backup.mjs restore-check",
+    "media:backup": "node --env-file-if-exists=.env scripts/media-backup.mjs backup",
+    "media:restore-check": "node --env-file-if-exists=.env scripts/media-backup.mjs restore-check",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
@@ -29,6 +31,7 @@
     "verify:stack": "node scripts/verify-stack.mjs",
     "verify:messages": "cd server && go run ./cmd/verify-messaging",
     "verify:social": "node scripts/verify-social.mjs",
+    "verify:media": "node scripts/verify-media.mjs",
     "check:all": "npm run check && npm run build:admin && npm run test:admin && npm run test:server && npm run test:tooling"
   },
   "dependencies": {

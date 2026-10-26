@@ -2,6 +2,7 @@ export type UserRole = 'member' | 'moderator' | 'admin';
 export type UserStatus = 'active' | 'suspended';
 export type PostStatus = 'published' | 'hidden' | 'pending';
 export type ReportStatus = 'open' | 'resolved' | 'dismissed';
+export type MediaStatus = 'ready' | 'blocked';
 
 export interface User {
   id: string;
@@ -33,6 +34,23 @@ export interface Post {
   likeCount: number;
   liked: boolean;
   commentCount: number;
+}
+
+export interface AdminMediaAsset {
+  id: string;
+  url: string;
+  contentType: string;
+  width: number;
+  height: number;
+  bytes: number;
+  createdAt: string;
+  updatedAt: string;
+  owner: PublicUser;
+  status: MediaStatus;
+  note: string;
+  referenceCount: number;
+  publishedReferenceCount: number;
+  posts: Pick<Post, 'id' | 'body' | 'status'>[];
 }
 
 export interface Report {

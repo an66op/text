@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,15 +22,16 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.4.0"
+const Version = "0.5.0"
 const cookieName = "gongming_session"
 
 type Config struct {
-	Environment  string
-	Origins      []string
-	CookieSecure bool
-	SessionTTL   time.Duration
-	BcryptCost   int
+	Environment    string
+	Origins        []string
+	CookieSecure   bool
+	SessionTTL     time.Duration
+	BcryptCost     int
+	MediaDirectory string
 }
 
 func (c Config) Validate() error {
@@ -38,6 +40,12 @@ func (c Config) Validate() error {
 	}
 	if c.Environment == "production" && (!c.CookieSecure || len(c.Origins) == 0) {
 		return errors.New("production requires COOKIE_SECURE=true and ALLOWED_ORIGINS")
+	}
+	if c.Environment == "production" && c.MediaDirectory == "" {
+		return errors.New("production requires MEDIA_DIRECTORY")
+	}
+	if c.MediaDirectory != "" && !filepath.IsAbs(c.MediaDirectory) {
+		return errors.New("MEDIA_DIRECTORY must be an absolute private directory")
 	}
 	for _, origin := range c.Origins {
 		u, err := url.Parse(origin)
@@ -59,6 +67,7 @@ type App struct {
 	limiter   *rateLimiter
 	dummyHash string
 	streamHub *messageHub
+	media     *mediaCoordinator
 }
 type APIError struct {
 	Status  int    `json:"-"`
@@ -82,6 +91,7 @@ func NewApp(store Store, cfg Config) *App {
 	a := &App{store: store, cfg: cfg, started: time.Now(), now: time.Now, limiter: &rateLimiter{buckets: map[string]rateBucket{}}}
 	a.dummyHash = hashPassword("timing-equivalent-unknown-user", cfg.BcryptCost)
 	a.streamHub = newMessageHub(a)
+	a.media = newMediaCoordinator()
 	return a
 }
 func (a *App) Handler() http.Handler {
@@ -116,7 +126,11 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			writeError(w, &APIError{429, "rate_limited", "请求过于频繁，请稍后重试"})
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+		bodyLimit := int64(1024 * 1024)
+		if r.Method == "POST" && r.URL.Path == "/api/v1/media/images" {
+			bodyLimit = mediaMultipartLimit
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, bodyLimit)
 		ctx := r.Context()
 		cancel := func() {}
 		if r.URL.Path != "/api/v1/stream" {

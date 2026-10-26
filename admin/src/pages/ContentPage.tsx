@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Eye, FileText, MessageSquare, RefreshCw, ThumbsUp } from 'lucide-react';
+import { Link } from 'react-router';
+import { hostedImageId } from '../../../src/shared/api/media-url';
 import { api, errorMessage, queryString } from '../api';
 import { dateTime, number, postStatusLabels, safeImageUrl } from '../format';
 import type { Page, Post, PostStatus } from '../types';
@@ -32,6 +34,7 @@ function ContentDetail({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const mediaIds = Array.from(new Set(post.images.map(hostedImageId).filter(Boolean)));
   const save = async () => {
     if (busy || status === post.status) return;
     setBusy(true);
@@ -101,6 +104,25 @@ function ContentDetail({
         </span>
       </div>
       <div className="section-separator" />
+      {mediaIds.length > 0 && (
+        <Notice tone="info">
+          <p>
+            托管图片的投稿先进入待审核。图片可用不代表帖子已通过审核；被屏蔽的图片不能随帖子恢复发布。
+            屏蔽图片会同时隐藏已发布的引用帖子，恢复图片后仍需单独审核帖子。
+          </p>
+          <div className="content-media-links">
+            {mediaIds.map((id, index) => (
+              <Link
+                key={id}
+                className="text-link"
+                to={`/media?q=${encodeURIComponent(id)}&detail=${encodeURIComponent(id)}`}
+              >
+                管理图片 {index + 1}
+              </Link>
+            ))}
+          </div>
+        </Notice>
+      )}
       <label className="field">
         审核结果
         <select
@@ -114,7 +136,7 @@ function ContentDetail({
         </select>
       </label>
       <p className="field-hint">
-        隐藏和待审核的内容不会出现在公开内容流。恢复发布后可重新被社区浏览。
+        隐藏和待审核的内容不会出现在公开内容流。恢复发布前，服务端会检查托管图片是否可用。
       </p>
       {confirming ? (
         <ConfirmAction

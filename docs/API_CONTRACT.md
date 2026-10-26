@@ -26,6 +26,21 @@
 
 ## 全站社区
 
+### 上传图片
+
+`MediaAsset = {id,url,contentType:'image/jpeg'|'image/png',width,height,bytes,createdAt}`。ID 为 `media_` 加32位小写十六进制，URL 固定为同源相对路径 `/api/v1/media/images/{id}`。bytes 是处理后的文件大小。
+
+- `POST /media/images` 使用 multipart/form-data，且仅包含 `file` 与 `clientId` 两个字段。必须登录，来源与预期账号仍校验。clientId 为8–100位字母/数字/下划线/连字符；同账号同内容重试返回原资产，不同内容409，已删除资产不能用旧编号恢复。
+- 仅 JPEG/PNG，输入与重编码输出均最多8MiB；单边8192像素、总像素16MP。服务端以实际解码结果判断，处理JPEG方向后重编码，移除原始元数据。最多9图/帖；每账号未删资产最多100张/100MiB，屏蔽图片也计入；新上传每小时30次，重复已提交请求不重复占额。单实例最多4个上传接纳、2个解码、每账号1个上传。
+- `GET /media/images/{id}` 与 `HEAD` 返回二进制图片。只有本人、运营人员，或至少一篇已发布帖子引用时可读；被屏蔽图片仅运营人员可读，删除后一律不可读。不存在/不可见统一404；响应 `no-store`，不能把它变成无鉴权的静态目录。
+- `DELETE /media/images/{id}` → `{ok:true}`，仅本人且没有任何帖子引用时可删；已删除重复成功，未知/他人404，仍有引用409。逻辑删除提交后再清文件；存储失败可能留下不可访问文件，不能恢复软删资产。
+- `GET /me/media` → 本人未删资产列表，支持 q/status/limit/offset；结构与下述运营媒体列表相同，仅本人可查。用于找回或清理取消、超时后可能已经保存的上传。
+- `GET /admin/media` → `{items:AdminMediaAsset[],total}`，仅运营人员；status 为 ready/blocked，q 支持图片ID、上传者ID/用户名/昵称、引用帖子ID。
+- `AdminMediaAsset = MediaAsset & {owner:PublicUser,status:'ready'|'blocked',note,referenceCount,publishedReferenceCount,posts:[{id,body,status}],updatedAt}`。posts 最多10条，按创建时间倒序，body 最多200字；计数为完整引用数。ready 表示可引用，不能解释为已公开。
+- `PATCH /admin/media/{id}` `{status:'ready'|'blocked',note}`，note 必填且最多1000字，允许同状态更新说明并记审计。屏蔽图片时，同事务隐藏全部已发布引用帖；解除屏蔽只恢复图片可用性，不自动恢复帖子。
+
+创建含托管图片的帖子时，只能引用本人可用图片，初始状态为 pending；不能把托管相对路径改成本站绝对URL绕过引用记录。审核发布前重新验证全部托管图片，含已屏蔽/删除图片时拒绝发布。既有外站 http(s) 图片链接继续兼容，它们不受托管图片存储/审核服务控制。存储、恢复及故障边界见 [媒体说明](MEDIA_STORAGE.md)。
+
 `PublicUser = {id,handle,name,avatar,bio}`，不包含邮箱或权限字段。
 
 `Post = {id,author:PublicUser,body,images:string[],topic,status:'published'|'hidden'|'pending',createdAt,likeCount:number,liked:boolean,commentCount:number}`。

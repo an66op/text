@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Check,
   Cloud,
+  Images,
   LogOut,
   MessageCircle,
   Radio,
@@ -245,6 +246,13 @@ function AccountPage() {
             <span>
               <Smartphone size={21} />
               登录设备
+            </span>
+            <ArrowUpRight size={17} />
+          </Link>
+          <Link to="/account/uploads">
+            <span>
+              <Images size={21} />
+              我的上传
             </span>
             <ArrowUpRight size={17} />
           </Link>

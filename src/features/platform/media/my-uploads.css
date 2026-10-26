@@ -1,0 +1,218 @@
+.my-uploads-content {
+  width: min(100%, 680px);
+  margin: 0 auto;
+  padding: 8px 16px 30px;
+}
+.my-uploads-intro {
+  margin: 8px 2px;
+  font-size: 13px;
+  color: var(--platform-ink);
+}
+.my-uploads-help {
+  margin: 0 2px 18px;
+  font-size: 11px;
+  color: var(--platform-muted);
+  line-height: 1.7;
+}
+.my-uploads-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0;
+}
+.my-uploads-toolbar > div {
+  display: flex;
+  gap: 5px;
+}
+.my-uploads-toolbar button {
+  border: 0;
+  padding: 7px 12px;
+  border-radius: 11px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--platform-muted);
+}
+.my-uploads-toolbar button[aria-pressed='true'] {
+  color: var(--platform-accent);
+  background: #6260e811;
+}
+.my-uploads-toolbar > span {
+  color: var(--platform-muted);
+  font-size: 11px;
+}
+.my-uploads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.my-upload-card {
+  border: 1px solid var(--platform-line);
+  border-radius: 19px;
+  background: var(--surface, #fff);
+  padding: 13px;
+}
+.my-upload-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.my-upload-preview {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  width: 94px;
+  height: 104px;
+  border-radius: 12px;
+  background: #f2f1f7;
+  overflow: hidden;
+}
+.my-upload-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.my-upload-preview.is-unavailable {
+  color: var(--platform-muted);
+  text-align: center;
+  padding: 9px;
+  font-size: 9px;
+}
+.my-upload-preview button {
+  font-size: 10px;
+  padding: 2px;
+  color: var(--platform-accent);
+  border: 0;
+  background: transparent;
+}
+.my-upload-meta {
+  min-width: 0;
+  flex: 1;
+}
+.my-upload-meta h2 {
+  margin: 0 0 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.my-upload-meta p {
+  margin: 6px 0;
+  font-size: 10px;
+  color: var(--platform-muted);
+  line-height: 1.5;
+}
+.my-upload-meta > small {
+  font-size: 10px;
+  color: var(--platform-muted);
+}
+.my-upload-state {
+  display: inline-block;
+  font-size: 10px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: #6260e80b;
+  color: var(--platform-accent);
+}
+.my-upload-state.is-blocked {
+  background: #cc40500b;
+  color: #be4655;
+}
+.my-upload-note {
+  margin: 12px 0 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #f7f6fa;
+  color: var(--platform-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.my-upload-private {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 11px 0 0;
+  font-size: 10px;
+  color: var(--platform-muted);
+}
+.my-upload-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--platform-line);
+  margin-top: 12px;
+  padding-top: 11px;
+}
+.my-upload-posts > span {
+  color: var(--platform-muted);
+  font-size: 10px;
+}
+.my-upload-posts a {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 11px;
+}
+.my-upload-posts a > small {
+  color: var(--platform-accent);
+  font-size: 9px;
+  flex-shrink: 0;
+}
+.my-upload-posts a > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.my-upload-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 11px;
+  padding: 9px;
+  border: 0;
+  background: transparent;
+  color: #bd4e59;
+  font-size: 11px;
+}
+.my-uploads-notice {
+  color: var(--platform-accent);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 14px 0;
+}
+.my-uploads-empty {
+  text-align: center;
+  padding: 38px 0;
+  color: var(--platform-muted);
+}
+.my-uploads-empty h2 {
+  font-size: 14px;
+  font-weight: 500;
+}
+.my-uploads-empty button {
+  color: var(--platform-accent);
+  border: 0;
+  padding: 8px 12px;
+  background: transparent;
+}
+.my-uploads-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  color: var(--platform-muted);
+  font-size: 11px;
+}
+.my-uploads-pagination button {
+  border: 1px solid var(--platform-line);
+  border-radius: 11px;
+  padding: 9px 12px;
+  background: var(--surface, #fff);
+  color: var(--platform-accent);
+}

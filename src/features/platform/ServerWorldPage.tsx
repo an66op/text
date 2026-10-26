@@ -5,7 +5,6 @@ import {
   Flag,
   Globe2,
   Heart,
-  ImagePlus,
   MessageCircle,
   Plus,
   RefreshCw,
@@ -23,10 +22,9 @@ import { useAuth } from './useAuth';
 import { loginPath } from './auth-paths';
 import { LoginNotice, PlatformAvatar, PlatformError } from './PlatformUi';
 import { imageUrl, shortTime } from './platform-format';
+import WorldComposer from './WorldComposer';
+import { worldTopics as topics, serviceTopics } from './world-topics';
 import './platform.css';
-
-const topics = ['全部', '生活', '设计', '科技', 'Web3', '游戏'];
-const serviceTopics: Record<string, string> = { 生活: '城市生活', 设计: '设计灵感' };
 
 export default function ServerWorldPage() {
   const { user, status } = useAuth();
@@ -40,6 +38,7 @@ export default function ServerWorldPage() {
   const [page, setPage] = useState(0);
   const [revision, setRevision] = useState(0);
   const [compose, setCompose] = useState(false);
+  const [submitted, setSubmitted] = useState<PlatformPost | null>(null);
   const request = useRef(0);
   const viewerId = useRef(user?.id);
   viewerId.current = user?.id;
@@ -166,7 +165,9 @@ export default function ServerWorldPage() {
           <WorldComposer
             key={user.id}
             onClose={() => setCompose(false)}
-            onPublished={() => {
+            onPublished={(post) => {
+              if (viewerId.current !== post.author.id) return;
+              setSubmitted(post);
               setCompose(false);
               setQuery('');
               setSearch('');
@@ -174,6 +175,21 @@ export default function ServerWorldPage() {
               reload();
             }}
           />
+        )}
+        {submitted && submitted.author.id === user?.id && (
+          <div className="platform-world-notice" role="status">
+            <span>
+              {submitted.status === 'pending'
+                ? '已提交审核'
+                : submitted.status === 'published'
+                  ? '帖子已发布'
+                  : '帖子已提交，当前暂不可见'}
+            </span>
+            <Link to={`/world/p/${encodeURIComponent(submitted.id)}`}>查看帖子</Link>
+            <button type="button" aria-label="关闭提交提示" onClick={() => setSubmitted(null)}>
+              <X size={14} />
+            </button>
+          </div>
         )}
         {!user && status !== 'checking' && (
           <LoginNotice returnTo="/world" text="世界已向你敞开，登录后分享自己的声音" />
@@ -244,91 +260,6 @@ export default function ServerWorldPage() {
         )}
       </div>
     </section>
-  );
-}
-
-function WorldComposer({ onClose, onPublished }: { onClose: () => void; onPublished: () => void }) {
-  const [text, setText] = useState('');
-  const [topic, setTopic] = useState('生活');
-  const [image, setImage] = useState('');
-  const [showImage, setShowImage] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!text.trim() || busy) return;
-    if (image.trim() && !imageUrl(image)) {
-      setError('请输入有效的 http 或 https 图片链接');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      await platformApi.publishPost({
-        body: text.trim(),
-        topic: serviceTopics[topic] ?? topic,
-        images: image.trim() ? [imageUrl(image)] : [],
-      });
-      onPublished();
-    } catch (caught) {
-      setError(apiErrorMessage(caught));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <form className="platform-world-compose" onSubmit={(event) => void submit(event)}>
-      <div className="platform-compose-title">
-        <strong>分享此刻</strong>
-        <button type="button" aria-label="关闭发布" onClick={onClose} disabled={busy}>
-          <X size={18} />
-        </button>
-      </div>
-      <textarea
-        aria-label="世界帖子内容"
-        required
-        rows={4}
-        maxLength={5000}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        placeholder="一个想法，一次发现，一段日常…"
-        autoFocus
-      />
-      {showImage && (
-        <input
-          className="platform-image-input"
-          aria-label="帖子图片链接"
-          type="url"
-          maxLength={1000}
-          value={image}
-          onChange={(event) => setImage(event.target.value)}
-          placeholder="https:// 图片链接"
-        />
-      )}
-      <div className="platform-compose-tools">
-        <button
-          type="button"
-          aria-label="添加图片链接"
-          onClick={() => setShowImage((value) => !value)}
-        >
-          <ImagePlus size={20} />
-        </button>
-        <label className="sr-only" htmlFor="world-topic">
-          帖子话题
-        </label>
-        <select id="world-topic" value={topic} onChange={(event) => setTopic(event.target.value)}>
-          {topics.slice(1).map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
-        <small>{text.length}/5000</small>
-        <button className="platform-primary" type="submit" disabled={busy || !text.trim()}>
-          {busy ? '发布中…' : '发布'}
-          <Send size={15} />
-        </button>
-      </div>
-      <PlatformError message={error} />
-    </form>
   );
 }
 
@@ -409,10 +340,12 @@ export function WorldPost({
       </header>
       <p className="platform-post-body">{post.body}</p>
       {post.images.length > 0 && (
-        <div className={`platform-post-images ${post.images.length === 1 ? 'single' : ''}`}>
+        <div
+          className={`platform-post-images ${post.images.length === 1 ? 'single' : post.images.length > 4 ? 'many' : ''}`}
+        >
           {post.images
             .filter((src) => imageUrl(src))
-            .slice(0, 4)
+            .slice(0, 9)
             .map((src, index) => (
               <a href={imageUrl(src)} target="_blank" rel="noreferrer" key={`${src}:${index}`}>
                 <img
@@ -426,33 +359,36 @@ export function WorldPost({
         </div>
       )}
       <div className="platform-post-actions">
-        {user ? (
+        {post.status === 'published' &&
+          (user ? (
+            <button
+              type="button"
+              className={post.liked ? 'liked' : ''}
+              aria-label={post.liked ? '取消点赞' : '点赞'}
+              aria-pressed={post.liked}
+              disabled={busy}
+              onClick={() => void like()}
+            >
+              <Heart size={18} fill={post.liked ? 'currentColor' : 'none'} />
+              {post.likeCount || '喜欢'}
+            </button>
+          ) : (
+            <Link to={loginPath('/world')} aria-label="登录后点赞">
+              <Heart size={18} />
+              {post.likeCount || '喜欢'}
+            </Link>
+          ))}
+        {post.status === 'published' && (
           <button
             type="button"
-            className={post.liked ? 'liked' : ''}
-            aria-label={post.liked ? '取消点赞' : '点赞'}
-            aria-pressed={post.liked}
-            disabled={busy}
-            onClick={() => void like()}
+            onClick={() => setCommentsOpen((value) => !value)}
+            aria-expanded={commentsOpen}
           >
-            <Heart size={18} fill={post.liked ? 'currentColor' : 'none'} />
-            {post.likeCount || '喜欢'}
+            <MessageCircle size={18} />
+            {post.commentCount || '评论'}
           </button>
-        ) : (
-          <Link to={loginPath('/world')} aria-label="登录后点赞">
-            <Heart size={18} />
-            {post.likeCount || '喜欢'}
-          </Link>
         )}
-        <button
-          type="button"
-          onClick={() => setCommentsOpen((value) => !value)}
-          aria-expanded={commentsOpen}
-        >
-          <MessageCircle size={18} />
-          {post.commentCount || '评论'}
-        </button>
-        {user && !canDelete && (
+        {post.status === 'published' && user && !canDelete && (
           <button
             type="button"
             aria-label="举报帖子"
@@ -493,7 +429,7 @@ export function WorldPost({
           </button>
         </div>
       )}
-      {reportOpen && (
+      {post.status === 'published' && reportOpen && (
         <form className="platform-report-form" onSubmit={(event) => void report(event)}>
           <label>
             举报原因
@@ -516,7 +452,7 @@ export function WorldPost({
           </div>
         </form>
       )}
-      {commentsOpen && (
+      {post.status === 'published' && commentsOpen && (
         <WorldComments
           post={post}
           onComment={() => onReplace({ ...post, commentCount: post.commentCount + 1 })}

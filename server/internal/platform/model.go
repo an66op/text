@@ -192,6 +192,7 @@ type Idempotency struct {
 	Result      Wallet `json:"result"`
 }
 type State struct {
+	Media          map[string]StoredMediaAsset    `json:"media"`
 	FriendRequests map[string]StoredFriendRequest `json:"friendRequests"`
 	Friendships    map[string]StoredFriendship    `json:"friendships"`
 	Accounts       map[string]Account             `json:"accounts"`
@@ -211,7 +212,7 @@ type State struct {
 }
 
 func NewState() *State {
-	return &State{FriendRequests: map[string]StoredFriendRequest{}, Friendships: map[string]StoredFriendship{}, Accounts: map[string]Account{}, Sessions: map[string]Session{}, Posts: map[string]StoredPost{}, Comments: map[string]StoredComment{}, Conversations: map[string]StoredConversation{}, Messages: map[string]StoredMessage{}, Documents: map[string]map[string]Document{}, Reports: map[string]Report{}, Audits: []Audit{}, Wallets: map[string]StoredWallet{}, Idempotency: map[string]Idempotency{}, Reads: map[string]ConversationRead{}, Outbox: []MessageEvent{}}
+	return &State{Media: map[string]StoredMediaAsset{}, FriendRequests: map[string]StoredFriendRequest{}, Friendships: map[string]StoredFriendship{}, Accounts: map[string]Account{}, Sessions: map[string]Session{}, Posts: map[string]StoredPost{}, Comments: map[string]StoredComment{}, Conversations: map[string]StoredConversation{}, Messages: map[string]StoredMessage{}, Documents: map[string]map[string]Document{}, Reports: map[string]Report{}, Audits: []Audit{}, Wallets: map[string]StoredWallet{}, Idempotency: map[string]Idempotency{}, Reads: map[string]ConversationRead{}, Outbox: []MessageEvent{}}
 }
 func newID(prefix string) string {
 	b := make([]byte, 16)
