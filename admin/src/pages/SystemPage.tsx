@@ -35,6 +35,10 @@ const capabilityLabels: Record<string, string> = {
   'hashed-circle-invitations': '限次限时邀请与加入审批',
   'circle-moderation': '圈子治理与圈帖审核',
   'scoped-circle-media': '绑定圈子的私有图片',
+  'account-notifications': '账号站内通知收件箱',
+  'transactional-notification-events': '业务与通知原子提交',
+  'permission-aware-notifications': '按当前权限显示通知内容',
+  'bounded-read-all': '截至列表快照的批量已读',
 };
 
 function uptime(value: number) {

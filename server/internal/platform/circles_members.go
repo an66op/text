@@ -72,6 +72,7 @@ func (a *App) joinCircle(s *State, u *User, r *http.Request) (any, error) {
 		now := a.circleNow()
 		request := StoredCircleJoinRequest{ID: newID("crequest_"), CircleID: c.ID, UserID: u.ID, Note: input.Note, Status: "pending", CreatedAt: now, UpdatedAt: now}
 		s.CircleJoinRequests[request.ID] = request
+		s.notifyCircleManagers(request, now)
 	}
 	if invite != nil {
 		key := circleRedemptionKey(invite.ID, u.ID)
@@ -185,6 +186,9 @@ func (a *App) respondCircleRequest(s *State, u *User, r *http.Request) (any, err
 	v.ReviewerID = u.ID
 	v.UpdatedAt = a.circleNow()
 	s.CircleJoinRequests[v.ID] = v
+	if target == "accepted" || target == "declined" {
+		s.queueNotification("circle-decision", u.ID, v.UserID, v.ID, target, "circle-decision:"+v.ID, v.UpdatedAt)
+	}
 	s.audit(u, "circle.request.respond", v.ID, "status="+target, a.circleNow())
 	return s.circleRequest(v, u.ID), nil
 }
@@ -255,6 +259,9 @@ func (a *App) updateCircleMember(s *State, u *User, r *http.Request) (any, error
 	if target.Status != "active" || s.Accounts[target.UserID].User.Status != "active" {
 		return nil, bad("只能调整正常成员角色")
 	}
+	if target.Role != input.Role {
+		s.notifyChange("circle-membership", u.ID, target.UserID, c.ID, input.Role, a.circleNow())
+	}
 	target.Role = input.Role
 	target.UpdatedAt = a.circleNow()
 	s.CircleMembers[circleMemberKey(c.ID, target.UserID)] = target
@@ -283,11 +290,13 @@ func (a *App) removeCircleMember(s *State, u *User, r *http.Request) (any, error
 		return map[string]bool{"ok": true}, nil
 	}
 	target.Status = status
+	s.notifyChange("circle-membership", u.ID, target.UserID, c.ID, status, a.circleNow())
 	target.UpdatedAt = a.circleNow()
 	s.CircleMembers[circleMemberKey(c.ID, target.UserID)] = target
 	for id, request := range s.CircleJoinRequests {
 		if request.CircleID == c.ID && request.UserID == target.UserID && request.Status == "pending" {
 			request.Status = "declined"
+			s.queueNotification("circle-decision", u.ID, request.UserID, request.ID, "declined", "circle-decision:"+request.ID, a.circleNow())
 			request.ReviewerID = u.ID
 			request.UpdatedAt = a.circleNow()
 			s.CircleJoinRequests[id] = request
@@ -309,6 +318,7 @@ func (a *App) unbanCircleMember(s *State, u *User, r *http.Request) (any, error)
 		return map[string]bool{"ok": true}, nil
 	}
 	target.Status = "removed"
+	s.notifyChange("circle-membership", u.ID, target.UserID, c.ID, "unbanned", a.circleNow())
 	target.UpdatedAt = a.circleNow()
 	s.CircleMembers[circleMemberKey(c.ID, target.UserID)] = target
 	s.audit(u, "circle.member.unban", target.UserID, "circle="+c.ID, a.circleNow())
@@ -345,6 +355,7 @@ func (a *App) transferCircleOwner(s *State, u *User, r *http.Request) (any, erro
 	s.CircleMembers[circleMemberKey(c.ID, m.UserID)] = m
 	s.CircleMembers[circleMemberKey(c.ID, target.UserID)] = target
 	c.OwnerID = target.UserID
+	s.notifyChange("circle-membership", u.ID, target.UserID, c.ID, "owner", a.circleNow())
 	c.UpdatedAt = m.UpdatedAt
 	s.Circles[c.ID] = c
 	s.audit(u, "circle.owner.transfer", c.ID, "newOwner="+target.UserID, a.circleNow())

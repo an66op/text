@@ -39,6 +39,9 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 		if err = migrateCircles(ctx, tx); err != nil {
 			return err
 		}
+		if err = migrateNotifications(ctx, tx); err != nil {
+			return err
+		}
 		return tx.Commit(ctx)
 	}
 	if _, err = tx.Exec(ctx, normalizedSchema); err != nil {
@@ -57,6 +60,9 @@ func migrateNormalized(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	if err = migrateCircles(ctx, tx); err != nil {
+		return err
+	}
+	if err = migrateNotifications(ctx, tx); err != nil {
 		return err
 	}
 	var legacy bool

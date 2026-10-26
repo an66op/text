@@ -390,11 +390,15 @@ func (a *App) adminUpdateMedia(s *State, u *User, r *http.Request) (any, error) 
 	if err != nil {
 		return nil, err
 	}
+	if v.Status != input.Status {
+		s.notifyChange("media-review", u.ID, v.OwnerID, v.ID, input.Status, a.now())
+	}
 	v.Status, v.Note, v.UpdatedAt = input.Status, note, a.now().UTC().Truncate(time.Microsecond)
 	s.Media[v.ID] = v
 	if v.Status == "blocked" {
 		for _, p := range mediaReferences(s, v.ID) {
 			if p.Status == "published" {
+				s.notifyChange("world-review", u.ID, p.AuthorID, p.ID, "hidden", a.now())
 				p.Status = "hidden"
 				s.Posts[p.ID] = p
 				s.audit(u, "post.moderate", p.ID, "status=hidden, blocked_media="+v.ID, a.now())
@@ -402,6 +406,7 @@ func (a *App) adminUpdateMedia(s *State, u *User, r *http.Request) (any, error) 
 		}
 		for _, p := range circleMediaReferences(s, v.ID) {
 			if p.Status == "published" {
+				s.notifyChange("circle-review", u.ID, p.AuthorID, p.ID, "hidden", a.circleNow())
 				p.Status = "hidden"
 				p.UpdatedAt = a.circleNow()
 				p.Note = "关联图片被平台屏蔽：" + v.ID

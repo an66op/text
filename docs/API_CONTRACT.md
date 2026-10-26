@@ -1,13 +1,13 @@
 # 共鸣全栈 API 约定
 
-前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），Go API（8080），PostgreSQL（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。
+前台 React / Vite / TypeScript（5173），运营后台 React / Vite / TypeScript（5174），Go API 0.7.0（8080）、PostgreSQL schema v7（本地隔离实例 55432）。两套前端通过 Vite `/api` 代理调用服务，生产同源反向代理。
 
 ## 通用
 
 - 前缀 `/api/v1`。成功 `{ "data": T }`；失败 `{ "error": { "code": "...", "message": "中文可读说明" } }`。
 - 时间 RFC3339，ID 字符串。金额全部整数字符串，价格以分为单位；钱包仅测试账本。
 - HttpOnly SameSite=Lax 会话 cookie；写请求校验 Origin，开发仅允许 5173/5174 的 localhost/127.0.0.1。密码 bcrypt，token 只存 SHA-256。管理员与成员强制角色授权。非登录/注册/查询会话请求可带 X-Gongming-Account，若与 cookie 身份不符则409 account_changed，防多标签页账号切换串写；该头不能授予权限。
-- 列表统一 `{items: T[], total: number}`，支持 `q` / `limit` / `offset`（服务限制上限）。
+- 普通列表 `{items: T[], total: number}`，按域支持 `q` / `limit` / `offset`；通知额外返回unreadTotal/throughId，默认limit20。
 - 前后台请求期限20秒，覆盖响应头与响应体读取；用户取消仍作为取消处理。写入超时不能据此认定事务失败，客户端提示刷新确认、不自动重发。
 
 ## 账号
@@ -36,6 +36,7 @@
 - `GET /media/images/{id}` 与 `HEAD` 返回二进制图片。本人和运营可读可用原图；world资产有已发布世界帖引用时才开放，circle资产要求当前圈成员、可读频道及已发布圈帖引用，暂停圈不向其它成员开放图片。公开圈介绍不授予图片权限。被屏蔽图片仅运营人员可读，删除后一律不可读。不存在/不可见统一404；响应 `no-store`，不能把它变成无鉴权的静态目录。
 - `DELETE /media/images/{id}` → `{ok:true}`，仅本人且没有任何帖子引用时可删；已删除重复成功，未知/他人404，仍有引用409。逻辑删除提交后再清文件；存储失败可能留下不可访问文件，不能恢复软删资产。
 - `GET /me/media` → 本人未删资产列表，支持 q/status/limit/offset；结构与下述运营媒体列表相同，仅本人可查。用于找回或清理取消、超时后可能已经保存的上传。
+- 前台 `/account/uploads?image=media_<32小写hex>` 是本人指定图片深链；只查询本人资产，未知/他人不显示旧结果。圈内引用可明确确认删除作者本人的整篇圈帖，再刷新引用；这一步不删除原图、不授予已失去的圈内容权限。
 - `GET /admin/media` → `{items:AdminMediaAsset[],total}`，仅运营人员；status 为 ready/blocked，q 支持图片ID、上传者ID/用户名/昵称、引用帖子ID。
 - `AdminMediaAsset = MediaAsset & {owner:PublicUser,status:'ready'|'blocked',note,referenceCount,publishedReferenceCount,circleReferenceCount,circlePublishedReferenceCount,posts:[{id,body,status}],circlePosts:[{circleId,channelId,id,body,status}],updatedAt}`。两个帖子预览数组各最多10条，按创建时间倒序，body最多200字；referenceCount为两域总引用，publishedReferenceCount仅世界公开引用，circle计数明确分列，不能称为公开。ready表示可引用，不能解释为已公开。
 - `PATCH /admin/media/{id}` `{status:'ready'|'blocked',note}`，note 必填且最多1000字，允许同状态更新说明并记审计。屏蔽图片时，同事务隐藏全部已发布引用帖；解除屏蔽只恢复图片可用性，不自动恢复帖子。
@@ -59,6 +60,8 @@
 
 完整DTO、路由、媒体作用域和幂等规则见 [圈子服务契约](CIRCLES_SERVICE.md)。前台入口 `/circles`，详情 `/circles/s/:circleId`；本机演示目录 `/circles/demo`，不随登录导入服务器。
 
+`DELETE /circles/{id}/posts/{postId}` → `{ok:true}`，作者或当前有频道权限的圈管理可删除。正常登录的作者即使已退出、被移除、降级或圈/频道归档，仍可按已知ID删除本人帖以解除上传引用；接口不因此返回私密正文。成功保留幂等墓碑，原clientId重放409，不能复活已删帖。
+
 ## 好友关系
 
 好友关系必须双方确认，成员目录、私聊和群组成员关系都不会自动变成好友。
@@ -72,6 +75,19 @@
 - `GET /relationships/{userId}` → `{status:'self'|'none'|'friends'|'incoming'|'outgoing',request?:FriendRequest,since?:string}`。
 - `DELETE /friends/{userId}` → `{ok:true}`，双向关系一起移除，重复幂等，原私聊与历史申请保留。再次成为好友需新申请并接受，重放旧接受结果不会恢复已移除的关系。
 - 发起/接受要求双方账号正常；取消、拒绝、移除可清理涉及停用账号的旧关系。好友列表隐藏停用成员，申请历史只向双方显示 PublicUser。
+
+## 站内通知
+
+`Notification = {id,kind,category:'requests'|'interactions'|'system',outcome,actor:PublicUser|null,available,context:{title,excerpt}|null,target:NotificationTarget|null,createdAt,readAt:string|null}`。id为 `notice_` 加32位小写hex；kind为14种冻结业务类型，outcome与target只接受 [通知服务契约](NOTIFICATIONS_SERVICE.md) 的白名单。不提供创建通知接口，不重复聊天未读。
+
+- `GET /notifications?category=all|requests|interactions|system&unread=true|false&limit&offset` → `{items:Notification[],total,unreadTotal,throughId:string|null}`。默认all/false/limit20，limit1–100、offset0–100000；unread=false包含已读，非法枚举400。按本人序号降序，total为筛选后数量，unreadTotal为全收件箱未读数。
+- `GET /notifications/unread` → `{unreadTotal,throughId}`，独立轻量SQL徽标。
+- `POST /notifications/{id}/read` `{}` → `{ok:true,unreadTotal,readAt}`；仅本人通知，未知/他人统一404；重复保持首次readAt。
+- `POST /notifications/read-all` `{throughId:string|null}` → `{ok:true,markedRead,unreadTotal}`，必须显式提供字段。null无副作用；非null须本人已存在通知ID，只更新不超过该序号的未读，未知/他人404。
+
+所有接口要求正常会话与预期账号匹配，写入校验Origin。throughId取同一REPEATABLE READ快照内本人全收件箱最高序号对应ID，不受筛选、分页影响，空箱null；列表之后新到通知不被旧水位覆盖。业务/审计与通知原子提交，recipient/eventKey唯一，点赞按actor+帖子终身去重，反复点赞或重放幂等回执不刷通知。
+
+上下文、人物和跳转每次按当前权限投影，不持久化正文、私圈名、审核note或邀请token。失权后available=false且actor/context/target全null；系统通知actor始终null。圈通知不借平台角色绕过成员/频道权限，公开圈历史通知也要求当前成员或本人pending申请。举报结案只给本人固定状态，无内容或链接。客户端只映射已知target；uploads目标携mediaId到本人上传深链，不能直接加载屏蔽图。通知列表/徽标/已读均走账号域SQL，不加载普通业务State。
 
 ## 通讯
 

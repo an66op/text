@@ -121,6 +121,9 @@ func (a *App) likePost(s *State, u *User, r *http.Request) (any, error) {
 		p.Likes = map[string]bool{}
 	}
 	if *input.Liked {
+		if !p.Likes[u.ID] {
+			s.queueNotification("world-like", u.ID, p.AuthorID, p.ID, "", "world-like:"+p.ID+":"+u.ID, a.now())
+		}
 		p.Likes[u.ID] = true
 	} else {
 		delete(p.Likes, u.ID)
@@ -162,6 +165,7 @@ func (a *App) createComment(s *State, u *User, r *http.Request) (any, error) {
 	}
 	c := StoredComment{newID("comment_"), p.ID, u.ID, body, a.now()}
 	s.Comments[c.ID] = c
+	s.queueNotification("world-comment", u.ID, p.AuthorID, p.ID, "", "world-comment:"+c.ID, c.CreatedAt)
 	return Comment{c.ID, c.PostID, publicUser(*u), c.Body, c.CreatedAt}, nil
 }
 func (a *App) report(s *State, u *User, r *http.Request) (any, error) {

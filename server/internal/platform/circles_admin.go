@@ -64,6 +64,9 @@ func (a *App) adminUpdateCircle(s *State, u *User, r *http.Request) (any, error)
 	if c.Status == "archived" {
 		return nil, conflict("圈主已归档，平台不能代替圈主解除归档")
 	}
+	if c.Status != input.Status {
+		s.notifyCircleStatus(c.ID, u.ID, input.Status, a.circleNow())
+	}
 	c.Status = input.Status
 	c.Note = note
 	c.UpdatedAt = a.circleNow()
@@ -120,6 +123,9 @@ func (a *App) adminUpdateCirclePost(s *State, u *User, r *http.Request) (any, er
 		if _, err = validateCirclePostMedia(s, p.CircleID, p.AuthorID, p.Images); err != nil {
 			return nil, conflict("圈帖包含不可用或跨圈图片")
 		}
+	}
+	if p.Status != input.Status {
+		s.notifyChange("circle-review", u.ID, p.AuthorID, p.ID, input.Status, a.circleNow())
 	}
 	p.Status = input.Status
 	p.Note = note

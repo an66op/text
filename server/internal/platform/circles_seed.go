@@ -34,11 +34,14 @@ func (a *App) seedDevelopmentCircles(s *State) {
 		s.CirclePosts[post.ID] = post
 		comment := StoredCircleComment{ID: newID("ccomment_"), CircleID: id, PostID: post.ID, AuthorID: "user_friend", Body: "开发示例评论：一起完善这个空间。", CreatedAt: now.Add(2 * time.Minute)}
 		s.CircleComments[comment.ID] = comment
+		s.queueNotification("circle-comment", comment.AuthorID, post.AuthorID, post.ID, "", "circle-comment:"+comment.ID, comment.CreatedAt)
+		s.queueNotification("circle-like", "user_friend", post.AuthorID, post.ID, "", "circle-like:"+post.ID+":user_friend", comment.CreatedAt)
 		announcementPost := StoredCirclePost{ID: newID("cpost_"), CircleID: id, ChannelID: announcement, AuthorID: "user_demo", ClientID: "development-announcement", Fingerprint: "development-announcement", Title: "开发示例：圈子使用说明", Body: "公告主帖由圈主和圈管理员发布，正常成员可点赞评论。示例不会创建或存储任何明文邀请token。", Images: []string{}, Status: "published", CreatedAt: now.Add(3 * time.Minute), UpdatedAt: now.Add(3 * time.Minute), Likes: map[string]bool{}}
 		s.CirclePosts[announcementPost.ID] = announcementPost
 		if index == 1 {
 			request := StoredCircleJoinRequest{ID: newID("crequest_"), CircleID: id, UserID: "user_admin", Note: "开发示例待审申请：平台管理员也需要圈方批准，不自动获得成员权限。", Status: "pending", CreatedAt: now.Add(4 * time.Minute), UpdatedAt: now.Add(4 * time.Minute)}
 			s.CircleJoinRequests[request.ID] = request
+			s.notifyCircleManagers(request, request.CreatedAt)
 		}
 	}
 }

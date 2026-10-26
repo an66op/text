@@ -1,6 +1,6 @@
-# 圈子服务：本轮实现契约
+# 圈子服务
 
-本轮将创建、成员、邀请、forum/announcement频道、帖子、评论/点赞及治理接入Go/PostgreSQL。本机圈子不自动导入，保留独立演示。活动、语音、聊天实时流和资料库后续继续接入，不使用虚假的在线人数或成功回执。
+创建、成员、邀请、forum/announcement频道、帖子、评论/点赞及治理已接入Go/PostgreSQL；v0.7.0增加同事务站内通知与本人引用清理入口。本机圈子不自动导入，保留独立演示。活动、语音、聊天实时流和资料库后续继续接入，不使用虚假的在线人数或成功回执。
 
 ## 路由与模型
 
@@ -132,7 +132,7 @@ CircleInput：name最多40字，description最多600字，category最多30字，
 - `GET /circles/{id}/channels` → 当前成员可见Channel列表；`POST ...` `{name,description,kind,access}` → Channel，圈主/管理员；`PATCH /circles/{id}/channels/{channelId}` 同字段部分更新+archived → Channel。名称最多40字、描述300字。staff频道只owner/admin可读，普通成员连标题/数量也不返回。归档频道可读历史，不允许发布/评论/点赞，已有帖子可由作者删除。
 - `GET /circles/{id}/posts?channelId&view=all|featured|owner|photos&status&q&limit&offset` → 当前成员有频道权限的帖子；status默认published，pending/hidden仅圈owner/admin可查，普通成员不能通过筛选越权。author本人和圈staff可经详情读未公开帖。`GET /circles/{id}/posts/{postId}` → CirclePost。
 - `POST /circles/{id}/posts` `{channelId,title,body,images?,clientId}` → CirclePost。title最多120、body最多5000、images最多9张；clientId必填，按作者+圈子+频道去重，相同内容重试返回原帖，不同内容409。forum成员可发，announcement仅圈staff可发。文字帖published，含上传图片先pending。
-- `PATCH /circles/{id}/posts/{postId}` `{status?,featured?,pinned?}` → CirclePost，仅圈owner/admin按可访问频道审核；发布前重查图可用性。`DELETE ...` → `{ok:true}`，作者或圈staff可删除，保留幂等墓碑并解除图片引用。
+- `PATCH /circles/{id}/posts/{postId}` `{status?,featured?,pinned?}` → CirclePost，仅圈owner/admin按可访问频道审核；发布前重查图可用性。`DELETE ...` → `{ok:true}`，作者或当前有频道权限的圈staff可删除，保留幂等墓碑并解除图片引用。正常登录作者即使已退出/被移除、失去staff频道权限或圈/频道归档，仍可按已知ID删除本人帖用于清理上传；只返回成功状态，不恢复私密内容访问。原clientId重放仍409。
 - `POST /circles/{id}/posts/{postId}/like` `{liked:boolean}` → CirclePost，目标状态幂等；`GET .../comments` → CircleComment列表；`POST .../comments` `{body}` → CircleComment，最多2000字。仅正常已发布帖子、正常圈子及未归档且本人可读频道可互动；announcement普通成员可点赞和评论，主帖仍只有圈staff可发布。
 - `POST /reports` 新增 `{targetType:'circle-post',targetId,reason}`，要求本人当前可读该圈帖；平台举报接口不能使普通用户越权读取私圈。
 
@@ -142,6 +142,8 @@ CircleInput：name最多40字，description最多600字，category最多30字，
 
 原AdminMediaAsset/本人媒体列表追加circleReferenceCount、circlePublishedReferenceCount、circlePosts（最多10条，含circleId/channelId/id/body/status）；referenceCount为世界+圈子未删除总引用，publishedReferenceCount仅世界公开引用，不把私圈称为公开。posts仍只世界帖子。scope/circleId在“我的上传”和后台明确显示。图库仅在全部引用为零时允许删除。
 
+本人上传页的圈内引用可明确确认删除整篇本人圈帖，成功后刷新引用，原图另行清理；删除失败保留并可重试。通知的图片目标只跳 `/account/uploads?image=media_<32小写hex>`，按本人资产重新读取，不直接公开原图。
+
 ## 独立平台治理
 
 - `GET /admin/circles?q&status&limit&offset` → AdminCircle列表；`PATCH /admin/circles/{id}` `{status:'active'|'suspended',note}` → AdminCircle。仅平台staff，note必填1–1000字，同状态更新说明允许并审计。archived只读，不能用平台恢复冒充圈主解除归档。
@@ -150,4 +152,6 @@ CircleInput：name最多40字，description最多600字，category最多30字，
 
 ## 验证与工程边界
 
-schema6和原图scope迁移在一个事务，保留旧实体、Cookie与文件；新增圈表/索引/唯一/角色与引用约束，不导入本机demo。公开介绍不得携带邀请token、私频道名、私密正文或邮箱。关键写入含幂等、角色竞态、最后名额邀请/审批、移除与图读取重查；必须有真实PG隔离、迁移回滚、私圈/跨圈IDOR、媒体世界隔离和后台越权验证。State普通域仍有全域快照成本，不声称高流量容量或实时语音已完成。
+schema6和原图scope迁移在一个事务，保留旧实体、Cookie与文件；当前schema7另加通知收件箱与每账号序号两表，不导入本机demo或回填旧通知。圈子审批/身份/互动/治理、图帖和原图审核结果依 [通知契约](NOTIFICATIONS_SERVICE.md) 同事务产生事件。历史通知每次按当前成员、圈状态和频道角色动态投影；管理降权不能继续读申请附言，失权后actor/context/target均为空。公开圈的通知上下文也要求当前成员或本人pending申请，不能借历史记录追踪离圈后的介绍变更。
+
+公开介绍不得携带邀请token、私频道名、私密正文或邮箱。关键验证包含幂等、角色竞态、最后名额邀请/审批、移除与图读取重查、通知动态脱敏、作者失权后仅删除本人内容；另有真实PG隔离、迁移回滚、私圈/跨圈IDOR、媒体世界隔离和后台越权验证。圈子普通读写仍有State全域快照成本，通知列表/徽标/已读使用独立账号SQL，不声称高流量容量或实时语音已完成。

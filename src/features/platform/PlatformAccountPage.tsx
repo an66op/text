@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowUpRight,
+  Bell,
   Check,
   Cloud,
   Images,
@@ -221,6 +222,13 @@ function AccountPage() {
           </>
         )}
         <nav className="platform-account-links" aria-label="平台功能">
+          <Link to="/notifications">
+            <span>
+              <Bell size={21} />
+              站内通知
+            </span>
+            <ArrowUpRight size={17} />
+          </Link>
           <Link to="/world">
             <span>
               <Radio size={21} />

@@ -449,6 +449,7 @@ func (a *App) archiveCircle(s *State, u *User, r *http.Request) (any, error) {
 		return nil, conflict("圈子已暂停，请通过平台处理")
 	}
 	c.Status = "archived"
+	s.notifyCircleStatus(c.ID, u.ID, "archived", a.circleNow())
 	c.UpdatedAt = a.circleNow()
 	s.Circles[c.ID] = c
 	s.audit(u, "circle.archive", c.ID, "圈主归档", a.circleNow())

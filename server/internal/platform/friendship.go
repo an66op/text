@@ -179,6 +179,7 @@ func (a *App) createFriendRequest(s *State, u *User, r *http.Request) (any, erro
 		s.FriendRequests = map[string]StoredFriendRequest{}
 	}
 	s.FriendRequests[request.ID] = request
+	s.queueNotification("friend-request", u.ID, target.ID, request.ID, "", "friend-request:"+request.ID, now)
 	return s.friendRequest(request), nil
 }
 func (a *App) respondFriendRequest(s *State, u *User, r *http.Request) (any, error) {
@@ -231,6 +232,9 @@ func (a *App) respondFriendRequest(s *State, u *User, r *http.Request) (any, err
 	request.Status = next
 	request.UpdatedAt = a.friendshipNow()
 	s.FriendRequests[request.ID] = request
+	if next == "accepted" || next == "declined" {
+		s.queueNotification("friend-decision", u.ID, request.FromID, request.ID, next, "friend-decision:"+request.ID, request.UpdatedAt)
+	}
 	return s.friendRequest(request), nil
 }
 func (a *App) relationship(s *State, u *User, r *http.Request) (any, error) {

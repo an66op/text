@@ -166,6 +166,47 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.my-upload-circle-reference {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.my-upload-circle-reference > a {
+  flex: 1;
+  min-width: 0;
+}
+.my-upload-circle-reference > button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 5px;
+  background: transparent;
+  color: #bd4e59;
+  font-size: 10px;
+}
+.my-upload-cleanup-help {
+  margin: 0;
+  color: var(--platform-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.my-upload-cleanup-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 2px solid var(--platform-line);
+  padding-left: 10px;
+}
+.my-upload-cleanup-refresh {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 0;
+  background: transparent;
+  color: var(--platform-accent);
+  font-size: 12px;
+}
 .my-upload-delete {
   display: flex;
   align-items: center;

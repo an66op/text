@@ -168,6 +168,9 @@ func (a *App) adminUpdatePost(s *State, u *User, r *http.Request) (any, error) {
 			return nil, conflict("动态包含不可发布的托管图片，请先处理图片审核")
 		}
 	}
+	if p.Status != input.Status {
+		s.notifyChange("world-review", u.ID, p.AuthorID, p.ID, input.Status, a.now())
+	}
 	p.Status = input.Status
 	s.Posts[p.ID] = p
 	s.audit(u, "post.moderate", p.ID, "status="+p.Status, a.now())
@@ -211,6 +214,7 @@ func (a *App) adminUpdateReport(s *State, u *User, r *http.Request) (any, error)
 	report.Status = input.Status
 	report.Note = strings.TrimSpace(input.Note)
 	s.Reports[report.ID] = report
+	s.queueNotification("report-review", u.ID, report.ReporterID, report.ID, report.Status, "report-review:"+report.ID, a.now())
 	s.audit(u, "report.review", report.ID, "status="+report.Status+", note="+report.Note, a.now())
 	return report, nil
 }
@@ -225,5 +229,5 @@ func (a *App) auditLog(s *State, _ *User, r *http.Request) (any, error) {
 	return list(r, items)
 }
 func (a *App) system(_ *State, _ *User, _ *http.Request) (any, error) {
-	return map[string]any{"version": Version, "storage": "PostgreSQL · relational schema v6", "environment": a.cfg.Environment, "uptimeSeconds": int64(time.Since(a.started).Seconds()), "features": []string{"http-only-sessions", "server-circles", "circle-role-permissions", "hashed-circle-invitations", "circle-moderation", "scoped-circle-media", "private-image-storage", "reviewed-image-posts", "media-moderation", "device-session-revocation", "community-posts", "moderation-audit", "member-conversations", "mutual-friendships", "conversation-membership-management", "cursor-message-history", "domain-sql-messaging", "transactional-websocket-outbox", "revisioned-personal-documents", "atomic-test-ledger", "request-idempotency"}}, nil
+	return map[string]any{"version": Version, "storage": "PostgreSQL · relational schema v7", "environment": a.cfg.Environment, "uptimeSeconds": int64(time.Since(a.started).Seconds()), "features": []string{"account-notifications", "transactional-notification-events", "permission-aware-notifications", "bounded-read-all", "http-only-sessions", "server-circles", "circle-role-permissions", "hashed-circle-invitations", "circle-moderation", "scoped-circle-media", "private-image-storage", "reviewed-image-posts", "media-moderation", "device-session-revocation", "community-posts", "moderation-audit", "member-conversations", "mutual-friendships", "conversation-membership-management", "cursor-message-history", "domain-sql-messaging", "transactional-websocket-outbox", "revisioned-personal-documents", "atomic-test-ledger", "request-idempotency"}}, nil
 }

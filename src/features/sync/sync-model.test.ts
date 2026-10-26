@@ -39,9 +39,10 @@ describe('explicit personal document restores', () => {
     expect(() => restoreDocuments([{ ...doc('drafts', 'first'), revision: 0 }])).toThrow();
     expect(() => restoreDocuments([{ ...doc('drafts', 'first'), updatedAt: 'invalid' }])).toThrow();
     expect(localStorage.getItem('content-publish-draft')).toBe('"original"');
-    expect(
-      readDocumentList({ items: [doc('wallet', { balance: 99 }), doc('drafts', 'supported')] }),
-    ).toEqual([doc('drafts', 'supported')]);
+    const supported = doc('drafts', 'supported');
+    expect(readDocumentList({ items: [doc('wallet', { balance: 99 }), supported] })).toEqual([
+      supported,
+    ]);
   });
   it('rolls back earlier writes and emits no provider events when a later storage write fails', () => {
     localStorage.setItem('content-publish-draft', '"original"');

@@ -3,6 +3,9 @@ import { lazy } from 'react';
 export const AuthPage = lazy(() => import('@/features/platform/AuthPage'));
 export const PlatformAccountPage = lazy(() => import('@/features/platform/PlatformAccountPage'));
 export const MyUploadsPage = lazy(() => import('@/features/platform/media/MyUploadsPage'));
+export const NotificationsPage = lazy(
+  () => import('@/features/platform/notifications/NotificationsPage'),
+);
 export const ServerCirclesPage = lazy(() => import('@/features/platform/circles/DirectoryPage'));
 export const ServerCircleCreatePage = lazy(() => import('@/features/platform/circles/CreatePage'));
 export const ServerCircleHomePage = lazy(() => import('@/features/platform/circles/HomePage'));

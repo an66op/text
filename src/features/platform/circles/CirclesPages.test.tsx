@@ -399,6 +399,47 @@ describe('server-confirmed circle entry and creation', () => {
 });
 
 describe('server role and moderation controls', () => {
+  it('opens the requests tab from an authorized notification deep link and cancels it when the URL tab changes', async () => {
+    vi.mocked(circlesApi.circle).mockResolvedValue({ ...circle, role: 'admin' });
+    const pending = deferred<{ items: (typeof request)[]; total: number }>();
+    const requests = vi.spyOn(circlesApi, 'requests').mockReturnValue(pending.promise);
+    const members = vi.spyOn(circlesApi, 'members').mockResolvedValue({ items: [], total: 0 });
+    render(page(`${homePath}/members?tab=requests`));
+    expect(await screen.findByRole('tab', { name: '审批' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await waitFor(() =>
+      expect(requests).toHaveBeenCalledWith(
+        circle.id,
+        { status: 'pending', limit: 20, offset: 0 },
+        expect.any(AbortSignal),
+      ),
+    );
+    expect(members).not.toHaveBeenCalled();
+    const signal = requests.mock.calls[0][2]!;
+    fireEvent.click(screen.getByRole('tab', { name: '成员' }));
+    await waitFor(() => expect(members).toHaveBeenCalled());
+    expect(signal.aborted).toBe(true);
+    await act(async () => pending.resolve({ items: [request], total: 1 }));
+    expect(screen.queryByText(request.note)).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '成员' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('does not request approval or banned member lists from URL tabs without current circle permissions', async () => {
+    const requests = vi.spyOn(circlesApi, 'requests');
+    const members = vi.spyOn(circlesApi, 'members').mockResolvedValue({ items: [], total: 0 });
+    render(page(`${homePath}/members?tab=requests`));
+    await screen.findByText('没有符合条件的成员。');
+    expect(requests).not.toHaveBeenCalled();
+    expect(members).toHaveBeenCalledWith(
+      circle.id,
+      { status: 'active', q: '', limit: 20, offset: 0 },
+      expect.any(AbortSignal),
+    );
+    expect(screen.queryByRole('tab', { name: '审批' })).not.toBeInTheDocument();
+  });
+
   it('closes a stale destructive confirmation when the target becomes a protected circle owner', async () => {
     vi.mocked(circlesApi.circle).mockResolvedValue({ ...circle, role: 'owner', owner: member });
     const list = vi.spyOn(circlesApi, 'members').mockResolvedValue({

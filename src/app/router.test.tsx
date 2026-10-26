@@ -200,6 +200,12 @@ describe('real application routes', () => {
     );
   });
 
+  it('places the notification inbox on its own secondary social route', () => {
+    const matched = matchRoutes(appRoutes, paths.notifications)?.at(-1)?.route;
+    expect(matched?.path).toBe('/notifications');
+    expect(matched?.handle).toMatchObject({ title: '通知', section: 'social', level: 'secondary' });
+  });
+
   it('reserves the bottom navigation for the five primary pages', () => {
     const children = appRoutes[0].children ?? [];
     const primaryRoutes = children.filter((route) => route.handle?.level === 'primary');

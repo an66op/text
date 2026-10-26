@@ -13,6 +13,7 @@ import ConnectionStatus from './messages/ConnectionStatus';
 import { useConversationFeed } from './messages/useConversationFeed';
 import { usePlatformStream } from './messages/usePlatformStream';
 import { messagesChanged } from './messages/message-drafts';
+import NotificationBell from './notifications/NotificationBell';
 import './platform.css';
 
 const kindNames: Record<ConversationKind, string> = {
@@ -101,6 +102,7 @@ function SignedInMessages() {
     <>
       <AppTopbar
         title="消息"
+        leading={<NotificationBell />}
         actions={
           <button type="button" aria-label="创建会话" onClick={() => setCreating(true)}>
             <Plus size={23} />

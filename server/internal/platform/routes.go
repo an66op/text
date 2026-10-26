@@ -5,6 +5,7 @@ import (
 )
 
 func (a *App) routes(mux *http.ServeMux) {
+	a.registerNotificationRoutes(mux)
 	a.registerCircleRoutes(mux)
 	a.registerMediaRoutes(mux)
 	a.registerDeviceSessionRoutes(mux)

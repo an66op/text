@@ -107,6 +107,9 @@ func (s *PostgresStore) updateOnce(ctx context.Context, fn func(*State) error) e
 	if err = persistNormalized(ctx, tx, before, state); err != nil {
 		return err
 	}
+	if err = persistNotificationDrafts(ctx, tx, state.NotificationDrafts); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 func retryableTransaction(err error) bool {

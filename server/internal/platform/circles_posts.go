@@ -254,6 +254,9 @@ func (a *App) updateCirclePost(s *State, u *User, r *http.Request) (any, error) 
 				return nil, conflict("圈帖图片不可发布")
 			}
 		}
+		if p.Status != *input.Status {
+			s.notifyChange("circle-review", u.ID, p.AuthorID, p.ID, *input.Status, a.circleNow())
+		}
 		p.Status = *input.Status
 	}
 	if input.Featured != nil {
@@ -326,6 +329,9 @@ func (a *App) likeCirclePost(s *State, u *User, r *http.Request) (any, error) {
 		p.Likes = map[string]bool{}
 	}
 	if *input.Liked {
+		if !p.Likes[u.ID] {
+			s.queueNotification("circle-like", u.ID, p.AuthorID, p.ID, "", "circle-like:"+p.ID+":"+u.ID, a.circleNow())
+		}
 		p.Likes[u.ID] = true
 	} else {
 		delete(p.Likes, u.ID)
@@ -369,5 +375,6 @@ func (a *App) createCircleComment(s *State, u *User, r *http.Request) (any, erro
 	}
 	v := StoredCircleComment{ID: newID("ccomment_"), CircleID: p.CircleID, PostID: p.ID, AuthorID: u.ID, Body: body, CreatedAt: a.circleNow()}
 	s.CircleComments[v.ID] = v
+	s.queueNotification("circle-comment", u.ID, p.AuthorID, p.ID, "", "circle-comment:"+v.ID, v.CreatedAt)
 	return CircleComment{v.ID, v.PostID, publicUser(*u), v.Body, v.CreatedAt}, nil
 }

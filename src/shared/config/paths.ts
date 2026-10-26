@@ -19,6 +19,7 @@ export const paths = {
   register: '/register',
   account: '/account',
   uploads: '/account/uploads',
+  notifications: '/notifications',
   sync: '/account/sync',
   messages: '/messages',
   conversationDetails: (id: string) => `/messages/${encodeURIComponent(id)}/details`,

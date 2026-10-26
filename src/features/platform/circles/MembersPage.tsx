@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import ActionDialog from '@/shared/ui/ActionDialog';
 import { PlatformAvatar, PlatformError } from '../PlatformUi';
 import { useAuth } from '../useAuth';
@@ -26,15 +26,20 @@ function Members() {
   const { circle, deny, refresh } = useCircle(),
     { user } = useAuth(),
     navigate = useNavigate();
-  const [tab, setTab] = useState('active'),
-    [query, setQuery] = useState(''),
+  const [params, setParams] = useSearchParams();
+  const manager = isManager(circle),
+    writable = circle.status === 'active';
+  const requestedTab = params.get('tab');
+  const tab =
+    manager && ['requests', 'banned', 'removed'].includes(requestedTab || '')
+      ? requestedTab!
+      : 'active';
+  const [query, setQuery] = useState(''),
     [search, setSearch] = useState(''),
     [page, setPage] = useState(0),
     [decision, setDecision] = useState<Decision | null>(null),
     [ban, setBan] = useState(false),
     [notice, setNotice] = useState('');
-  const manager = isManager(circle),
-    writable = circle.status === 'active';
   const list = useResource(
     `${tab}:${search}:${page}`,
     (signal) =>
@@ -112,7 +117,12 @@ function Members() {
               key={value}
               aria-selected={tab === value}
               onClick={() => {
-                setTab(value);
+                setParams((previous) => {
+                  const next = new URLSearchParams(previous);
+                  if (value === 'active') next.delete('tab');
+                  else next.set('tab', value);
+                  return next;
+                });
                 setPage(0);
               }}
             >
