@@ -17,6 +17,10 @@ const asset: MyMediaAsset = {
   status: 'ready',
   note: '',
   referenceCount: 0,
+  previewAvailable: true,
+  worldReferenceCount: 0,
+  messageReferenceCount: 0,
+  messageReferences: [],
   publishedReferenceCount: 0,
   circleReferenceCount: 0,
   circlePublishedReferenceCount: 0,
@@ -45,6 +49,17 @@ const circleAsset: MyMediaAsset = {
   circleReferenceCount: 1,
   circlePublishedReferenceCount: 1,
   circlePosts: [circlePost],
+};
+const messageId = `message_${'1'.repeat(32)}`;
+const conversationAsset: MyMediaAsset = {
+  ...asset,
+  scope: 'conversation',
+  conversationId: `conversation_${'2'.repeat(32)}`,
+  previewAvailable: false,
+  url: null,
+  referenceCount: 1,
+  messageReferenceCount: 1,
+  messageReferences: [{ messageId }],
 };
 const page = (auth: AuthState = signedIn()) => (
   <MemoryRouter initialEntries={['/account/uploads']}>
@@ -78,6 +93,239 @@ afterEach(() => {
 });
 
 describe('owned server image recovery', () => {
+  it('hides a lost-access conversation preview and renders only own message IDs without following private context', async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    vi.mocked(mediaApi.mine).mockResolvedValue({
+      items: [
+        {
+          ...conversationAsset,
+          url: asset.url,
+          messageReferences: [
+            {
+              messageId,
+              body: '不得展示的消息正文',
+              conversationTitle: '不得展示的会话名',
+              participants: ['不得展示的参与者'],
+            },
+          ],
+          posts: [{ id: 'not-world', body: '不得展示的额外世界正文', status: 'published' }],
+          circlePosts: [circlePost],
+        } as unknown as MyMediaAsset,
+      ],
+      total: 1,
+    });
+    render(page());
+    await screen.findByRole('button', { name: '撤回本人消息 11111111' });
+    expect(screen.getByText('当前无预览权限')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /查看原图/ })).not.toBeInTheDocument();
+    for (const text of [
+      '不得展示的消息正文',
+      '不得展示的会话名',
+      '不得展示的参与者',
+      '不得展示的额外世界正文',
+      circlePost.body,
+      conversationAsset.conversationId!,
+    ])
+      expect(document.body).not.toHaveTextContent(text);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /删除上传/ })).not.toBeInTheDocument();
+  });
+
+  it('blindly retracts a whole own message only after confirmation and reloads real counts without removing the image', async () => {
+    const deleting = deferred<{ ok: true; messageId: string }>();
+    const reading = deferred<MyMediaPage>();
+    const retract = vi.spyOn(mediaApi, 'retractMessage').mockReturnValue(deleting.promise);
+    const remove = vi.spyOn(mediaApi, 'remove');
+    vi.mocked(mediaApi.mine)
+      .mockResolvedValueOnce({ items: [conversationAsset], total: 1 })
+      .mockReturnValueOnce(reading.promise);
+    render(page());
+    fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 11111111' }));
+    const dialog = screen.getByRole('dialog', { name: '撤回这条本人消息？' });
+    expect(dialog).toHaveTextContent('整条消息的正文、引用回复和全部图片引用');
+    expect(dialog).toHaveTextContent('原图片会继续保留');
+    expect(dialog).toHaveTextContent('不会读取会话上下文');
+    expect(retract).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认撤回消息' }));
+    expect(retract).toHaveBeenCalledWith(messageId, expect.any(AbortSignal));
+    expect(screen.getByText('1 条引用 · 0 条世界公开 · 1 条消息引用')).toBeInTheDocument();
+    await act(async () => deleting.resolve({ ok: true, messageId }));
+    await screen.findByText('正在读取服务器上传…');
+    expect(screen.queryByRole('button', { name: /删除上传/ })).not.toBeInTheDocument();
+    await act(async () =>
+      reading.resolve({
+        items: [
+          {
+            ...conversationAsset,
+            referenceCount: 0,
+            messageReferenceCount: 0,
+            messageReferences: [],
+          },
+        ],
+        total: 1,
+      }),
+    );
+    await screen.findByRole('button', { name: '删除上传 aaaaaaaa' });
+    expect(screen.getByText(/本人消息已撤回，原图片仍保留/)).toBeInTheDocument();
+    expect(remove).not.toHaveBeenCalled();
+    expect(mediaApi.mine).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('当前无预览权限')).toBeInTheDocument();
+  });
+
+  it('discovers later references after a server refresh instead of guessing that an eleven-reference image is unreferenced', async () => {
+    const references = Array.from({ length: 10 }, (_, i) => ({
+      messageId: `message_${String(i).padStart(32, '0')}`,
+    }));
+    const later = { messageId: `message_${'3'.repeat(32)}` };
+    vi.spyOn(mediaApi, 'retractMessage').mockResolvedValue({
+      ok: true,
+      messageId: references[0].messageId,
+    });
+    vi.mocked(mediaApi.mine)
+      .mockResolvedValueOnce({
+        items: [
+          {
+            ...conversationAsset,
+            referenceCount: 11,
+            messageReferenceCount: 11,
+            messageReferences: references,
+          },
+        ],
+        total: 1,
+      })
+      .mockResolvedValue({
+        items: [
+          {
+            ...conversationAsset,
+            referenceCount: 10,
+            messageReferenceCount: 10,
+            messageReferences: [...references.slice(1), later],
+          },
+        ],
+        total: 1,
+      });
+    render(page());
+    fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 00000000' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+    );
+    await screen.findByRole('button', { name: '撤回本人消息 33333333' });
+    expect(screen.getAllByRole('button', { name: /撤回本人消息 / })).toHaveLength(10);
+    expect(screen.getByText('10 条引用 · 0 条世界公开 · 10 条消息引用')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /删除上传/ })).not.toBeInTheDocument();
+  });
+
+  it.each([0, 403, 404, 503])(
+    'requires a fresh reference read after a failed or uncertain retract (HTTP %s) before offering another attempt',
+    async (status) => {
+      vi.mocked(mediaApi.mine).mockResolvedValue({ items: [conversationAsset], total: 1 });
+      const retract = vi
+        .spyOn(mediaApi, 'retractMessage')
+        .mockRejectedValueOnce(new ApiError('消息当前无法处理', 'test_failure', status))
+        .mockResolvedValue({ ok: true, messageId });
+      render(page());
+      fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 11111111' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+      );
+      await screen.findByText(/尚未确认撤回结果，请先刷新本人引用/);
+      expect(screen.queryByText(/本人消息已撤回，原图片仍保留/)).not.toBeInTheDocument();
+      expect(mediaApi.mine).toHaveBeenCalledOnce();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '取消' }));
+      fireEvent.click(screen.getByRole('button', { name: '撤回本人消息 11111111' }));
+      expect(
+        within(screen.getByRole('dialog')).queryByRole('button', { name: '确认撤回消息' }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: '刷新本人引用' }),
+      );
+      await waitFor(() => expect(mediaApi.mine).toHaveBeenCalledTimes(2));
+      expect(retract).toHaveBeenCalledOnce();
+      fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 11111111' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+      );
+      await screen.findByText(/本人消息已撤回，原图片仍保留/);
+      expect(retract).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('does not accept a receipt for another message or expose a message cleanup action on a world asset', async () => {
+    vi.spyOn(mediaApi, 'retractMessage').mockResolvedValue({
+      ok: true,
+      messageId: 'other-message',
+    });
+    vi.mocked(mediaApi.mine).mockResolvedValueOnce({
+      items: [
+        { ...asset, referenceCount: 1, messageReferences: [{ messageId }] },
+        { ...conversationAsset, id: another.id },
+      ],
+      total: 2,
+    });
+    render(page());
+    const world = await screen.findByRole('article', { name: '上传 aaaaaaaa' });
+    expect(within(world).queryByRole('button', { name: /撤回本人消息/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '撤回本人消息 11111111' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+    );
+    await screen.findByText(/服务尚未确认这条消息已撤回/);
+    expect(mediaApi.mine).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/本人消息已撤回，原图片仍保留/)).not.toBeInTheDocument();
+  });
+
+  it('aborts and ignores an old account retract result without refreshing the new identity', async () => {
+    const pending = deferred<{ ok: true; messageId: string }>();
+    const retract = vi.spyOn(mediaApi, 'retractMessage').mockReturnValue(pending.promise);
+    vi.mocked(mediaApi.mine).mockResolvedValueOnce({ items: [conversationAsset], total: 1 });
+    const view = render(page());
+    fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 11111111' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+    );
+    const signal = retract.mock.calls[0][1]!;
+    vi.mocked(mediaApi.mine).mockResolvedValue({
+      items: [{ ...another, owner: otherMember }],
+      total: 1,
+    });
+    view.rerender(page(signedIn(otherMember)));
+    await screen.findByRole('article', { name: '上传 bbbbbbbb' });
+    expect(signal.aborted).toBe(true);
+    await act(async () => pending.resolve({ ok: true, messageId }));
+    expect(mediaApi.mine).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(/本人消息已撤回/)).not.toBeInTheDocument();
+  });
+
+  it('blocks a stale retained message confirmation after account epoch changes', async () => {
+    vi.spyOn(mediaApi, 'retractMessage');
+    vi.mocked(mediaApi.mine).mockResolvedValue({ items: [conversationAsset], total: 1 });
+    render(page());
+    fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 11111111' }));
+    advanceAccountEpoch();
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+    );
+    expect(mediaApi.retractMessage).not.toHaveBeenCalled();
+  });
+
+  it('discards a late retract success after unmount without refreshing references', async () => {
+    const pending = deferred<{ ok: true; messageId: string }>();
+    const retract = vi.spyOn(mediaApi, 'retractMessage').mockReturnValue(pending.promise);
+    vi.mocked(mediaApi.mine).mockResolvedValue({ items: [conversationAsset], total: 1 });
+    const view = render(page());
+    fireEvent.click(await screen.findByRole('button', { name: '撤回本人消息 11111111' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '确认撤回消息' }),
+    );
+    const signal = retract.mock.calls[0][1]!;
+    view.unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => pending.resolve({ ok: true, messageId }));
+    expect(mediaApi.mine).toHaveBeenCalledOnce();
+  });
   it('follows a strict uploaded-image deep link and hides and aborts previous results while the target changes', async () => {
     const oldTarget = deferred<MyMediaPage>();
     const newTarget = deferred<MyMediaPage>();

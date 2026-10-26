@@ -1,12 +1,44 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiErrorMessage, isAbort } from '@/shared/api/client';
 import { platformApi } from '@/shared/api/platformApi';
+import { tombstone } from './message-cache';
 import type { Conversation, ReadMark } from '@/shared/api/types';
 
 export function useConversationFeed(userId: string) {
   const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const floors = useRef(new Map<string, number>());
+  const project = useCallback((item: Conversation, old?: Conversation) => {
+    const floor = Math.max(
+      floors.current.get(item.id) ?? 0,
+      item.mutationVersion ?? 0,
+      (item.lastMessage?.revision ?? 1) - 1,
+    );
+    floors.current.set(item.id, floor);
+    const value = old && (old.mutationVersion ?? 0) > (item.mutationVersion ?? 0) ? old : item;
+    return {
+      ...value,
+      mutationVersion: floor,
+      lastMessage:
+        value.lastMessage && terminal.current.has(value.lastMessage.id)
+          ? tombstone(value.lastMessage)
+          : value.lastMessage && (value.lastMessage.revision ?? 1) < floor + 1
+            ? undefined
+            : value.lastMessage,
+    };
+  }, []);
+  const terminal = useRef(new Set<string>());
+  const retract = useCallback((conversationId: string, messageId: string) => {
+    terminal.current.add(messageId);
+    setItems((items) =>
+      items.map((item) =>
+        item.id === conversationId && item.lastMessage?.id === messageId
+          ? { ...item, lastMessage: tombstone(item.lastMessage) }
+          : item,
+      ),
+    );
+  }, []);
   const refreshRef = useRef<(strict?: boolean) => void>(() => {});
   useEffect(() => {
     let active = true;
@@ -29,7 +61,12 @@ export function useConversationFeed(userId: string) {
       try {
         const result = await platformApi.conversations(controller.signal);
         if (active && current === generation) {
-          setItems(result.items);
+          setItems((previous) =>
+            result.items.map((item) => {
+              const old = previous.find((value) => value.id === item.id);
+              return project(item, old);
+            }),
+          );
           setError('');
         }
       } catch (caught) {
@@ -50,7 +87,25 @@ export function useConversationFeed(userId: string) {
       dirty = true;
       void load();
     };
-    const changed = () => invalidate(false);
+    const changed = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          conversationId?: string;
+          retractedId?: string;
+          mutationVersion?: number;
+        }>
+      ).detail;
+      if (detail?.conversationId && detail.mutationVersion !== undefined) {
+        floors.current.set(
+          detail.conversationId,
+          Math.max(floors.current.get(detail.conversationId) ?? 0, detail.mutationVersion),
+        );
+        setItems((items) => items.map((item) => project(item)));
+      }
+      if (detail?.conversationId && detail.retractedId)
+        retract(detail.conversationId, detail.retractedId);
+      invalidate(false);
+    };
     const visible = () => {
       if (!document.hidden) invalidate();
     };
@@ -68,15 +123,18 @@ export function useConversationFeed(userId: string) {
       document.removeEventListener('visibilitychange', visible);
       refreshRef.current = () => {};
     };
-  }, [userId]);
+  }, [userId, retract, project]);
   const refresh = useCallback((strict = true) => refreshRef.current(strict), []);
   const upsert = useCallback(
     (conversation: Conversation) =>
       setItems((previous) => [
-        conversation,
+        project(
+          conversation,
+          previous.find((item) => item.id === conversation.id),
+        ),
         ...previous.filter((item) => item.id !== conversation.id),
       ]),
-    [],
+    [project],
   );
   const read = useCallback(
     (mark: ReadMark) =>
@@ -94,5 +152,5 @@ export function useConversationFeed(userId: string) {
       ),
     [],
   );
-  return { items, loading, error, refresh, upsert, read };
+  return { items, loading, error, refresh, upsert, read, retract };
 }

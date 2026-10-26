@@ -5,6 +5,7 @@ import (
 )
 
 func (a *App) routes(mux *http.ServeMux) {
+	a.registerMessageMediaRoutes(mux)
 	a.registerWalletIdentityRoutes(mux)
 	a.registerCircleEventRoutes(mux)
 	a.registerNotificationRoutes(mux)
@@ -34,7 +35,7 @@ func (a *App) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.endpoint(true, "member", a.createComment))
 	mux.HandleFunc("POST /api/v1/reports", a.endpoint(true, "member", a.report))
 	mux.HandleFunc("GET /api/v1/conversations", a.messagingEndpoint(messagingList, false, a.conversations))
-	mux.HandleFunc("POST /api/v1/conversations", a.endpoint(true, "member", a.createConversation))
+	mux.HandleFunc("POST /api/v1/conversations", a.conversationManagementEndpoint(a.createConversation))
 	mux.HandleFunc("GET /api/v1/conversations/{id}/messages", a.messagingEndpoint(messagingHistory, false, a.messages))
 	mux.HandleFunc("POST /api/v1/conversations/{id}/messages", a.messagingEndpoint(messagingSend, true, a.sendMessage))
 	mux.HandleFunc("POST /api/v1/conversations/{id}/read", a.messagingEndpoint(messagingRead, true, a.readConversation))

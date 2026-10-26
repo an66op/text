@@ -83,6 +83,9 @@ describe('account communications', () => {
   });
 
   it('keeps a failed send draft and applies only the returned server message', async () => {
+    vi.spyOn(platformApi, 'messageByClient').mockRejectedValue(
+      new ApiError('未找到', 'not_found', 404),
+    );
     const send = vi
       .spyOn(platformApi, 'sendMessage')
       .mockRejectedValueOnce(new ApiError('没有发布权限', 'forbidden', 403));
@@ -123,9 +126,18 @@ describe('account communications', () => {
       total: 1,
     });
     fireEvent.click(screen.getByRole('button', { name: '重试发送：新的播报' }));
+    await screen.findByText('尚未查询到这条消息，核实后可使用同一请求重试');
+    fireEvent.click(screen.getByRole('button', { name: '重试发送：新的播报' }));
     await screen.findByText('新的播报', { selector: 'article:not(.pending) p' });
     expect(screen.getByRole('textbox', { name: '服务器消息内容' })).toHaveValue('');
-    expect(send).toHaveBeenLastCalledWith(conversation.id, '新的播报', clientId);
+    expect(send).toHaveBeenLastCalledWith(
+      conversation.id,
+      '新的播报',
+      clientId,
+      undefined,
+      expect.any(AbortSignal),
+    );
+    expect(send).toHaveBeenCalledTimes(2);
   });
 
   it('creates a group from server directory identities', async () => {

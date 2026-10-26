@@ -1,3 +1,4 @@
+import { MessageCache } from './message-cache';
 import type { PlatformMessage } from '@/shared/api/types';
 
 export type PendingMessage = { clientId: string; body: string; createdAt: string; error: string };
@@ -66,15 +67,16 @@ export function saveMessageDraft(key: string, value: MessageDraft) {
 }
 
 export function mergeMessages(previous: PlatformMessage[], incoming: PlatformMessage[]) {
-  const merged = new Map(previous.map((message) => [message.id, message]));
-  for (const message of incoming) merged.set(message.id, message);
-  return [...merged.values()].sort((a, b) =>
-    a.seq && b.seq
-      ? a.seq - b.seq
-      : a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
-  );
+  const cache = new MessageCache();
+  cache.accept(previous);
+  cache.accept(incoming);
+  return cache.snapshot();
 }
 
-export function messagesChanged() {
-  window.dispatchEvent(new Event('gongming:conversations-changed'));
+export function messagesChanged(detail?: {
+  conversationId: string;
+  retractedId?: string;
+  mutationVersion?: number;
+}) {
+  window.dispatchEvent(new CustomEvent('gongming:conversations-changed', { detail }));
 }

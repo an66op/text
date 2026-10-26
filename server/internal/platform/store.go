@@ -114,7 +114,14 @@ func (s *PostgresStore) updateOnce(ctx context.Context, fn func(*State) error) e
 	if err = fn(state); err != nil {
 		return err
 	}
+	mediaConversations, err := lockChangedConversationMedia(ctx, tx, before, state)
+	if err != nil {
+		return err
+	}
 	if err = persistNormalized(ctx, tx, before, state); err != nil {
+		return err
+	}
+	if err = persistConversationMediaMutations(ctx, tx, mediaConversations); err != nil {
 		return err
 	}
 	if err = finishBrowserMutation(ctx, tx, m); err != nil {

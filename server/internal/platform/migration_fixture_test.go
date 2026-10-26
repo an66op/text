@@ -12,13 +12,33 @@ import (
 // not with today's authentication writer. This adapter exists only in tests;
 // the production writer always requires the fully migrated current schema.
 func persistHistoricalFixture(ctx context.Context, tx pgx.Tx, version int, state *State) error {
-	if version < 2 || version >= 9 {
+	if version < 2 || version >= 10 {
 		return fmt.Errorf("unsupported historical fixture version %d", version)
 	}
 	snapshot := *state
 	snapshot.Sessions = map[string]Session{}
+	snapshot.Messages = map[string]StoredMessage{}
+	snapshot.Media = map[string]StoredMediaAsset{}
 	if err := persistNormalized(ctx, tx, NewState(), &snapshot); err != nil {
 		return err
+	}
+	for _, id := range mapKeys(state.Messages) {
+		m := state.Messages[id]
+		if _, err := tx.Exec(ctx, `INSERT INTO gongming_messages(id,conversation_id,sender_id,body,created_at,seq,client_id) VALUES($1,$2,$3,$4,$5,$6,$7)`, m.ID, m.ConversationID, m.SenderID, m.Body, m.CreatedAt, m.Seq, nullString(m.ClientID)); err != nil {
+			return err
+		}
+	}
+	for _, id := range mapKeys(state.Media) {
+		v := state.Media[id]
+		var err error
+		if version < 6 {
+			_, err = tx.Exec(ctx, `INSERT INTO gongming_media_assets(id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, v.ID, v.OwnerID, v.ClientID, v.SourceHash, v.ContentType, v.Width, v.Height, v.Bytes, v.Status, v.Note, v.CreatedAt, v.UpdatedAt, v.DeletedAt)
+		} else {
+			_, err = tx.Exec(ctx, `INSERT INTO gongming_media_assets(id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,circle_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`, v.ID, v.OwnerID, v.ClientID, v.SourceHash, v.ContentType, v.Width, v.Height, v.Bytes, v.Status, v.Note, v.CreatedAt, v.UpdatedAt, v.DeletedAt, effectiveMediaScope(v), nullString(v.CircleID))
+		}
+		if err != nil {
+			return err
+		}
 	}
 	for _, hash := range mapKeys(state.Sessions) {
 		session := state.Sessions[hash]

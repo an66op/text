@@ -1,6 +1,6 @@
 # Messaging query paths
 
-The production PostgreSQL store uses dedicated domain SQL for these five routes.
+The production PostgreSQL store uses dedicated domain SQL for message reads and writes. The original five routes are listed below; schema 10 adds the four rich-message routes described afterward.
 `messagingEndpoint(operation, write, fallback)` selects an explicit operation at
 route registration; it does not infer behavior from a URL. A test memory store
 continues to run the original State handler. Response envelopes and permissions
@@ -13,6 +13,27 @@ are unchanged.
 | `GET /api/v1/conversations/{id}/messages`  | `messagingSQLHistory`       | Latest page in ascending sequence order, older `beforeId`/`beforeSeq`, forward `afterSeq`, substring search, offset compatibility, total before cursor filtering, next-history cursor        |
 | `POST /api/v1/conversations/{id}/messages` | `messagingSQLSend`          | Active member, current channel owner only, body validation, sender/conversation/clientId deduplication, conflicting payload rejection, monotonic conversation sequence, transactional outbox |
 | `POST /api/v1/conversations/{id}/read`     | `messagingSQLRead`          | Member-only monotonic read watermark, duplicate/older reads are no-ops, personal outbox event, unread count excluding the viewer's own messages                                              |
+
+Schema 10 adds membership-authorized single-message lookup, sender-only clientId
+lookup, bounded `POST .../messages/resolve` (at most 200 IDs), and author-only
+`DELETE /me/messages/{messageId}`. These also use narrow SQL. The blind deletion
+returns only `{ok:true,messageId}` even when the author has left the conversation;
+no current conversation version, timestamp or content is disclosed. The route
+creates a permanent tombstone and releases attachment relations atomically.
+
+History, detail, list summaries, clientId lookup and resolve project attachments
+and one-level replies from the same read snapshot. Conversation mutationVersion
+advances only on retraction or actual attachment availability changes; every
+message and reply projection uses revision=mutationVersion+1. Old messages and
+attachments are batch-projected only for the bounded response, not loaded into
+ordinary State. A source retraction clears its quote previews dynamically. Normal
+new sends keep the existing sequence and do not advance mutationVersion.
+
+Clients retain the greatest seen conversation version, quarantine older responses
+even for previously unknown IDs, and resolve loaded IDs after invalidation,
+reconnect or visibility changes. Missing IDs clear caches. Attachment viewer and
+input quote state obey the same permission/authentication generation. Full DTO,
+locking, privacy and recovery rules: [message media contract](../docs/MESSAGE_MEDIA_SERVICE.md).
 
 These paths never call `loadNormalized`, `Store.Read`, or `Store.Update`, and do
 not read posts, wallets, documents, friendships, reports, or audits. Public users
@@ -45,7 +66,7 @@ Write endpoints use `SERIALIZABLE`, with this logical lock order:
 1. Share-lock the authenticated user and current session.
 2. Lock the target conversation: `FOR UPDATE` for send, `FOR SHARE` for read.
 3. Key-share-lock the viewer's membership, preventing removal before commit.
-4. Resolve/deduplicate messages or lock/update that viewer's read watermark.
+4. Resolve/deduplicate messages or lock/update that viewer's read watermark; rich sends/retractions lock messages and then attached media in ID order.
 5. Increment the outbox counter, insert the event, and prune retained events.
 
 Each send serializes its target conversation, rather than all conversations.
@@ -74,6 +95,8 @@ sequences and atomic counter updates prevent a stale management update from
 silently reusing a cursor or dropping another transaction's event. Occasional
 deadlocks between the two persistence paths are also retried as complete
 transactions; neither path publishes an external side effect during a retry.
+
+State media governance locks affected conversations in sorted order before persisting media, then increments each affected conversation version once and inserts its invalidation event. This avoids reversing the send conversation→media lock order. State writes preserve SQL-only reply/hash/attachment metadata and terminal retractions; management responses may omit optional lastMessage and are followed by a fresh detail read.
 
 Member removal deletes the viewer's readmark through the existing management
 semantics and database membership foreign key. It retains historical messages.
@@ -180,7 +203,7 @@ responses, and compares the original State endpoint with the new SQL endpoint:
 TEST_DATABASE_URL='<isolated-test-server-DSN>' go test ./internal/platform -run '^$' -bench '^BenchmarkMessagingHistoryReadPaths$' -benchmem -benchtime=1s
 ```
 
-Measured on **2026-10-27**, using Go 1.27.3 on darwin/arm64, an Apple M3 Pro,
+Historical pre-rich-message measurement on **2026-10-27**, using Go 1.27.3 on darwin/arm64, an Apple M3 Pro,
 and PostgreSQL 16.15. The command above used a 1-second benchmark duration per
 path, 3000 unrelated posts and 1000 additional conversation messages in a fresh
 isolated schema, and the latest 30 messages. The two HTTP response bodies were
@@ -196,3 +219,5 @@ instance and this bounded dataset. They show the cost of these two query paths
 under those conditions. They do not measure concurrent writes, lock contention,
 distributed deployment, sustained throughput, or production capacity, and do
 not establish a throughput or capacity commitment.
+
+The historical byte-parity benchmark above predates wallet context and rich-message projection. It is not a measured schema10 latency figure. The current schema10 correctness and runtime verification results are recorded in [STACK_STATUS](../docs/STACK_STATUS.md).

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { ApiError } from '@/shared/api/client';
 import ActionDialog from '@/shared/ui/ActionDialog';
@@ -74,7 +74,7 @@ function EventDetail({
   const pending = useRef<{ intent: RegistrationIntent; clientId: string } | null>(null),
     releaseWrite = useRef<(() => void) | null>(null),
     active = useRef(true);
-  useEffect(() => {
+  useLayoutEffect(() => {
     active.current = true;
     return () => {
       active.current = false;

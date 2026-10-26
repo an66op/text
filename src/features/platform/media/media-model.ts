@@ -5,7 +5,8 @@ export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export const MAX_POST_IMAGES = 9;
 
 export type UploadedImage = {
-  scope: 'world' | 'circle';
+  scope: 'world' | 'circle' | 'conversation';
+  conversationId?: string;
   circleId?: string;
   id: string;
   url: string;
@@ -15,7 +16,12 @@ export type UploadedImage = {
   bytes: number;
   createdAt: string;
 };
-export type MyMediaAsset = UploadedImage & {
+export type MyMediaAsset = Omit<UploadedImage, 'url'> & {
+  url: string | null;
+  previewAvailable: boolean;
+  worldReferenceCount: number;
+  messageReferenceCount: number;
+  messageReferences: { messageId: string }[];
   owner: PublicUser;
   status: 'ready' | 'blocked';
   note: string;
@@ -54,8 +60,8 @@ export function validUploadedImage(value: UploadedImage, circleId?: string) {
   return (
     value &&
     (circleId
-      ? value.scope === 'circle' && value.circleId === circleId
-      : value.scope === 'world' && !value.circleId) &&
+      ? value.scope === 'circle' && value.circleId === circleId && !value.conversationId
+      : value.scope === 'world' && !value.circleId && !value.conversationId) &&
     hostedImageId(value.url) === value.id &&
     !!value.id &&
     ['image/jpeg', 'image/png'].includes(value.contentType) &&

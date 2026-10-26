@@ -158,11 +158,15 @@ func persistNormalized(ctx context.Context, tx pgx.Tx, before, after *State) err
 	}, func(id string) error { return removeID(ctx, tx, "gongming_conversations", id) }); err != nil {
 		return err
 	}
-	if err := syncEntities(before.Messages, after.Messages, func(_ string, v StoredMessage) error {
-		return execRow(ctx, tx, `INSERT INTO gongming_messages(id,conversation_id,sender_id,body,created_at,seq,client_id) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO UPDATE SET conversation_id=EXCLUDED.conversation_id,sender_id=EXCLUDED.sender_id,body=EXCLUDED.body,created_at=EXCLUDED.created_at,seq=EXCLUDED.seq,client_id=EXCLUDED.client_id`, v.ID, v.ConversationID, v.SenderID, v.Body, v.CreatedAt, v.Seq, nullString(v.ClientID))
-	}, func(id string) error { return removeID(ctx, tx, "gongming_messages", id) }); err != nil {
+	if err := syncEntities(before.Messages, after.Messages, func(id string, v StoredMessage) error {
+		if _, exists := before.Messages[id]; exists {
+			return fmt.Errorf("message mutations require the SQL message domain")
+		}
+		return execRow(ctx, tx, `INSERT INTO gongming_messages(id,conversation_id,sender_id,body,created_at,seq,client_id,payload_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, v.ID, v.ConversationID, v.SenderID, v.Body, v.CreatedAt, v.Seq, nullString(v.ClientID), messageFingerprint(v.Body, []string{}, ""))
+	}, func(string) error { return fmt.Errorf("messages require permanent tombstones") }); err != nil {
 		return err
 	}
+
 	if err := persistDocuments(ctx, tx, before, after); err != nil {
 		return err
 	}

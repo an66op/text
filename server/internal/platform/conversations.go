@@ -132,7 +132,7 @@ func (a *App) messages(s *State, u *User, r *http.Request) (any, error) {
 		if m.ConversationID == c.ID && matches(r, m.Body) {
 			total++
 			if (before == 0 || m.Seq < before) && (query.Get("afterSeq") == "" || m.Seq > after) {
-				items = append(items, s.message(m))
+				items = append(items, s.message(m, u.ID))
 			}
 		}
 	}
@@ -161,13 +161,13 @@ func (a *App) messages(s *State, u *User, r *http.Request) (any, error) {
 			nextID = items[0].ID
 			nextSeq = items[0].Seq
 		}
-		return map[string]any{"items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nextID, "nextBeforeSeq": nextSeq}, nil
+		return map[string]any{"mutationVersion": s.ConversationMutations[c.ID], "items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nextID, "nextBeforeSeq": nextSeq}, nil
 	}
 	hasMore := len(items) > limit
 	if hasMore {
 		items = items[:limit]
 	}
-	return map[string]any{"items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nil, "nextBeforeSeq": nil}, nil
+	return map[string]any{"mutationVersion": s.ConversationMutations[c.ID], "items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nil, "nextBeforeSeq": nil}, nil
 }
 func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	c, err := getConversation(s, u, r.PathValue("id"))
@@ -177,19 +177,9 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	if c.Kind == "channel" && c.OwnerID != u.ID {
 		return nil, forbidden("频道仅允许当前频道主发布")
 	}
-	var input struct {
-		Body     string `json:"body"`
-		ClientID string `json:"clientId"`
-	}
-	if err = decode(r, &input); err != nil {
-		return nil, err
-	}
-	body, err := trimText(input.Body, 5000)
+	input, hash, err := decodeMessageInput(r)
 	if err != nil {
 		return nil, err
-	}
-	if input.ClientID != "" && !requestPattern.MatchString(input.ClientID) {
-		return nil, bad("clientId 需为 8–100 位字母、数字、下划线或短横线")
 	}
 	normalizeMessageSequences(s)
 	seq := int64(0)
@@ -198,10 +188,14 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 			continue
 		}
 		if input.ClientID != "" && existing.ClientID == input.ClientID && existing.SenderID == u.ID {
-			if existing.Body != body {
+			original := existing.PayloadHash
+			if original == "" {
+				original = messageFingerprint(existing.Body, existing.ImageIDs, existing.ReplyToID)
+			}
+			if original != hash {
 				return nil, conflict("clientId 已用于不同的消息内容")
 			}
-			return s.message(existing), nil
+			return s.message(existing, u.ID), nil
 		}
 		if existing.Seq > seq {
 			seq = existing.Seq
@@ -210,10 +204,22 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	if seq >= maxMessageSequence {
 		return nil, conflict("会话消息序列已达到上限")
 	}
-	m := StoredMessage{ID: newID("message_"), ConversationID: c.ID, SenderID: u.ID, Body: body, CreatedAt: a.now().UTC().Truncate(time.Microsecond), Seq: seq + 1, ClientID: input.ClientID}
+	if input.ReplyToID != "" {
+		source, ok := s.Messages[input.ReplyToID]
+		if !ok || source.ConversationID != c.ID || source.RetractedAt != nil {
+			return nil, missing("引用消息不存在或已撤回")
+		}
+	}
+	for _, id := range input.ImageIDs {
+		asset, ok := s.Media[id]
+		if !ok || asset.OwnerID != u.ID || asset.Scope != "conversation" || asset.ConversationID != c.ID || asset.Status != "ready" || asset.DeletedAt != nil {
+			return nil, bad("只能使用本人在本会话的可用图片")
+		}
+	}
+	m := StoredMessage{ID: newID("message_"), ConversationID: c.ID, SenderID: u.ID, Body: input.Body, PayloadHash: hash, ImageIDs: input.ImageIDs, ReplyToID: input.ReplyToID, CreatedAt: a.now().UTC().Truncate(time.Microsecond), Seq: seq + 1, ClientID: input.ClientID}
 	s.Messages[m.ID] = m
 	appendMessageEvent(s, "message.created", c.ID, m.ID, "", a.now())
-	return s.message(m), nil
+	return s.message(m, u.ID), nil
 }
 func (a *App) directory(s *State, _ *User, r *http.Request) (any, error) {
 	type entry struct {

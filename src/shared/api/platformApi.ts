@@ -6,6 +6,7 @@ import type {
   Health,
   ListResult,
   MessagePage,
+  MessageResolve,
   PlatformComment,
   PlatformMessage,
   PlatformPost,
@@ -100,10 +101,37 @@ export const platformApi = {
         signal,
       },
     ),
-  sendMessage: (id: string, text: string, clientId?: string) =>
+  sendMessage: (
+    id: string,
+    text: string,
+    clientId?: string,
+    rich?: { imageIds?: string[]; replyToId?: string },
+    signal?: AbortSignal,
+  ) =>
     apiRequest<PlatformMessage>(`/conversations/${idPath(id)}/messages`, {
       method: 'POST',
-      body: body({ body: text, ...(clientId ? { clientId } : {}) }),
+      body: body({ body: text, ...(clientId ? { clientId } : {}), ...rich }),
+      signal,
+    }),
+  message: (id: string, messageId: string, signal?: AbortSignal) =>
+    apiRequest<PlatformMessage>(`/conversations/${idPath(id)}/messages/${idPath(messageId)}`, {
+      signal,
+    }),
+  messageByClient: (id: string, clientId: string, signal?: AbortSignal) =>
+    apiRequest<PlatformMessage>(
+      `/conversations/${idPath(id)}/messages/by-client/${idPath(clientId)}`,
+      { signal },
+    ),
+  resolveMessages: (id: string, ids: string[], signal?: AbortSignal) =>
+    apiRequest<MessageResolve>(`/conversations/${idPath(id)}/messages/resolve`, {
+      method: 'POST',
+      body: body({ ids }),
+      signal,
+    }),
+  retractMessage: (id: string, signal?: AbortSignal) =>
+    apiRequest<{ ok: true; messageId: string }>(`/me/messages/${idPath(id)}`, {
+      method: 'DELETE',
+      signal,
     }),
   markConversationRead: (id: string, messageId: string) =>
     apiRequest<ReadMark>(`/conversations/${idPath(id)}/read`, {

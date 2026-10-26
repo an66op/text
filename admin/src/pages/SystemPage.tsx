@@ -48,6 +48,10 @@ const capabilityLabels: Record<string, string> = {
   'siwe-eoa-authentication': 'EOA 钱包签名登录',
   'browser-auth-cas': '浏览器认证版本与并发保护',
   'wallet-session-revocation': '解绑钱包与来源会话撤销',
+  'conversation-image-messages': '会话私有图片消息',
+  'message-replies': '同会话单层引用回复',
+  'message-retraction': '作者撤回与终态保护',
+  'message-mutation-sync': '旧消息变更与版本补漏',
 };
 
 function uptime(value: number) {
@@ -188,6 +192,14 @@ export default function SystemPage() {
                     <p>
                       JPEG / PNG 通过真实 API 上传到私有目录并按权限读取。托管图片投稿需审核；
                       屏蔽图片会同时隐藏已发布的引用帖子，恢复图片不会自动恢复帖子。
+                    </p>
+                  </div>
+                )}
+                {data.features.includes('conversation-image-messages') && (
+                  <div className="boundary-item">
+                    <strong>聊天图片按成员权限读取</strong>
+                    <p>
+                      上传者与平台角色均不能绕过当前会话成员资格。工作台只显示资产和引用计数，不加载聊天原图、消息正文、参与者或会话关系；屏蔽附件不撤回消息。
                     </p>
                   </div>
                 )}

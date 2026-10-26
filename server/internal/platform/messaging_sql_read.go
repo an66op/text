@@ -14,7 +14,7 @@ import (
 
 // These projections select public identity fields explicitly. Neither full
 // accounts nor unrelated product tables enter the messaging read path.
-const messagingSQLMessageFields = `m.id,m.conversation_id,m.body,m.created_at,m.seq,COALESCE(m.client_id,''),u.id,u.handle,u.name,u.avatar,u.bio`
+const messagingSQLMessageFields = `m.id,m.conversation_id,m.body,m.created_at,m.seq,COALESCE(m.client_id,''),m.retracted_at,u.id,u.handle,u.name,u.avatar,u.bio`
 
 // Go's existing search uses Unicode simple lowercase, independent of database
 // locale. SQL lower() differs under C (and even ICU has contextual/expanding
@@ -38,15 +38,15 @@ type messagingSQLScanner interface{ Scan(...any) error }
 
 func scanMessagingSQLMessage(row messagingSQLScanner) (Message, error) {
 	v := Message{}
-	err := row.Scan(&v.ID, &v.ConversationID, &v.Body, &v.CreatedAt, &v.Seq, &v.ClientID, &v.Sender.ID, &v.Sender.Handle, &v.Sender.Name, &v.Sender.Avatar, &v.Sender.Bio)
+	err := row.Scan(&v.ID, &v.ConversationID, &v.Body, &v.CreatedAt, &v.Seq, &v.ClientID, &v.RetractedAt, &v.Sender.ID, &v.Sender.Handle, &v.Sender.Name, &v.Sender.Avatar, &v.Sender.Bio)
 	return v, err
 }
 
-const messagingSQLConversationProjection = `SELECT c.id,c.title,c.kind,c.owner_id,c.created_at,
+const messagingSQLConversationProjection = `SELECT c.id,c.title,c.kind,c.owner_id,c.created_at,c.mutation_version,
  ARRAY(SELECT member.user_id FROM gongming_conversation_members member WHERE member.conversation_id=c.id ORDER BY member.position),
  COALESCE(r.seq,0),COALESCE(r.message_id,''),
- (SELECT count(*) FROM gongming_messages unread WHERE unread.conversation_id=c.id AND unread.sender_id<>$1 AND unread.seq>COALESCE(r.seq,0)),
- last.id,COALESCE(last.body,''),last.created_at,COALESCE(last.seq,0),COALESCE(last.client_id,''),
+ (SELECT count(*) FROM gongming_messages unread WHERE unread.conversation_id=c.id AND unread.sender_id<>$1 AND unread.retracted_at IS NULL AND unread.seq>COALESCE(r.seq,0)),
+ last.id,COALESCE(last.body,''),last.created_at,COALESCE(last.seq,0),COALESCE(last.client_id,''),last.retracted_at,
  COALESCE(sender.id,''),COALESCE(sender.handle,''),COALESCE(sender.name,''),COALESCE(sender.avatar,''),COALESCE(sender.bio,'')
  FROM gongming_conversations c
  LEFT JOIN gongming_conversation_reads r ON r.conversation_id=c.id AND r.user_id=$1
@@ -58,8 +58,8 @@ func scanMessagingSQLConversation(row messagingSQLScanner) (Conversation, error)
 	m := Message{}
 	var lastID *string
 	var lastCreated *time.Time
-	err := row.Scan(&v.ID, &v.Title, &v.Kind, &v.OwnerID, &v.CreatedAt, &v.Members, &v.ReadSeq, &v.LastReadMessageID, &v.UnreadCount,
-		&lastID, &m.Body, &lastCreated, &m.Seq, &m.ClientID, &m.Sender.ID, &m.Sender.Handle, &m.Sender.Name, &m.Sender.Avatar, &m.Sender.Bio)
+	err := row.Scan(&v.ID, &v.Title, &v.Kind, &v.OwnerID, &v.CreatedAt, &v.MutationVersion, &v.Members, &v.ReadSeq, &v.LastReadMessageID, &v.UnreadCount,
+		&lastID, &m.Body, &lastCreated, &m.Seq, &m.ClientID, &m.RetractedAt, &m.Sender.ID, &m.Sender.Handle, &m.Sender.Name, &m.Sender.Avatar, &m.Sender.Bio)
 	if err == nil && lastID != nil {
 		m.ID, m.ConversationID, m.CreatedAt = *lastID, v.ID, *lastCreated
 		v.LastMessage = &m
@@ -98,7 +98,7 @@ func messagingSQLConversations(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 	if noMatch {
 		q = ""
 	}
-	err = tx.QueryRow(r.Context(), `SELECT count(*) FILTER(WHERE NOT $5::boolean AND ($2='' OR strpos(translate(c.title,$3,$4),$2)>0)),COALESCE(sum((SELECT count(*) FROM gongming_messages m WHERE m.conversation_id=c.id AND m.sender_id<>$1 AND m.seq>COALESCE(r.seq,0))),0) FROM gongming_conversation_members joined JOIN gongming_conversations c ON c.id=joined.conversation_id LEFT JOIN gongming_conversation_reads r ON r.conversation_id=c.id AND r.user_id=$1 WHERE joined.user_id=$1`, u.ID, q, messagingSQLLowerFrom, messagingSQLLowerTo, noMatch).Scan(&total, &unreadTotal)
+	err = tx.QueryRow(r.Context(), `SELECT count(*) FILTER(WHERE NOT $5::boolean AND ($2='' OR strpos(translate(c.title,$3,$4),$2)>0)),COALESCE(sum((SELECT count(*) FROM gongming_messages m WHERE m.conversation_id=c.id AND m.sender_id<>$1 AND m.retracted_at IS NULL AND m.seq>COALESCE(r.seq,0))),0) FROM gongming_conversation_members joined JOIN gongming_conversations c ON c.id=joined.conversation_id LEFT JOIN gongming_conversation_reads r ON r.conversation_id=c.id AND r.user_id=$1 WHERE joined.user_id=$1`, u.ID, q, messagingSQLLowerFrom, messagingSQLLowerTo, noMatch).Scan(&total, &unreadTotal)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,35 @@ func messagingSQLConversations(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 		}
 		items = append(items, v)
 	}
-	return map[string]any{"items": items, "total": total, "unreadTotal": unreadTotal}, rows.Err()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	lastMessages := []Message{}
+	for _, conversation := range items {
+		if conversation.LastMessage != nil {
+			lastMessages = append(lastMessages, *conversation.LastMessage)
+		}
+	}
+	projected, e := projectMessagesSQL(r.Context(), tx, lastMessages, u.ID, 0)
+	if e != nil {
+		return nil, e
+	}
+	byID := map[string]Message{}
+	for _, m := range projected {
+		byID[m.ID] = m
+	}
+	for i := range items {
+		if items[i].LastMessage != nil {
+			m := byID[items[i].LastMessage.ID]
+			m.Revision = items[i].MutationVersion + 1
+			if m.ReplyTo != nil {
+				m.ReplyTo.Revision = m.Revision
+			}
+			items[i].LastMessage = &m
+		}
+	}
+	return map[string]any{"items": items, "total": total, "unreadTotal": unreadTotal}, nil
 }
 
 func messagingSQLDetail(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
@@ -142,6 +170,17 @@ func messagingSQLDetail(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
 		}
 		profiles = append(profiles, v)
 	}
+	if c.LastMessage != nil {
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+		rows.Close()
+		projected, e := projectMessagesSQL(r.Context(), tx, []Message{*c.LastMessage}, u.ID, c.MutationVersion)
+		if e != nil {
+			return nil, e
+		}
+		c.LastMessage = &projected[0]
+	}
 	return struct {
 		Conversation   Conversation `json:"conversation"`
 		MemberProfiles []PublicUser `json:"memberProfiles"`
@@ -150,6 +189,10 @@ func messagingSQLDetail(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
 
 func messagingSQLHistory(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
 	c, err := messagingSQLConversation(r.Context(), tx, r.PathValue("id"), u.ID, "")
+	if err != nil {
+		return nil, err
+	}
+	version, err := messageMutationVersion(r.Context(), tx, c.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +235,7 @@ func messagingSQLHistory(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) 
 	q := strings.ToLower(strings.TrimSpace(query.Get("q")))
 	total := 0
 	if strings.ContainsRune(q, 0) {
-		return map[string]any{"items": []Message{}, "total": 0, "hasMore": false, "nextBeforeId": nil, "nextBeforeSeq": nil}, nil
+		return map[string]any{"mutationVersion": version, "items": []Message{}, "total": 0, "hasMore": false, "nextBeforeId": nil, "nextBeforeSeq": nil}, nil
 	}
 	if err = tx.QueryRow(r.Context(), `SELECT count(*) FROM gongming_messages WHERE conversation_id=$1 AND ($2='' OR strpos(translate(body,$3,$4),$2)>0)`, c.ID, q, messagingSQLLowerFrom, messagingSQLLowerTo).Scan(&total); err != nil {
 		return nil, err
@@ -217,6 +260,11 @@ func messagingSQLHistory(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) 
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+	rows.Close()
+	items, err = projectMessagesSQL(r.Context(), tx, items, u.ID, version)
+	if err != nil {
+		return nil, err
+	}
 	hasMore := len(items) > limit
 	if hasMore {
 		items = items[:limit]
@@ -228,5 +276,5 @@ func messagingSQLHistory(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) 
 			nextID, nextSeq = items[0].ID, items[0].Seq
 		}
 	}
-	return map[string]any{"items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nextID, "nextBeforeSeq": nextSeq}, nil
+	return map[string]any{"mutationVersion": version, "items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nextID, "nextBeforeSeq": nextSeq}, nil
 }

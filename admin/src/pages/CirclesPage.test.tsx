@@ -350,6 +350,8 @@ describe('independent platform circle governance', () => {
       status: 'ready',
       note: '',
       referenceCount: 3,
+      worldReferenceCount: 0,
+      messageReferenceCount: 0,
       publishedReferenceCount: 0,
       posts: [],
       circleReferenceCount: 3,
@@ -368,7 +370,9 @@ describe('independent platform circle governance', () => {
     mount(`/media?detail=${media.id}`);
     const dialog = await screen.findByRole('dialog', { name: '图片审核' });
     expect(within(dialog).getByText('圈内图片 · 不授予匿名或世界访问')).toBeInTheDocument();
-    expect(within(dialog).getByText('共 3 篇 · 0 篇世界公开 · 2 篇圈内已发布')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('共 3 条 · 0 条世界引用 · 3 条圈内引用 · 0 条消息引用'),
+    ).toBeInTheDocument();
     const circleRefs = within(dialog).getByRole('region', { name: '圈内引用帖子' });
     expect(circleRefs).toHaveTextContent('圈内已发布');
     expect(within(circleRefs).getByRole('link', { name: new RegExp(post.body) })).toHaveAttribute(

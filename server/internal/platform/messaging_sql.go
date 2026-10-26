@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -22,6 +23,10 @@ const (
 	messagingHistory
 	messagingSend
 	messagingRead
+	messagingMessageDetail
+	messagingByClient
+	messagingResolve
+	messagingRetract
 )
 
 func (a *App) messagingEndpoint(op messagingOperation, write bool, fallback func(*State, *User, *http.Request) (any, error)) http.HandlerFunc {
@@ -99,6 +104,14 @@ func (a *App) messagingSQLOnce(s *PostgresStore, r *http.Request, op messagingOp
 		result, err = a.messagingSQLSend(r, tx, u)
 	case messagingRead:
 		result, err = a.messagingSQLRead(r, tx, u)
+	case messagingMessageDetail:
+		result, err = messagingSQLMessageDetail(r, tx, u, false)
+	case messagingByClient:
+		result, err = messagingSQLMessageDetail(r, tx, u, true)
+	case messagingResolve:
+		result, err = messagingSQLResolve(r, tx, u)
+	case messagingRetract:
+		result, err = a.messagingSQLRetract(r, tx, u)
 	default:
 		err = errors.New("unknown messaging SQL operation")
 	}
@@ -141,6 +154,9 @@ func (a *App) messagingSQLActor(r *http.Request, tx pgx.Tx, lock bool) (PublicUs
 // key-share locks prevent removal before commit; SERIALIZABLE retries coordinate
 // with the transitional State management transactions, including owner changes.
 func messagingSQLConversation(ctx context.Context, tx pgx.Tx, id, viewer, lock string) (StoredConversation, error) {
+	if id == "" || len(id) > 128 || strings.ContainsRune(id, 0) {
+		return StoredConversation{}, bad("会话编号不正确")
+	}
 	c := StoredConversation{}
 	query := `SELECT c.id,c.title,c.kind,c.owner_id,c.created_at FROM gongming_conversations c JOIN gongming_conversation_members m ON m.conversation_id=c.id AND m.user_id=$2 WHERE c.id=$1`
 	if lock == "send" {

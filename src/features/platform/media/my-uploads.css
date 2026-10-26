@@ -171,6 +171,28 @@
   align-items: center;
   gap: 10px;
 }
+.my-upload-message-reference {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--platform-muted);
+  font-size: 11px;
+}
+.my-upload-message-reference > span {
+  flex: 1;
+  min-width: 0;
+}
+.my-upload-message-reference > button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 9px 5px;
+  border: 0;
+  background: transparent;
+  color: #bd4e59;
+  font-size: 10px;
+}
 .my-upload-circle-reference > a {
   flex: 1;
   min-width: 0;

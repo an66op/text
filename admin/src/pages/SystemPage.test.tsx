@@ -5,6 +5,39 @@ import SystemPage from './SystemPage';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('wallet capability boundaries', () => {
+  it('labels message capabilities and keeps conversation originals outside operational access', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              data: {
+                version: '0.10.0',
+                storage: 'PostgreSQL',
+                environment: 'development',
+                uptimeSeconds: 1,
+                features: [
+                  'conversation-image-messages',
+                  'message-replies',
+                  'message-retraction',
+                  'message-mutation-sync',
+                ],
+              },
+            }),
+          ),
+        ),
+      ),
+    );
+    render(<SystemPage />);
+    await screen.findByText('会话私有图片消息');
+    for (const label of ['同会话单层引用回复', '作者撤回与终态保护', '旧消息变更与版本补漏'])
+      expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText(/上传者与平台角色均不能绕过/)).toHaveTextContent(
+      '不加载聊天原图、消息正文、参与者或会话关系',
+    );
+    expect(screen.getByText('版本 0.10.0')).toBeInTheDocument();
+  });
   it('shows server-provided identity capabilities and security boundaries without fetching wallet owners', async () => {
     const fetcher = vi.fn().mockImplementation((path: string) =>
       Promise.resolve(

@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { messagesChanged } from './message-drafts';
 
 export type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'polling' | 'offline';
-export type StreamEvent = { type: string; conversationId?: string; eventId?: string };
+export type StreamEvent = {
+  type: string;
+  conversationId?: string;
+  messageId?: string;
+  eventId?: string;
+};
 
 export function usePlatformStream(userId: string, onEvent: (event: StreamEvent) => void) {
   const [status, setStatus] = useState<StreamStatus>('connecting');
@@ -85,6 +90,12 @@ export function usePlatformStream(userId: string, onEvent: (event: StreamEvent) 
             data.conversationId.length <= 200
           )
             event.conversationId = data.conversationId;
+          if (
+            'messageId' in data &&
+            typeof data.messageId === 'string' &&
+            data.messageId.length <= 200
+          )
+            event.messageId = data.messageId;
           notify(event);
         } catch {
           /* Malformed notifications never become message content. */

@@ -76,6 +76,9 @@ describe('account message reliability', () => {
   });
 
   it('keeps failed messages across remount and retries only when requested with the original client ID', async () => {
+    vi.spyOn(platformApi, 'messageByClient').mockRejectedValue(
+      new ApiError('未找到', 'not_found', 404),
+    );
     const send = vi
       .spyOn(platformApi, 'sendMessage')
       .mockRejectedValueOnce(new ApiError('连接中断', 'NETWORK_ERROR', 0));
@@ -109,10 +112,14 @@ describe('account message reliability', () => {
       hasMore: false,
     });
     fireEvent.click(screen.getByRole('button', { name: /重试发送：这一条不能重复送达/ }));
+    await screen.findByText('尚未查询到这条消息，核实后可使用同一请求重试');
+    fireEvent.click(screen.getByRole('button', { name: /重试发送：这一条不能重复送达/ }));
+    await screen.findByText('这一条不能重复送达', { selector: 'article:not(.pending) p' });
+    expect(send).toHaveBeenCalledTimes(2);
     await waitFor(() =>
       expect(screen.queryByRole('article', { name: '消息尚未确认' })).not.toBeInTheDocument(),
     );
-    expect(send).toHaveBeenLastCalledWith(first.id, '这一条不能重复送达', originalId);
+    expect(send.mock.calls[0].slice(0, 3)).toEqual([first.id, '这一条不能重复送达', originalId]);
     expect(readMessageDraft(messageDraftKey(member.id, first.id)).pending).toEqual([]);
   });
 

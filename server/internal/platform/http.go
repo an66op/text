@@ -22,7 +22,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.9.0"
+const Version = "0.10.0"
 const cookieName = "gongming_session"
 
 type Config struct {
@@ -129,7 +129,7 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			return
 		}
 		bodyLimit := int64(1024 * 1024)
-		if r.Method == "POST" && (r.URL.Path == "/api/v1/media/images" || circleMediaUploadPathPattern.MatchString(r.URL.Path)) {
+		if r.Method == "POST" && (r.URL.Path == "/api/v1/media/images" || circleMediaUploadPathPattern.MatchString(r.URL.Path) || conversationMediaUploadPathPattern.MatchString(r.URL.Path)) {
 			bodyLimit = mediaMultipartLimit
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, bodyLimit)

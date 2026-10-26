@@ -32,6 +32,8 @@ const asset: AdminMediaAsset = {
   status: 'ready',
   note: '',
   referenceCount: 14,
+  worldReferenceCount: 14,
+  messageReferenceCount: 0,
   publishedReferenceCount: 2,
   posts: [{ id: 'post-1', body: '需要核实的图片帖子', status: 'published' }],
   circleReferenceCount: 0,
@@ -67,6 +69,150 @@ afterEach(() => {
 });
 
 describe('hosted image moderation', () => {
+  it('never previews conversation images or reveals private context even if a malformed response contains those fields', async () => {
+    const privateAsset = {
+      ...asset,
+      scope: 'conversation',
+      conversationId: 'private-conversation-do-not-show',
+      messageReferenceCount: 7,
+      worldReferenceCount: 0,
+      circleReferenceCount: 0,
+      referenceCount: 7,
+      messageReferences: [
+        {
+          messageId: 'private-message-do-not-show',
+          body: '秘密私聊正文',
+          participants: ['秘密接收者'],
+        },
+      ],
+      posts: [{ id: 'private-post-do-not-show', body: '错误携带的世界正文', status: 'published' }],
+      circlePosts: [
+        {
+          circleId: 'private-circle-do-not-show',
+          channelId: 'private-channel',
+          id: 'private-post',
+          body: '错误携带的圈内正文',
+          status: 'published',
+        },
+      ],
+    };
+    const fetcher = vi
+      .fn()
+      .mockImplementation((path: string) =>
+        Promise.resolve(
+          path.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : path.endsWith('/auth/me')
+              ? ok(session())
+              : path.endsWith('/admin/system')
+                ? ok(system)
+                : ok({ items: [privateAsset], total: 1 }),
+        ),
+      );
+    vi.stubGlobal('fetch', fetcher);
+    mount(`/media?detail=${asset.id}`);
+    const dialog = await screen.findByRole('dialog', { name: '图片审核' });
+    expect(within(dialog).getByText('聊天图片不在工作台预览')).toBeInTheDocument();
+    expect(within(dialog).getByRole('region', { name: '消息引用汇总' })).toHaveTextContent('7');
+    expect(screen.queryByRole('img', { name: '托管图片预览' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '在新窗口查看原图' })).not.toBeInTheDocument();
+    expect(document.querySelector(`img[src="${asset.url}"]`)).toBeNull();
+    for (const secret of [
+      'private-conversation-do-not-show',
+      'private-message-do-not-show',
+      '秘密私聊正文',
+      '秘密接收者',
+      '错误携带的世界正文',
+      '错误携带的圈内正文',
+      'private-circle-do-not-show',
+    ])
+      expect(document.body).not.toHaveTextContent(secret);
+    expect(
+      fetcher.mock.calls.every(
+        ([path]) =>
+          ['/api/v1/auth/context', '/api/v1/auth/me', '/api/v1/admin/system'].includes(path) ||
+          path.startsWith('/api/v1/admin/media?'),
+      ),
+    ).toBe(true);
+  });
+
+  it('uses explicit world, circle and message counts instead of deriving world references from the total', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : path.endsWith('/auth/me')
+              ? ok(session())
+              : path.endsWith('/admin/system')
+                ? ok(system)
+                : ok({
+                    items: [
+                      {
+                        ...asset,
+                        worldReferenceCount: 4,
+                        circleReferenceCount: 3,
+                        messageReferenceCount: 7,
+                      },
+                    ],
+                    total: 1,
+                  }),
+        ),
+      ),
+    );
+    mount(`/media?detail=${asset.id}`);
+    const dialog = await screen.findByRole('dialog', { name: '图片审核' });
+    expect(within(dialog).getByRole('region', { name: '世界引用帖子' })).toHaveTextContent(
+      '共 4 篇，预览最近最多 10 篇',
+    );
+    expect(within(dialog).getByText(/共 14 条/)).toHaveTextContent(
+      '4 条世界引用 · 3 条圈内引用 · 7 条消息引用',
+    );
+    expect(within(dialog).queryByText(/共 11 篇/)).not.toBeInTheDocument();
+  });
+
+  it('retains a failed conversation-image restoration without offering an original image or claiming messages were restored', async () => {
+    const privateAsset = {
+      ...asset,
+      scope: 'conversation',
+      url: null,
+      worldReferenceCount: 0,
+      messageReferenceCount: 2,
+      referenceCount: 2,
+      status: 'blocked',
+      posts: [],
+    };
+    const fetcher = vi
+      .fn()
+      .mockImplementation((path: string, options?: RequestInit) =>
+        Promise.resolve(
+          path.endsWith('/auth/context')
+            ? ok({ generation: 'bootstrap-generation', expiresAt: '2099-12-31T00:00:00Z' })
+            : path.endsWith('/auth/me')
+              ? ok(session())
+              : path.endsWith('/admin/system')
+                ? ok(system)
+                : options?.method === 'PATCH'
+                  ? failure(503, '服务暂不可用')
+                  : ok({ items: [privateAsset], total: 1 }),
+        ),
+      );
+    vi.stubGlobal('fetch', fetcher);
+    mount(`/media?detail=${asset.id}`);
+    const dialog = await screen.findByRole('dialog', { name: '图片审核' });
+    fireEvent.change(within(dialog).getByLabelText('图片状态'), { target: { value: 'ready' } });
+    fireEvent.change(within(dialog).getByRole('textbox'), {
+      target: { value: '已核实可以按会话权限读取' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '检查图片处理' }));
+    expect(dialog).toHaveTextContent('不会恢复任何已撤回消息');
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认可用并保存' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('服务暂不可用');
+    expect(within(dialog).getByRole('button', { name: '确认可用并保存' })).toBeEnabled();
+    expect(screen.queryByText(/图片已保存为/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: '托管图片预览' })).not.toBeInTheDocument();
+  });
   it('opens the standalone moderator route with original preview and bounded reference details', async () => {
     const fetch = vi
       .fn()

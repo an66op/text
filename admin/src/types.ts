@@ -42,14 +42,15 @@ export interface Post {
 
 export interface MediaAsset {
   id: string;
-  url: string;
+  url: string | null;
   contentType: string;
   width: number;
   height: number;
   bytes: number;
   createdAt: string;
-  scope: 'world' | 'circle';
+  scope: 'world' | 'circle' | 'conversation';
   circleId?: string;
+  conversationId?: string | null;
 }
 
 export interface AdminMediaAsset extends MediaAsset {
@@ -58,6 +59,8 @@ export interface AdminMediaAsset extends MediaAsset {
   status: MediaStatus;
   note: string;
   referenceCount: number;
+  worldReferenceCount: number;
+  messageReferenceCount: number;
   publishedReferenceCount: number;
   posts: Pick<Post, 'id' | 'body' | 'status'>[];
   circleReferenceCount: number;

@@ -93,11 +93,11 @@ func migrateMedia(ctx context.Context, tx pgx.Tx) error {
 	return err
 }
 
-const mediaSQLFields = `id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,COALESCE(circle_id,'')`
+const mediaSQLFields = `id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,COALESCE(circle_id,''),COALESCE(conversation_id,'')`
 
 func scanStoredMedia(row messagingSQLScanner) (StoredMediaAsset, error) {
 	v := StoredMediaAsset{}
-	err := row.Scan(&v.ID, &v.OwnerID, &v.ClientID, &v.SourceHash, &v.ContentType, &v.Width, &v.Height, &v.Bytes, &v.Status, &v.Note, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt, &v.Scope, &v.CircleID)
+	err := row.Scan(&v.ID, &v.OwnerID, &v.ClientID, &v.SourceHash, &v.ContentType, &v.Width, &v.Height, &v.Bytes, &v.Status, &v.Note, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt, &v.Scope, &v.CircleID, &v.ConversationID)
 	v.URL = mediaURLPrefix + v.ID
 	v.CreatedAt = v.CreatedAt.UTC()
 	v.UpdatedAt = v.UpdatedAt.UTC()
@@ -120,7 +120,13 @@ func persistMedia(ctx context.Context, tx pgx.Tx, before, after *State) error {
 		if id != v.ID || v.URL != mediaURLPrefix+id {
 			return fmt.Errorf("invalid media identity/url")
 		}
-		return execRow(ctx, tx, `INSERT INTO gongming_media_assets(id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,circle_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT(id) DO UPDATE SET owner_id=EXCLUDED.owner_id,client_id=EXCLUDED.client_id,source_hash=EXCLUDED.source_hash,content_type=EXCLUDED.content_type,width=EXCLUDED.width,height=EXCLUDED.height,bytes=EXCLUDED.bytes,status=EXCLUDED.status,note=EXCLUDED.note,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,deleted_at=EXCLUDED.deleted_at,scope=EXCLUDED.scope,circle_id=EXCLUDED.circle_id`, v.ID, v.OwnerID, v.ClientID, v.SourceHash, v.ContentType, v.Width, v.Height, v.Bytes, v.Status, v.Note, v.CreatedAt, v.UpdatedAt, v.DeletedAt, effectiveMediaScope(v), nullString(v.CircleID))
+		if old, exists := before.Media[id]; exists {
+			if old.ID != v.ID || old.OwnerID != v.OwnerID || old.ClientID != v.ClientID || old.SourceHash != v.SourceHash || old.ContentType != v.ContentType || old.Width != v.Width || old.Height != v.Height || old.Bytes != v.Bytes || !old.CreatedAt.Equal(v.CreatedAt) || effectiveMediaScope(old) != effectiveMediaScope(v) || old.CircleID != v.CircleID || old.ConversationID != v.ConversationID {
+				return fmt.Errorf("media identity is immutable")
+			}
+			return execRow(ctx, tx, `UPDATE gongming_media_assets SET status=$2,note=$3,updated_at=$4,deleted_at=$5 WHERE id=$1`, id, v.Status, v.Note, v.UpdatedAt, v.DeletedAt)
+		}
+		return execRow(ctx, tx, `INSERT INTO gongming_media_assets(id,owner_id,client_id,source_hash,content_type,width,height,bytes,status,note,created_at,updated_at,deleted_at,scope,circle_id,conversation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`, v.ID, v.OwnerID, v.ClientID, v.SourceHash, v.ContentType, v.Width, v.Height, v.Bytes, v.Status, v.Note, v.CreatedAt, v.UpdatedAt, v.DeletedAt, effectiveMediaScope(v), nullString(v.CircleID), nullString(v.ConversationID))
 	}, func(string) error { return errors.New("media rows require soft deletion") })
 }
 func postMediaIDs(p StoredPost) map[string]bool {
@@ -178,6 +184,19 @@ func (a *App) authorizeMediaSQL(r *http.Request, s *PostgresStore) (StoredMediaA
 	}
 	if err != nil {
 		return v, err
+	}
+	if effectiveMediaScope(v) == "conversation" {
+		allowed := false
+		if userID != "" && v.Status == "ready" && v.DeletedAt == nil {
+			err = tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM gongming_conversation_members WHERE conversation_id=$1 AND user_id=$2) AND ($2=$3 OR EXISTS(SELECT 1 FROM gongming_message_media ref JOIN gongming_messages m ON m.id=ref.message_id WHERE ref.media_id=$4 AND m.retracted_at IS NULL))`, v.ConversationID, userID, v.OwnerID, v.ID).Scan(&allowed)
+			if err != nil {
+				return v, err
+			}
+		}
+		if !allowed {
+			return v, missing("图片不存在或不可见")
+		}
+		return v, tx.Commit(r.Context())
 	}
 	if v.DeletedAt != nil || v.Status == "blocked" && !isStaff {
 		return v, missing("图片不存在或不可见")

@@ -6,11 +6,11 @@ import "net/http"
 // conversation owner may change a group/channel, even when an admin is a member.
 func (a *App) registerConversationManagementRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/conversations/{id}", a.messagingEndpoint(messagingDetail, false, a.conversationDetail))
-	mux.HandleFunc("PATCH /api/v1/conversations/{id}", a.endpoint(true, "member", a.renameConversation))
-	mux.HandleFunc("POST /api/v1/conversations/{id}/members", a.endpoint(true, "member", a.addConversationMembers))
-	mux.HandleFunc("DELETE /api/v1/conversations/{id}/members/{userId}", a.endpoint(true, "member", a.removeConversationMember))
-	mux.HandleFunc("POST /api/v1/conversations/{id}/owner", a.endpoint(true, "member", a.transferConversationOwner))
-	mux.HandleFunc("POST /api/v1/conversations/{id}/leave", a.endpoint(true, "member", a.leaveConversation))
+	mux.HandleFunc("PATCH /api/v1/conversations/{id}", a.conversationManagementEndpoint(a.renameConversation))
+	mux.HandleFunc("POST /api/v1/conversations/{id}/members", a.conversationManagementEndpoint(a.addConversationMembers))
+	mux.HandleFunc("DELETE /api/v1/conversations/{id}/members/{userId}", a.conversationManagementEndpoint(a.removeConversationMember))
+	mux.HandleFunc("POST /api/v1/conversations/{id}/owner", a.conversationManagementEndpoint(a.transferConversationOwner))
+	mux.HandleFunc("POST /api/v1/conversations/{id}/leave", a.conversationManagementEndpoint(a.leaveConversation))
 }
 
 func (a *App) conversationDetail(s *State, u *User, r *http.Request) (any, error) {

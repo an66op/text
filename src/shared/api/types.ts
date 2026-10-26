@@ -32,6 +32,23 @@ export type PlatformComment = {
   createdAt: string;
 };
 export type ConversationKind = 'direct' | 'group' | 'channel';
+export type MessageImage = {
+  id: string;
+  url: string | null;
+  contentType: 'image/jpeg' | 'image/png';
+  width: number;
+  height: number;
+  bytes: number;
+  available: boolean;
+};
+export type MessageReply = {
+  id: string;
+  revision: number;
+  available: boolean;
+  sender: PublicUser | null;
+  body: string | null;
+  imageCount: number;
+};
 export type PlatformMessage = {
   id: string;
   conversationId: string;
@@ -40,6 +57,12 @@ export type PlatformMessage = {
   createdAt: string;
   seq?: number;
   clientId?: string;
+  status?: 'sent' | 'retracted';
+  revision?: number;
+  retractedAt?: string | null;
+  canRetract?: boolean;
+  images?: MessageImage[];
+  replyTo?: MessageReply | null;
 };
 export type Conversation = {
   id: string;
@@ -49,11 +72,13 @@ export type Conversation = {
   ownerId: string;
   createdAt: string;
   lastMessage?: PlatformMessage;
+  mutationVersion?: number;
   unreadCount?: number;
   readSeq?: number;
   lastReadMessageId?: string;
 };
 export type MessagePage = ListResult<PlatformMessage> & {
+  mutationVersion?: number;
   hasMore?: boolean;
   nextBeforeId?: string | null;
   nextBeforeSeq?: number | null;
@@ -65,3 +90,9 @@ export type ReadMark = {
   unreadCount: number;
 };
 export type Health = { status: string; [key: string]: unknown };
+
+export type MessageResolve = {
+  items: PlatformMessage[];
+  missingIds: string[];
+  mutationVersion: number;
+};

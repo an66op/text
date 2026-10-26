@@ -83,12 +83,17 @@ func loadNormalized(ctx context.Context, tx pgx.Tx) (*State, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := collectRows(ctx, tx, `SELECT id,title,kind,owner_id,created_at FROM gongming_conversations`, func(r pgx.Rows) error {
+	if err := collectRows(ctx, tx, `SELECT id,title,kind,owner_id,created_at,mutation_version FROM gongming_conversations`, func(r pgx.Rows) error {
 		var v StoredConversation
-		if err := r.Scan(&v.ID, &v.Title, &v.Kind, &v.OwnerID, &v.CreatedAt); err != nil {
+		var version int64
+		if err := r.Scan(&v.ID, &v.Title, &v.Kind, &v.OwnerID, &v.CreatedAt, &version); err != nil {
 			return err
 		}
 		v.Members = []string{}
+		if s.ConversationMutations == nil {
+			s.ConversationMutations = map[string]int64{}
+		}
+		s.ConversationMutations[v.ID] = version
 		s.Conversations[v.ID] = v
 		return nil
 	}); err != nil {
@@ -106,9 +111,9 @@ func loadNormalized(ctx context.Context, tx pgx.Tx) (*State, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := collectRows(ctx, tx, `SELECT id,conversation_id,sender_id,body,created_at,seq,COALESCE(client_id,'') FROM gongming_messages`, func(r pgx.Rows) error {
+	if err := collectRows(ctx, tx, `SELECT id,conversation_id,sender_id,body,created_at,seq,COALESCE(client_id,''),retracted_at FROM gongming_messages`, func(r pgx.Rows) error {
 		var v StoredMessage
-		if err := r.Scan(&v.ID, &v.ConversationID, &v.SenderID, &v.Body, &v.CreatedAt, &v.Seq, &v.ClientID); err != nil {
+		if err := r.Scan(&v.ID, &v.ConversationID, &v.SenderID, &v.Body, &v.CreatedAt, &v.Seq, &v.ClientID, &v.RetractedAt); err != nil {
 			return err
 		}
 		s.Messages[v.ID] = v

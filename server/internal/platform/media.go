@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -23,15 +24,16 @@ const mediaAccountCount = 100
 var mediaIDPattern = regexp.MustCompile(`^media_[a-f0-9]{32}$`)
 
 type MediaAsset struct {
-	ID          string    `json:"id"`
-	URL         string    `json:"url"`
-	ContentType string    `json:"contentType"`
-	Width       int       `json:"width"`
-	Height      int       `json:"height"`
-	Bytes       int64     `json:"bytes"`
-	CreatedAt   time.Time `json:"createdAt"`
-	Scope       string    `json:"scope"`
-	CircleID    string    `json:"circleId,omitempty"`
+	ID             string    `json:"id"`
+	URL            string    `json:"url"`
+	ContentType    string    `json:"contentType"`
+	Width          int       `json:"width"`
+	Height         int       `json:"height"`
+	Bytes          int64     `json:"bytes"`
+	CreatedAt      time.Time `json:"createdAt"`
+	Scope          string    `json:"scope"`
+	CircleID       string    `json:"circleId,omitempty"`
+	ConversationID string    `json:"conversationId,omitempty"`
 }
 
 type StoredMediaAsset struct {
@@ -50,18 +52,57 @@ type AdminMediaPost struct {
 	Body   string `json:"body"`
 	Status string `json:"status"`
 }
+type OwnedMessageReference struct {
+	MessageID string `json:"messageId"`
+}
 type AdminMediaAsset struct {
 	MediaAsset
-	Owner                         PublicUser             `json:"owner"`
-	Status                        string                 `json:"status"`
-	Note                          string                 `json:"note"`
-	ReferenceCount                int                    `json:"referenceCount"`
-	PublishedReferenceCount       int                    `json:"publishedReferenceCount"`
-	Posts                         []AdminMediaPost       `json:"posts"`
-	UpdatedAt                     time.Time              `json:"updatedAt"`
-	CircleReferenceCount          int                    `json:"circleReferenceCount"`
-	CirclePublishedReferenceCount int                    `json:"circlePublishedReferenceCount"`
-	CirclePosts                   []AdminMediaCirclePost `json:"circlePosts"`
+	Owner                         PublicUser              `json:"owner"`
+	Status                        string                  `json:"status"`
+	Note                          string                  `json:"note"`
+	ReferenceCount                int                     `json:"referenceCount"`
+	PublishedReferenceCount       int                     `json:"publishedReferenceCount"`
+	Posts                         []AdminMediaPost        `json:"posts"`
+	UpdatedAt                     time.Time               `json:"updatedAt"`
+	CircleReferenceCount          int                     `json:"circleReferenceCount"`
+	CirclePublishedReferenceCount int                     `json:"circlePublishedReferenceCount"`
+	CirclePosts                   []AdminMediaCirclePost  `json:"circlePosts"`
+	WorldReferenceCount           int                     `json:"worldReferenceCount"`
+	MessageReferenceCount         int                     `json:"messageReferenceCount"`
+	Own                           bool                    `json:"-"`
+	PreviewAvailable              bool                    `json:"-"`
+	MessageReferences             []OwnedMessageReference `json:"-"`
+}
+
+// A staff list cannot expose conversation URLs or IDs. The owner projection
+// carries only blind message IDs and an explicit permission-dependent preview.
+func (v AdminMediaAsset) MarshalJSON() ([]byte, error) {
+	type alias AdminMediaAsset
+	var url *string
+	if !v.Own && v.Scope != "conversation" || v.Own && v.PreviewAvailable {
+		value := v.URL
+		url = &value
+	}
+	conversationID := ""
+	if v.Own {
+		conversationID = v.ConversationID
+	}
+	var preview *bool
+	var refs *[]OwnedMessageReference
+	if v.Own {
+		preview = &v.PreviewAvailable
+		if v.MessageReferences == nil {
+			v.MessageReferences = []OwnedMessageReference{}
+		}
+		refs = &v.MessageReferences
+	}
+	return json.Marshal(struct {
+		alias
+		URL            *string                  `json:"url"`
+		ConversationID string                   `json:"conversationId,omitempty"`
+		Preview        *bool                    `json:"previewAvailable,omitempty"`
+		References     *[]OwnedMessageReference `json:"messageReferences,omitempty"`
+	}{alias(v), url, conversationID, preview, refs})
 }
 
 type mediaAccountGate struct {
@@ -123,9 +164,9 @@ func (a *App) registerMediaRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/media/images/{id}", a.readMediaImage)
 	mux.HandleFunc("HEAD /api/v1/media/images/{id}", a.readMediaImage)
 	mux.HandleFunc("DELETE /api/v1/media/images/{id}", a.deleteMediaImage)
-	mux.HandleFunc("GET /api/v1/me/media", a.endpoint(false, "member", a.myMedia))
-	mux.HandleFunc("GET /api/v1/admin/media", a.endpoint(false, "staff", a.adminMedia))
-	mux.HandleFunc("PATCH /api/v1/admin/media/{id}", a.endpoint(true, "staff", a.adminUpdateMedia))
+	mux.HandleFunc("GET /api/v1/me/media", a.mediaListEndpoint(true))
+	mux.HandleFunc("GET /api/v1/admin/media", a.mediaListEndpoint(false))
+	mux.HandleFunc("PATCH /api/v1/admin/media/{id}", a.mediaModerationEndpoint())
 }
 
 func (a *App) uploadMediaImage(w http.ResponseWriter, r *http.Request) {
@@ -307,6 +348,7 @@ func adminMediaAsset(s *State, v StoredMediaAsset) AdminMediaAsset {
 	result := AdminMediaAsset{MediaAsset: v.MediaAsset, Owner: publicUser(s.Accounts[v.OwnerID].User), Status: v.Status, Note: v.Note, UpdatedAt: v.UpdatedAt, Posts: []AdminMediaPost{}}
 	for _, p := range mediaReferences(s, v.ID) {
 		result.ReferenceCount++
+		result.WorldReferenceCount++
 		if p.Status == "published" {
 			result.PublishedReferenceCount++
 		}
@@ -333,6 +375,21 @@ func adminMediaAsset(s *State, v StoredMediaAsset) AdminMediaAsset {
 			result.CirclePosts = append(result.CirclePosts, AdminMediaCirclePost{p.CircleID, p.ChannelID, p.ID, string(body), p.Status})
 		}
 	}
+
+	for _, m := range s.Messages {
+		if m.RetractedAt != nil {
+			continue
+		}
+		for _, id := range m.ImageIDs {
+			if id == v.ID {
+				result.ReferenceCount++
+				result.MessageReferenceCount++
+				if len(result.MessageReferences) < 10 {
+					result.MessageReferences = append(result.MessageReferences, OwnedMessageReference{m.ID})
+				}
+			}
+		}
+	}
 	return result
 }
 func (a *App) adminMedia(s *State, _ *User, r *http.Request) (any, error) {
@@ -346,9 +403,13 @@ func listMediaAssets(s *State, owner string, r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	scope, err := queryEnum(r, "scope", "world", "circle", "conversation")
+	if err != nil {
+		return nil, err
+	}
 	items := []AdminMediaAsset{}
 	for _, v := range s.Media {
-		if v.DeletedAt != nil || status != "" && v.Status != status || owner != "" && v.OwnerID != owner {
+		if v.DeletedAt != nil || status != "" && v.Status != status || owner != "" && v.OwnerID != owner || scope != "" && effectiveMediaScope(v) != scope || owner != "" && r.URL.Query().Get("clientId") != "" && v.ClientID != r.URL.Query().Get("clientId") || owner != "" && r.URL.Query().Get("conversationId") != "" && v.ConversationID != r.URL.Query().Get("conversationId") {
 			continue
 		}
 		u := s.Accounts[v.OwnerID].User
@@ -360,7 +421,18 @@ func listMediaAssets(s *State, owner string, r *http.Request) (any, error) {
 			search += " " + p.ID + " " + p.CircleID
 		}
 		if matches(r, search) {
-			items = append(items, adminMediaAsset(s, v))
+			item := adminMediaAsset(s, v)
+			item.Own = owner != ""
+			item.PreviewAvailable = v.Status == "ready" && (effectiveMediaScope(v) != "conversation" || stateConversationMember(s, v.ConversationID, owner))
+			if owner != "" {
+				for i := range item.CirclePosts {
+					p := item.CirclePosts[i]
+					if _, _, _, err := circleChannelAccess(s, &u, p.CircleID, p.ChannelID, false, false); err != nil {
+						item.CirclePosts[i].Body = ""
+					}
+				}
+			}
+			items = append(items, item)
 		}
 	}
 	sort.Slice(items, func(i, j int) bool {
@@ -419,6 +491,14 @@ func (a *App) adminUpdateMedia(s *State, u *User, r *http.Request) (any, error) 
 	return adminMediaAsset(s, v), nil
 }
 func (a *App) deleteMediaImage(w http.ResponseWriter, r *http.Request) {
+	if !mediaIDPattern.MatchString(r.PathValue("id")) {
+		writeError(w, missing("图片不存在"))
+		return
+	}
+	if store, ok := a.store.(*PostgresStore); ok {
+		a.deleteMediaImageSQL(w, r, store)
+		return
+	}
 	var removed StoredMediaAsset
 	_, err := a.execute(r, true, "member", func(s *State, u *User) (any, error) {
 		v, exists := s.Media[r.PathValue("id")]
@@ -429,7 +509,7 @@ func (a *App) deleteMediaImage(w http.ResponseWriter, r *http.Request) {
 		if v.DeletedAt != nil {
 			return nil, nil
 		}
-		if len(mediaReferences(s, v.ID)) != 0 || len(circleMediaReferences(s, v.ID)) != 0 {
+		if len(mediaReferences(s, v.ID)) != 0 || len(circleMediaReferences(s, v.ID)) != 0 || adminMediaAsset(s, v).MessageReferenceCount != 0 {
 			return nil, conflict("图片仍被动态引用，请先删除相关动态")
 		}
 		now := a.now().UTC().Truncate(time.Microsecond)
@@ -473,6 +553,13 @@ func (a *App) readMediaImage(w http.ResponseWriter, r *http.Request) {
 				return nil, missing("图片不存在或不可见")
 			}
 			allowed := staff(u) || u != nil && u.ID == asset.OwnerID
+			if effectiveMediaScope(asset) == "conversation" {
+				allowed = asset.Status == "ready" && u != nil && stateConversationMember(s, asset.ConversationID, u.ID) && (u.ID == asset.OwnerID || adminMediaAsset(s, asset).MessageReferenceCount > 0)
+				if !allowed {
+					return nil, missing("图片不存在或不可见")
+				}
+				return asset, nil
+			}
 			if !allowed {
 				if effectiveMediaScope(asset) == "world" {
 					for _, p := range mediaReferences(s, asset.ID) {

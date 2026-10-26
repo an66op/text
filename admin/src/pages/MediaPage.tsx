@@ -31,7 +31,8 @@ import {
 
 function MediaPreview({ asset, compact = false }: { asset: AdminMediaAsset; compact?: boolean }) {
   const [failed, setFailed] = useState(false);
-  const src = safeImageUrl(asset.url);
+  const conversation = asset.scope === 'conversation';
+  const src = !conversation && asset.url ? safeImageUrl(asset.url) : '';
   if (!src || failed) {
     return (
       <div
@@ -42,7 +43,13 @@ function MediaPreview({ asset, compact = false }: { asset: AdminMediaAsset; comp
         <ImageOff size={compact ? 21 : 30} aria-hidden="true" />
         {!compact && (
           <>
-            <p>{src ? '图片预览暂时无法加载' : '图片地址无法安全预览'}</p>
+            <p>
+              {conversation
+                ? '聊天图片不在工作台预览'
+                : src
+                  ? '图片预览暂时无法加载'
+                  : '图片地址无法安全预览'}
+            </p>
             {src && (
               <button className="button" onClick={() => setFailed(false)}>
                 <RefreshCw size={14} /> 重试图片预览
@@ -78,6 +85,9 @@ function MediaPreview({ asset, compact = false }: { asset: AdminMediaAsset; comp
     </a>
   );
 }
+
+const scopeLabel = (scope: AdminMediaAsset['scope']) =>
+  scope === 'conversation' ? '聊天图片' : scope === 'circle' ? '圈内图片' : '世界图片';
 
 function MediaDetail({
   asset,
@@ -118,6 +128,14 @@ function MediaDetail({
         body: { status, note: note.trim() },
         signal: controller.signal,
       });
+      if (
+        !updated ||
+        updated.id !== asset.id ||
+        updated.scope !== asset.scope ||
+        updated.status !== status ||
+        updated.note !== note.trim()
+      )
+        throw new Error('服务尚未确认图片处置结果，请刷新后重试。');
       if (current()) onSaved(updated);
     } catch (error) {
       if (active.current) {
@@ -182,16 +200,19 @@ function MediaDetail({
         <div>
           <dt>引用情况</dt>
           <dd>
-            共 {number(asset.referenceCount)} 篇 · {number(asset.publishedReferenceCount)}{' '}
-            篇世界公开 · {number(asset.circlePublishedReferenceCount)} 篇圈内已发布
+            共 {number(asset.referenceCount)} 条 · {number(asset.worldReferenceCount)} 条世界引用 ·{' '}
+            {number(asset.circleReferenceCount)} 条圈内引用 · {number(asset.messageReferenceCount)}{' '}
+            条消息引用
           </dd>
         </div>
         <div>
           <dt>图片归属范围</dt>
           <dd>
-            {asset.scope === 'circle'
-              ? '圈内图片 · 不授予匿名或世界访问'
-              : '世界图片 · 按世界内容权限引用'}
+            {asset.scope === 'conversation'
+              ? '聊天图片 · 仅当前会话成员按权限读取，工作台不提供原图'
+              : asset.scope === 'circle'
+                ? '圈内图片 · 不授予匿名或世界访问'
+                : '世界图片 · 按世界内容权限引用'}
             {asset.scope === 'circle' && asset.circleId && (
               <Link
                 className="text-link detail-secondary"
@@ -209,98 +230,111 @@ function MediaDetail({
           <p>{asset.note}</p>
         </div>
       )}
-      <section className="media-references" aria-label="世界引用帖子">
-        <h3>
-          世界帖子引用 <span>{number(asset.referenceCount - asset.circleReferenceCount)}</span>
-        </h3>
-        <p>
-          共 {number(asset.referenceCount - asset.circleReferenceCount)} 篇，预览最近最多 10
-          篇；每篇正文最多展示 200 字。
-        </p>
-        {asset.posts.length ? (
-          <ul>
-            {asset.posts.map((post) => (
-              <li key={post.id}>
-                <Link
-                  to={`/content?q=${encodeURIComponent(post.id)}&detail=${encodeURIComponent(post.id)}`}
-                >
-                  <div>
-                    <p>{post.body || '图片帖子'}</p>
-                    <small className="mono">{post.id}</small>
-                  </div>
-                  <Badge
-                    tone={
-                      post.status === 'published'
-                        ? 'good'
-                        : post.status === 'pending'
-                          ? 'warning'
-                          : 'neutral'
-                    }
-                  >
-                    {postStatusLabels[post.status]}
-                  </Badge>
-                  <ArrowUpRight size={15} aria-hidden="true" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="media-no-references">
-            {asset.referenceCount - asset.circleReferenceCount
-              ? '当前没有可展示的引用预览，请刷新后重试。'
-              : '没有世界帖子引用这张图片。'}
+      {asset.scope !== 'conversation' && (
+        <section className="media-references" aria-label="世界引用帖子">
+          <h3>
+            世界帖子引用 <span>{number(asset.worldReferenceCount)}</span>
+          </h3>
+          <p>
+            共 {number(asset.worldReferenceCount)} 篇，预览最近最多 10 篇；每篇正文最多展示 200 字。
           </p>
-        )}
-      </section>
-      <section className="media-references" aria-label="圈内引用帖子">
-        <h3>
-          圈帖引用 · 平台审核 <span>{number(asset.circleReferenceCount)}</span>
-        </h3>
-        <p>
-          共 {number(asset.circleReferenceCount)} 篇，预览最近最多 10 篇；每篇正文最多展示 200
-          字。圈内已发布仍受成员和频道权限控制，包含私密圈子内容。
-        </p>
-        {asset.circlePosts.length ? (
-          <ul>
-            {asset.circlePosts.map((post) => (
-              <li key={post.id}>
-                <Link
-                  to={`/circles/posts?circleId=${encodeURIComponent(post.circleId)}&q=${encodeURIComponent(post.id)}&detail=${encodeURIComponent(post.id)}`}
-                >
-                  <div>
-                    <p>{post.body || '圈内图片帖子'}</p>
-                    <small className="mono">{post.id}</small>
-                    <small className="mono">
-                      {post.circleId} / {post.channelId}
-                    </small>
-                  </div>
-                  <Badge
-                    tone={
-                      post.status === 'published'
-                        ? 'good'
-                        : post.status === 'pending'
-                          ? 'warning'
-                          : 'neutral'
-                    }
+          {asset.posts.length ? (
+            <ul>
+              {asset.posts.map((post) => (
+                <li key={post.id}>
+                  <Link
+                    to={`/content?q=${encodeURIComponent(post.id)}&detail=${encodeURIComponent(post.id)}`}
                   >
-                    {circlePostStatusLabels[post.status]}
-                  </Badge>
-                  <ArrowUpRight size={15} aria-hidden="true" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="media-no-references">
-            {asset.circleReferenceCount
-              ? '当前没有可展示的圈帖预览，请刷新后重试。'
-              : '没有圈帖引用这张图片。'}
+                    <div>
+                      <p>{post.body || '图片帖子'}</p>
+                      <small className="mono">{post.id}</small>
+                    </div>
+                    <Badge
+                      tone={
+                        post.status === 'published'
+                          ? 'good'
+                          : post.status === 'pending'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                    >
+                      {postStatusLabels[post.status]}
+                    </Badge>
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="media-no-references">
+              {asset.worldReferenceCount
+                ? '当前没有可展示的引用预览，请刷新后重试。'
+                : '没有世界帖子引用这张图片。'}
+            </p>
+          )}
+        </section>
+      )}
+      {asset.scope !== 'conversation' && (
+        <section className="media-references" aria-label="圈内引用帖子">
+          <h3>
+            圈帖引用 · 平台审核 <span>{number(asset.circleReferenceCount)}</span>
+          </h3>
+          <p>
+            共 {number(asset.circleReferenceCount)} 篇，预览最近最多 10 篇；每篇正文最多展示 200
+            字。圈内已发布仍受成员和频道权限控制，包含私密圈子内容。
           </p>
-        )}
-      </section>
+          {asset.circlePosts.length ? (
+            <ul>
+              {asset.circlePosts.map((post) => (
+                <li key={post.id}>
+                  <Link
+                    to={`/circles/posts?circleId=${encodeURIComponent(post.circleId)}&q=${encodeURIComponent(post.id)}&detail=${encodeURIComponent(post.id)}`}
+                  >
+                    <div>
+                      <p>{post.body || '圈内图片帖子'}</p>
+                      <small className="mono">{post.id}</small>
+                      <small className="mono">
+                        {post.circleId} / {post.channelId}
+                      </small>
+                    </div>
+                    <Badge
+                      tone={
+                        post.status === 'published'
+                          ? 'good'
+                          : post.status === 'pending'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                    >
+                      {circlePostStatusLabels[post.status]}
+                    </Badge>
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="media-no-references">
+              {asset.circleReferenceCount
+                ? '当前没有可展示的圈帖预览，请刷新后重试。'
+                : '没有圈帖引用这张图片。'}
+            </p>
+          )}
+        </section>
+      )}
+      {asset.scope === 'conversation' && (
+        <section className="media-references" aria-label="消息引用汇总">
+          <h3>
+            消息引用 <span>{number(asset.messageReferenceCount)}</span>
+          </h3>
+          <p>仅显示聚合计数，不展示会话关系、消息内容、引用回复或参与者。</p>
+        </section>
+      )}
       <div className="section-separator" />
       <Notice tone="info">
-        可用表示图片可以在所属范围内被引用，托管图片投稿仍需单独审核。圈内图片按当前圈子与频道权限读取，不授予世界或匿名访问。屏蔽后普通用户无法读取，世界和圈子中已发布的引用帖子会同时隐藏，待审核帖子保持待审核。恢复图片不会自动恢复帖子。
+        {asset.scope === 'conversation'
+          ? '聊天图片仅当前会话成员按权限读取，上传者或平台角色也不能绕过。屏蔽后附件显示不可用，消息文字和其它图片保留；解除屏蔽可恢复尚未撤回消息的附件，不会恢复已撤回消息。工作台不加载原图或会话上下文。'
+          : '可用表示图片可以在所属范围内被引用，托管图片投稿仍需单独审核。圈内图片按当前圈子与频道权限读取，不授予世界或匿名访问。屏蔽后普通用户无法读取，世界和圈子中已发布的引用帖子会同时隐藏，待审核帖子保持待审核。恢复图片不会自动恢复帖子。'}
       </Notice>
       <label className="field">
         图片状态
@@ -329,7 +363,7 @@ function MediaDetail({
       {confirming ? (
         <ConfirmAction
           title={status === 'blocked' ? '确认屏蔽图片' : '确认图片可用'}
-          description={`图片 ${asset.id}（${asset.scope === 'circle' ? '圈内图片' : '世界图片'}）：从「${mediaStatusLabels[asset.status]}」保存为「${mediaStatusLabels[status]}」。${status === 'blocked' ? '服务端将同时隐藏全部已发布的引用帖子，包括世界与圈内引用，待审核帖子保持待审核。' : '图片可按所属范围和成员权限引用，现有帖子保持原状态，不会自动恢复发布。'}处理说明将一并保存。`}
+          description={`图片 ${asset.id}（${scopeLabel(asset.scope)}）：从「${mediaStatusLabels[asset.status]}」保存为「${mediaStatusLabels[status]}」。${asset.scope === 'conversation' ? (status === 'blocked' ? '消息中的该附件将显示不可用；保留文字和其它图片，不撤回消息。' : '尚未撤回消息中的附件可按当前成员权限恢复读取，不会恢复任何已撤回消息。') : status === 'blocked' ? '服务端将同时隐藏全部已发布的引用帖子，包括世界与圈内引用，待审核帖子保持待审核。' : '图片可按所属范围和成员权限引用，现有帖子保持原状态，不会自动恢复发布。'}处理说明将一并保存。`}
           confirmLabel={status === 'blocked' ? '确认屏蔽并保存' : '确认可用并保存'}
           danger={status === 'blocked'}
           busy={busy}
@@ -423,7 +457,7 @@ export default function MediaPage() {
                         <th>图片</th>
                         <th>上传者</th>
                         <th>状态</th>
-                        <th>引用帖子</th>
+                        <th>引用情况</th>
                         <th>上传时间</th>
                         <th className="align-right">操作</th>
                       </tr>
@@ -444,7 +478,7 @@ export default function MediaPage() {
                                   {asset.contentType.replace(/^image\//, '').toUpperCase()} ·{' '}
                                   {fileSize(asset.bytes)}
                                 </small>
-                                <small>{asset.scope === 'circle' ? '圈内图片' : '世界图片'}</small>
+                                <small>{scopeLabel(asset.scope)}</small>
                                 <small>
                                   {number(asset.width)} × {number(asset.height)} px
                                 </small>
@@ -466,9 +500,16 @@ export default function MediaPage() {
                             </Badge>
                           </td>
                           <td className="media-reference-count">
-                            <strong>{number(asset.referenceCount)} 篇</strong>
-                            <small>{number(asset.publishedReferenceCount)} 世界公开</small>
-                            <small>{number(asset.circlePublishedReferenceCount)} 圈内已发布</small>
+                            <strong>{number(asset.referenceCount)} 条</strong>
+                            <small>
+                              {number(asset.worldReferenceCount)} 世界引用 ·{' '}
+                              {number(asset.publishedReferenceCount)} 公开
+                            </small>
+                            <small>
+                              {number(asset.circleReferenceCount)} 圈内引用 ·{' '}
+                              {number(asset.circlePublishedReferenceCount)} 已发布
+                            </small>
+                            <small>{number(asset.messageReferenceCount)} 消息引用</small>
                           </td>
                           <td className="muted nowrap">{dateTime(asset.createdAt)}</td>
                           <td className="align-right">

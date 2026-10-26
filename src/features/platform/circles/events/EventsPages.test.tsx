@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { Profiler } from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/shared/api/client';
@@ -13,6 +14,7 @@ import EventsPage from './EventsPage';
 import EventPage from './EventPage';
 import EventEditorPage from './EventEditorPage';
 import AttendeesPage from './AttendeesPage';
+import * as eventGate from './useEventWriteGate';
 function Navigation() {
   const navigate = useNavigate(),
     location = useLocation();
@@ -448,6 +450,41 @@ describe('event management and conflict recovery', () => {
   });
 });
 describe('private-free registration cleanup', () => {
+  it('releases the private detail lease before the permission-error commit is observable', async () => {
+    const late = deferred<RegistrationResult>();
+    vi.spyOn(eventsApi, 'registration').mockReturnValue(late.promise);
+    const useGate = eventGate.useEventWriteGate;
+    let sessionGate: ReturnType<typeof useGate> | undefined;
+    vi.spyOn(eventGate, 'useEventWriteGate').mockImplementation(function useObservedEventGate() {
+      sessionGate = useGate();
+      return sessionGate;
+    });
+    let releasedAtCommit: boolean | undefined;
+    render(
+      <Profiler
+        id="event-session"
+        onRender={() => {
+          if (releasedAtCommit !== undefined || !screen.queryByText('成员权限已失效')) return;
+          // Observe the actual parent gate at commit, before passive cleanups may run.
+          const release = sessionGate?.acquire();
+          releasedAtCommit = !!release;
+          release?.();
+        }}
+      >
+        {page()}
+      </Profiler>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '报名参加' }));
+    vi.mocked(circlesApi.circle).mockRejectedValue(
+      new ApiError('成员权限已失效', 'forbidden', 403),
+    );
+    act(() => window.dispatchEvent(new Event('focus')));
+    await screen.findByText('成员权限已失效');
+    expect(releasedAtCommit).toBe(true);
+    expect(screen.getByRole('button', { name: '取消本人的登记' })).toBeEnabled();
+    await act(async () => late.resolve({ ok: true, registration }));
+    expect(screen.queryByText(activity.title)).not.toBeInTheDocument();
+  });
   it('releases the session gate when permission loss unmounts a pending detail write so known-ID cleanup remains usable', async () => {
     const late = deferred<RegistrationResult>();
     const register = vi

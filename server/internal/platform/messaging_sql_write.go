@@ -17,32 +17,54 @@ func (a *App) messagingSQLSend(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 	if c.Kind == "channel" && c.OwnerID != u.ID {
 		return nil, forbidden("频道仅允许当前频道主发布")
 	}
-	var input struct {
-		Body     string `json:"body"`
-		ClientID string `json:"clientId"`
-	}
-	if err = decode(r, &input); err != nil {
-		return nil, err
-	}
-	body, err := trimText(input.Body, 5000)
+	input, hash, err := decodeMessageInput(r)
 	if err != nil {
 		return nil, err
 	}
-	if input.ClientID != "" && !requestPattern.MatchString(input.ClientID) {
-		return nil, bad("clientId 需为 8–100 位字母、数字、下划线或短横线")
+	version, err := messageMutationVersion(r.Context(), tx, c.ID)
+	if err != nil {
+		return nil, err
 	}
 	if input.ClientID != "" {
-		m, err := scanMessagingSQLMessage(tx.QueryRow(r.Context(), `SELECT `+messagingSQLMessageFields+` FROM gongming_messages m JOIN gongming_users u ON u.id=m.sender_id WHERE m.conversation_id=$1 AND m.sender_id=$2 AND m.client_id=$3`, c.ID, u.ID, input.ClientID))
-		if err == nil {
-			if m.Body != body {
-				return nil, conflict("clientId 已用于不同的消息内容")
+		m, e := scanMessagingSQLMessage(tx.QueryRow(r.Context(), `SELECT `+messagingSQLMessageFields+` FROM gongming_messages m JOIN gongming_users u ON u.id=m.sender_id WHERE m.conversation_id=$1 AND m.sender_id=$2 AND m.client_id=$3`, c.ID, u.ID, input.ClientID))
+		if e == nil {
+			var original string
+			if e = tx.QueryRow(r.Context(), `SELECT COALESCE(payload_hash,'') FROM gongming_messages WHERE id=$1`, m.ID).Scan(&original); e != nil {
+				return nil, e
 			}
-			// pgx may scan timestamptz into the process's local time zone. The
-			// initial send response is UTC, so retries use the same wire format.
-			m.CreatedAt = m.CreatedAt.UTC()
-			return m, nil
+			if original == "" {
+				original = messageFingerprint(m.Body, []string{}, "")
+			}
+			if original != hash {
+				return nil, conflict("clientId已用于不同消息载荷")
+			}
+			items, e := projectMessagesSQL(r.Context(), tx, []Message{m}, u.ID, version)
+			if e != nil {
+				return nil, e
+			}
+			return items[0], nil
 		}
-		if !errors.Is(err, pgx.ErrNoRows) {
+		if !errors.Is(e, pgx.ErrNoRows) {
+			return nil, e
+		}
+	}
+	if input.ReplyToID != "" {
+		var source int64
+		err = tx.QueryRow(r.Context(), `SELECT seq FROM gongming_messages WHERE id=$1 AND conversation_id=$2 AND retracted_at IS NULL`, input.ReplyToID, c.ID).Scan(&source)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, missing("引用消息不存在或已撤回")
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, id := range sortedMessageMedia(input.ImageIDs) {
+		var ready bool
+		err = tx.QueryRow(r.Context(), `SELECT owner_id=$2 AND scope='conversation' AND conversation_id=$3 AND status='ready' AND deleted_at IS NULL FROM gongming_media_assets WHERE id=$1 FOR SHARE`, id, u.ID, c.ID).Scan(&ready)
+		if errors.Is(err, pgx.ErrNoRows) || err == nil && !ready {
+			return nil, bad("只能发送本人在本会话上传的可用图片")
+		}
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -53,14 +75,23 @@ func (a *App) messagingSQLSend(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 	if seq >= maxMessageSequence {
 		return nil, conflict("会话消息序列已达到上限")
 	}
-	m := Message{ID: newID("message_"), ConversationID: c.ID, Sender: u, Body: body, CreatedAt: a.now().UTC().Truncate(time.Microsecond), Seq: seq + 1, ClientID: input.ClientID}
-	if _, err = tx.Exec(r.Context(), `INSERT INTO gongming_messages(id,conversation_id,sender_id,body,created_at,seq,client_id) VALUES($1,$2,$3,$4,$5,$6,$7)`, m.ID, c.ID, u.ID, m.Body, m.CreatedAt, m.Seq, nullString(m.ClientID)); err != nil {
+	m := Message{ID: newID("message_"), ConversationID: c.ID, Sender: u, Body: input.Body, CreatedAt: a.now().UTC().Truncate(time.Microsecond), Seq: seq + 1, ClientID: input.ClientID}
+	if _, err = tx.Exec(r.Context(), `INSERT INTO gongming_messages(id,conversation_id,sender_id,body,created_at,seq,client_id,payload_hash,reply_to_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, m.ID, c.ID, u.ID, m.Body, m.CreatedAt, m.Seq, nullString(m.ClientID), hash, nullString(input.ReplyToID)); err != nil {
 		return nil, err
+	}
+	for position, id := range input.ImageIDs {
+		if _, err = tx.Exec(r.Context(), `INSERT INTO gongming_message_media(message_id,media_id,position) VALUES($1,$2,$3)`, m.ID, id, position); err != nil {
+			return nil, err
+		}
 	}
 	if err = appendMessagingSQLEvent(r.Context(), tx, "message.created", c.ID, m.ID, "", a.now()); err != nil {
 		return nil, err
 	}
-	return m, nil
+	items, err := projectMessagesSQL(r.Context(), tx, []Message{m}, u.ID, version)
+	if err != nil {
+		return nil, err
+	}
+	return items[0], nil
 }
 
 func (a *App) messagingSQLRead(r *http.Request, tx pgx.Tx, u PublicUser) (any, error) {
@@ -97,7 +128,7 @@ func (a *App) messagingSQLRead(r *http.Request, tx pgx.Tx, u PublicUser) (any, e
 			return nil, err
 		}
 	}
-	err = tx.QueryRow(r.Context(), `SELECT count(*) FROM gongming_messages WHERE conversation_id=$1 AND sender_id<>$2 AND seq>$3`, c.ID, u.ID, mark.ReadSeq).Scan(&mark.UnreadCount)
+	err = tx.QueryRow(r.Context(), `SELECT count(*) FROM gongming_messages WHERE conversation_id=$1 AND sender_id<>$2 AND retracted_at IS NULL AND seq>$3`, c.ID, u.ID, mark.ReadSeq).Scan(&mark.UnreadCount)
 	return mark, err
 }
 

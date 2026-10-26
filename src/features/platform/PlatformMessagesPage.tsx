@@ -11,7 +11,8 @@ import { shortTime } from './platform-format';
 import MessageThread from './messages/MessageThread';
 import ConnectionStatus from './messages/ConnectionStatus';
 import { useConversationFeed } from './messages/useConversationFeed';
-import { usePlatformStream } from './messages/usePlatformStream';
+import { accountEpoch } from '@/shared/api/account-guard';
+import { usePlatformStream, type StreamEvent } from './messages/usePlatformStream';
 import { messagesChanged } from './messages/message-drafts';
 import NotificationBell from './notifications/NotificationBell';
 import './platform.css';
@@ -54,7 +55,7 @@ export default function PlatformMessagesPage() {
           </div>
         </>
       ) : (
-        <SignedInMessages key={auth.user.id} />
+        <SignedInMessages key={`${auth.user.id}:${auth.expiresAt}:${accountEpoch()}`} />
       )}
     </section>
   );
@@ -66,6 +67,7 @@ function SignedInMessages() {
   const selectedId = params.get('conversation') ?? '';
   const feed = useConversationFeed(user!.id);
   const [messageUpdate, setMessageUpdate] = useState(0);
+  const [lastEvent, setLastEvent] = useState<StreamEvent>();
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<'all' | ConversationKind>(() =>
@@ -76,6 +78,9 @@ function SignedInMessages() {
         : 'all',
   );
   const streamStatus = usePlatformStream(user!.id, (event) => {
+    if (event.type === 'message.retracted' && event.conversationId && event.messageId)
+      feed.retract(event.conversationId, event.messageId);
+    setLastEvent(event);
     feed.refresh(event.type !== 'message.created' && event.type !== 'conversation.read');
     if (
       event.type !== 'conversation.read' &&
@@ -87,7 +92,7 @@ function SignedInMessages() {
   const visible = feed.items.filter(
     (item) =>
       (kind === 'all' || item.kind === kind) &&
-      `${item.title} ${item.lastMessage?.body ?? ''}`
+      `${item.title} ${item.lastMessage?.status === 'retracted' ? '消息已撤回' : (item.lastMessage?.body ?? '')}`
         .toLocaleLowerCase()
         .includes(query.trim().toLocaleLowerCase()),
   );
@@ -170,8 +175,12 @@ function SignedInMessages() {
                       <time>{item.lastMessage ? shortTime(item.lastMessage.createdAt) : ''}</time>
                     </span>
                     <small>
-                      {item.lastMessage?.body ||
-                        `${kindNames[item.kind]} · ${item.members.length} 位成员`}
+                      {item.lastMessage?.status === 'retracted'
+                        ? '消息已撤回'
+                        : item.lastMessage?.body ||
+                          (item.lastMessage?.images?.length
+                            ? '[图片]'
+                            : `${kindNames[item.kind]} · ${item.members.length} 位成员`)}
                     </small>
                   </span>
                   {!!item.unreadCount && (
@@ -208,6 +217,7 @@ function SignedInMessages() {
               onSent={() => feed.refresh(false)}
               onRead={feed.read}
               updateVersion={messageUpdate}
+              streamEvent={lastEvent}
               streamStatus={streamStatus}
             />
           ) : selectedId && !feed.loading && !feed.error ? (

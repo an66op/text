@@ -93,6 +93,7 @@ type StoredConversation struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 type Conversation struct {
+	MutationVersion int64 `json:"mutationVersion"`
 	StoredConversation
 	LastMessage       *Message `json:"lastMessage,omitempty"`
 	UnreadCount       int      `json:"unreadCount"`
@@ -100,22 +101,32 @@ type Conversation struct {
 	LastReadMessageID string   `json:"lastReadMessageId,omitempty"`
 }
 type StoredMessage struct {
-	ID             string    `json:"id"`
-	ConversationID string    `json:"conversationId"`
-	SenderID       string    `json:"senderId"`
-	Body           string    `json:"body"`
-	CreatedAt      time.Time `json:"createdAt"`
-	Seq            int64     `json:"seq"`
-	ClientID       string    `json:"clientId,omitempty"`
-}
-type Message struct {
+	RetractedAt    *time.Time `json:"retractedAt,omitempty"`
+	PayloadHash    string     `json:"payloadHash,omitempty"`
+	ReplyToID      string     `json:"replyToId,omitempty"`
+	ImageIDs       []string   `json:"imageIds,omitempty"`
 	ID             string     `json:"id"`
 	ConversationID string     `json:"conversationId"`
-	Sender         PublicUser `json:"sender"`
+	SenderID       string     `json:"senderId"`
 	Body           string     `json:"body"`
 	CreatedAt      time.Time  `json:"createdAt"`
 	Seq            int64      `json:"seq"`
 	ClientID       string     `json:"clientId,omitempty"`
+}
+type Message struct {
+	Status         string         `json:"status"`
+	Revision       int64          `json:"revision"`
+	RetractedAt    *time.Time     `json:"retractedAt"`
+	CanRetract     bool           `json:"canRetract"`
+	Images         []MessageImage `json:"images"`
+	ReplyTo        *MessageReply  `json:"replyTo"`
+	ID             string         `json:"id"`
+	ConversationID string         `json:"conversationId"`
+	Sender         PublicUser     `json:"sender"`
+	Body           string         `json:"body"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	Seq            int64          `json:"seq"`
+	ClientID       string         `json:"clientId,omitempty"`
 }
 type ConversationRead struct {
 	ConversationID string    `json:"conversationId"`
@@ -193,6 +204,7 @@ type Idempotency struct {
 	Result      Wallet `json:"result"`
 }
 type State struct {
+	ConversationMutations   map[string]int64                        `json:"conversationMutations,omitempty"`
 	EventSeedDrafts         []eventSeedDraft                        `json:"-"`
 	NotificationDrafts      []NotificationDraft                     `json:"-"`
 	Circles                 map[string]StoredCircle                 `json:"circles"`
@@ -253,11 +265,44 @@ func (s *State) post(p StoredPost, viewer string) Post {
 	}
 	return Post{p.ID, publicUser(s.Accounts[p.AuthorID].User), p.Body, images, p.Topic, p.Status, p.CreatedAt, likes, p.Likes[viewer], count}
 }
-func (s *State) message(m StoredMessage) Message {
-	return Message{ID: m.ID, ConversationID: m.ConversationID, Sender: publicUser(s.Accounts[m.SenderID].User), Body: m.Body, CreatedAt: m.CreatedAt, Seq: m.Seq, ClientID: m.ClientID}
+func (s *State) message(m StoredMessage, viewer ...string) Message {
+	revision := s.ConversationMutations[m.ConversationID] + 1
+	result := Message{ID: m.ID, ConversationID: m.ConversationID, Sender: publicUser(s.Accounts[m.SenderID].User), Body: m.Body, CreatedAt: m.CreatedAt.UTC(), Seq: m.Seq, ClientID: m.ClientID, Status: "sent", Revision: revision, RetractedAt: m.RetractedAt, Images: []MessageImage{}}
+	if m.RetractedAt != nil {
+		result.Status = "retracted"
+		result.Body = ""
+		return result
+	}
+	result.CanRetract = len(viewer) > 0 && viewer[0] == m.SenderID
+	for _, id := range m.ImageIDs {
+		a, ok := s.Media[id]
+		if !ok {
+			continue
+		}
+		image := MessageImage{ID: id, ContentType: a.ContentType, Width: a.Width, Height: a.Height, Bytes: a.Bytes, Available: a.DeletedAt == nil && a.Status == "ready"}
+		if image.Available {
+			url := a.URL
+			image.URL = &url
+		}
+		result.Images = append(result.Images, image)
+	}
+	if m.ReplyToID != "" {
+		reply := &MessageReply{ID: m.ReplyToID, Revision: revision}
+		source, ok := s.Messages[m.ReplyToID]
+		if ok && source.ConversationID == m.ConversationID && source.RetractedAt == nil {
+			sender := publicUser(s.Accounts[source.SenderID].User)
+			body := shortMessageText(source.Body)
+			reply.Sender = &sender
+			reply.Body = &body
+			reply.ImageCount = len(source.ImageIDs)
+			reply.Available = true
+		}
+		result.ReplyTo = reply
+	}
+	return result
 }
 func (s *State) conversation(c StoredConversation, viewer ...string) Conversation {
-	result := Conversation{StoredConversation: c}
+	result := Conversation{StoredConversation: c, MutationVersion: s.ConversationMutations[c.ID]}
 	if len(viewer) > 0 {
 		mark := s.Reads[readKey(c.ID, viewer[0])]
 		result.ReadSeq, result.LastReadMessageID = mark.Seq, mark.MessageID
@@ -266,11 +311,11 @@ func (s *State) conversation(c StoredConversation, viewer ...string) Conversatio
 		if m.ConversationID != c.ID {
 			continue
 		}
-		if len(viewer) > 0 && m.SenderID != viewer[0] && m.Seq > result.ReadSeq {
+		if len(viewer) > 0 && m.RetractedAt == nil && m.SenderID != viewer[0] && m.Seq > result.ReadSeq {
 			result.UnreadCount++
 		}
 		if result.LastMessage == nil || m.Seq > result.LastMessage.Seq {
-			v := s.message(m)
+			v := s.message(m, viewer...)
 			result.LastMessage = &v
 		}
 	}

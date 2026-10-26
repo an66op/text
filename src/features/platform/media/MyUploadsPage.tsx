@@ -23,6 +23,15 @@ const size = (bytes: number) =>
 const postLabels = { pending: '待审核', published: '已发布', hidden: '已隐藏' };
 type CircleReference = MyMediaAsset['circlePosts'][number];
 type PostCleanup = { imageId: string; post: CircleReference };
+type MessageCleanup = { imageId: string; messageId: string };
+
+function ownMessageReference(image: MyMediaAsset, messageId: string, userId: string) {
+  return (
+    image.owner.id === userId &&
+    image.scope === 'conversation' &&
+    /^[A-Za-z0-9_-]{1,200}$/.test(messageId)
+  );
+}
 
 function ownCircleReference(image: MyMediaAsset, post: CircleReference, userId: string) {
   return (
@@ -73,17 +82,20 @@ export default function MyUploadsPage() {
 
 function UploadPreview({ image }: { image: MyMediaAsset }) {
   const [failed, setFailed] = useState(false);
-  const id = hostedImageId(image.url);
-  const safe = !!id && id === image.id;
+  const url = image.url || '';
+  const id = hostedImageId(url);
+  const safe = image.previewAvailable === true && !!id && id === image.id;
   return image.status === 'blocked' || !safe || failed ? (
     <div className="my-upload-preview is-unavailable">
       <ImageOff size={23} />
       <span>
         {image.status === 'blocked'
           ? '已屏蔽，暂不可预览'
-          : failed
-            ? '预览暂不可用'
-            : '图片地址不可预览'}
+          : image.previewAvailable !== true
+            ? '当前无预览权限'
+            : failed
+              ? '预览暂不可用'
+              : '图片地址不可预览'}
       </span>
       {safe && image.status !== 'blocked' && (
         <button
@@ -98,13 +110,13 @@ function UploadPreview({ image }: { image: MyMediaAsset }) {
   ) : (
     <a
       className="my-upload-preview"
-      href={image.url}
+      href={url}
       target="_blank"
       rel="noreferrer"
       aria-label={`查看原图 ${image.id.slice(-8)}`}
     >
       <img
-        src={image.url}
+        src={url}
         alt={`上传图片 ${image.id.slice(-8)}`}
         loading="lazy"
         onError={() => setFailed(true)}
@@ -126,16 +138,20 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState<MyMediaAsset | null>(null);
   const [confirmingPost, setConfirmingPost] = useState<PostCleanup | null>(null);
+  const [confirmingMessage, setConfirmingMessage] = useState<MessageCleanup | null>(null);
   const [busy, setBusy] = useState(false);
   const [removeError, setRemoveError] = useState('');
   const [postError, setPostError] = useState('');
   const [postDenied, setPostDenied] = useState(false);
+  const [messageError, setMessageError] = useState('');
+  const [messageCheckRequired, setMessageCheckRequired] = useState(false);
   const [notice, setNotice] = useState('');
   const active = useRef(true);
   const mountedEpoch = useRef(accountEpoch()).current;
   const generation = useRef(0);
   const read = useRef<AbortController | null>(null);
   const removing = useRef<AbortController | null>(null);
+  const needsMessageCheck = useRef(new Set<string>());
   useEffect(() => {
     active.current = true;
     return () => {
@@ -166,6 +182,10 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
           return;
         if (result.items.some((image) => image.owner.id !== userId))
           throw new Error('上传列表与当前账号不一致，请重新验证账号');
+        for (const image of result.items)
+          for (const reference of image.messageReferences)
+            if (ownMessageReference(image, reference.messageId, userId))
+              needsMessageCheck.current.delete(reference.messageId);
         setItems(result.items);
         setTotal(result.total);
       })
@@ -194,7 +214,7 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
     const latest = items.find((image) => image.id === confirming.id);
     if (!latest || latest.referenceCount !== 0) {
       setConfirming(null);
-      setNotice('图片状态已变化，请刷新后重新确认；被帖子引用的图片不能删除。');
+      setNotice('图片状态已变化，请刷新后重新确认；仍被引用的图片不能删除。');
     }
   }, [confirming, items, loading, busy]);
   useEffect(() => {
@@ -209,6 +229,20 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
       setNotice('圈帖引用已变化，请按服务器最新列表继续清理。');
     }
   }, [confirmingPost, items, loading, busy, userId]);
+  useEffect(() => {
+    if (!confirmingMessage || loading || busy) return;
+    const latest = items.find((image) => image.id === confirmingMessage.imageId);
+    if (
+      !latest?.messageReferences.some(
+        (reference) =>
+          reference.messageId === confirmingMessage.messageId &&
+          ownMessageReference(latest, reference.messageId, userId),
+      )
+    ) {
+      setConfirmingMessage(null);
+      setNotice('消息引用已变化，请按服务器最新列表继续清理。');
+    }
+  }, [confirmingMessage, items, loading, busy, userId]);
   const refresh = () => {
     if (active.current && mountedEpoch === accountEpoch() && !removing.current)
       setRevision((value) => value + 1);
@@ -217,6 +251,7 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
     event.preventDefault();
     setConfirming(null);
     setConfirmingPost(null);
+    setConfirmingMessage(null);
     setPage(0);
     setSearch(query.trim());
   };
@@ -304,6 +339,65 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
           denied
             ? `暂时无法清理此圈帖：${apiErrorMessage(caught)}。请刷新引用，确认最新状态。`
             : apiErrorMessage(caught),
+        );
+      }
+    } finally {
+      if (removing.current === controller) removing.current = null;
+      if (valid()) setBusy(false);
+    }
+  };
+  const retractMessage = async () => {
+    if (
+      !active.current ||
+      mountedEpoch !== accountEpoch() ||
+      removing.current ||
+      !confirmingMessage
+    )
+      return;
+    if (messageCheckRequired) {
+      setConfirmingMessage(null);
+      setNotice('尚未确认消息撤回结果，正在重新读取本人引用。请按最新列表重新确认。');
+      refresh();
+      return;
+    }
+    const image = items.find((item) => item.id === confirmingMessage.imageId);
+    const reference = image?.messageReferences.find(
+      (item) =>
+        item.messageId === confirmingMessage.messageId &&
+        ownMessageReference(image, item.messageId, userId),
+    );
+    if (!reference) {
+      setConfirmingMessage(null);
+      refresh();
+      return;
+    }
+    generation.current += 1;
+    read.current?.abort();
+    const controller = new AbortController();
+    removing.current = controller;
+    const current = generation.current;
+    const valid = () =>
+      active.current &&
+      mountedEpoch === accountEpoch() &&
+      !controller.signal.aborted &&
+      current === generation.current;
+    setBusy(true);
+    setMessageError('');
+    setNotice('');
+    try {
+      const result = await mediaApi.retractMessage(reference.messageId, controller.signal);
+      if (!valid()) return;
+      if (result?.ok !== true || result.messageId !== reference.messageId)
+        throw new Error('服务尚未确认这条消息已撤回，请先刷新本人引用');
+      setConfirmingMessage(null);
+      setNotice('本人消息已撤回，原图片仍保留。正在重新读取服务器引用，可继续清理。');
+      setRevision((value) => value + 1);
+    } catch (caught) {
+      if (valid() && !isAbort(caught)) {
+        needsMessageCheck.current.add(reference.messageId);
+        setMessageCheckRequired(true);
+        setMessageError(
+          `${apiErrorMessage(caught)}。尚未确认撤回结果，请先刷新本人引用，再决定是否重试。`,
         );
       }
     } finally {
@@ -408,16 +502,20 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                     <span className={`my-upload-state is-${image.status}`}>
                       {image.status === 'blocked'
                         ? '已屏蔽'
-                        : image.scope === 'circle'
-                          ? image.circlePublishedReferenceCount > 0
-                            ? '圈内可读'
-                            : '圈内私人上传'
-                          : image.publishedReferenceCount > 0
-                            ? '已有公开引用'
-                            : '私人上传'}
+                        : image.scope === 'conversation'
+                          ? '聊天私人上传'
+                          : image.scope === 'circle'
+                            ? image.circlePublishedReferenceCount > 0
+                              ? '圈内可读'
+                              : '圈内私人上传'
+                            : image.publishedReferenceCount > 0
+                              ? '已有公开引用'
+                              : '私人上传'}
                     </span>
                     <p>
-                      {image.scope === 'circle' && image.circleId ? (
+                      {image.scope === 'conversation' ? (
+                        '聊天上传 · 仅当前成员可预览'
+                      ) : image.scope === 'circle' && image.circleId ? (
                         <Link to={`/circles/s/${encodeURIComponent(image.circleId)}`}>
                           圈内上传 ↗
                         </Link>
@@ -438,6 +536,8 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                       {image.referenceCount} 条引用 · {image.publishedReferenceCount} 条世界公开
                       {!!image.circleReferenceCount &&
                         ` · ${image.circleReferenceCount} 条圈内引用`}
+                      {!!image.messageReferenceCount &&
+                        ` · ${image.messageReferenceCount} 条消息引用`}
                     </small>
                   </div>
                 </div>
@@ -448,6 +548,12 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                     仅绑定所属圈子，成员还需具有引用帖所在频道的访问权限。
                   </p>
                 )}
+                {image.scope === 'conversation' && (
+                  <p className="my-upload-private">
+                    <LockKeyhole size={12} />
+                    离开会话后不能预览；仍可按已知编号撤回本人消息，清理引用。
+                  </p>
+                )}
                 {image.status === 'ready' &&
                   image.scope === 'world' &&
                   image.publishedReferenceCount === 0 && (
@@ -456,7 +562,7 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                       没有公开帖引用，仅作为私人上传保存。
                     </p>
                   )}
-                {!!image.posts.length && (
+                {image.scope !== 'conversation' && !!image.posts.length && (
                   <div className="my-upload-posts">
                     <span>
                       引用帖子
@@ -472,7 +578,7 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                     ))}
                   </div>
                 )}
-                {!!image.circlePosts?.length && (
+                {image.scope !== 'conversation' && !!image.circlePosts?.length && (
                   <div className="my-upload-posts">
                     <span>圈内引用帖子（最近 {image.circlePosts.length} 条）</span>
                     {image.circlePosts.slice(0, 10).map((post) => (
@@ -490,6 +596,7 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                             aria-label={`删除圈帖 ${post.id.slice(-8)}`}
                             onClick={() => {
                               setConfirming(null);
+                              setConfirmingMessage(null);
                               setPostError('');
                               setPostDenied(false);
                               setConfirmingPost({ imageId: image.id, post });
@@ -507,6 +614,47 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                     </p>
                   </div>
                 )}
+                {image.scope === 'conversation' && !!image.messageReferences.length && (
+                  <div className="my-upload-posts" aria-label="本人消息引用">
+                    <span>
+                      本人消息引用（最近 {Math.min(10, image.messageReferences.length)} 条）
+                    </span>
+                    {image.messageReferences
+                      .slice(0, 10)
+                      .filter((reference) =>
+                        ownMessageReference(image, reference.messageId, userId),
+                      )
+                      .map((reference) => (
+                        <div className="my-upload-message-reference" key={reference.messageId}>
+                          <span>本人消息 {reference.messageId.slice(-8)}</span>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            aria-label={`撤回本人消息 ${reference.messageId.slice(-8)}`}
+                            onClick={() => {
+                              setConfirming(null);
+                              setConfirmingPost(null);
+                              setMessageError('');
+                              setMessageCheckRequired(
+                                needsMessageCheck.current.has(reference.messageId),
+                              );
+                              setConfirmingMessage({
+                                imageId: image.id,
+                                messageId: reference.messageId,
+                              });
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            撤回消息
+                          </button>
+                        </div>
+                      ))}
+                    <p className="my-upload-cleanup-help">
+                      不读取会话或消息正文。每张图片最多展示最近 10
+                      条本人引用，撤回后重新读取，可继续清理后续引用。
+                    </p>
+                  </div>
+                )}
                 {image.referenceCount === 0 && (
                   <button
                     className="my-upload-delete"
@@ -515,6 +663,8 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
                     aria-label={`删除上传 ${image.id.slice(-8)}`}
                     onClick={() => {
                       setRemoveError('');
+                      setConfirmingMessage(null);
+                      setConfirmingPost(null);
                       setConfirming(image);
                     }}
                   >
@@ -558,7 +708,7 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
         >
           <p>
             将永久删除图片 {confirming.id.slice(-8)}（{size(confirming.bytes)}
-            ）。它当前未被帖子引用，删除后无法恢复。
+            ）。它当前没有引用，删除后无法恢复。
           </p>
           <PlatformError message={removeError} />
         </ActionDialog>
@@ -595,6 +745,26 @@ function OwnedUploads({ userId, initialSearch }: { userId: string; initialSearch
               刷新引用
             </button>
           )}
+        </ActionDialog>
+      )}
+      {confirmingMessage && (
+        <ActionDialog
+          title="撤回这条本人消息？"
+          confirmLabel={messageCheckRequired ? '刷新本人引用' : '确认撤回消息'}
+          busy={busy}
+          danger
+          onClose={() => setConfirmingMessage(null)}
+          onConfirm={() => void retractMessage()}
+        >
+          <p>
+            将永久撤回本人消息 {confirmingMessage.messageId.slice(-8)}
+            ，清除整条消息的正文、引用回复和全部图片引用。消息会保留撤回占位，其他消息不会被撤回。
+          </p>
+          <p>
+            即使已离开会话，也可清理本人引用；此操作不会读取会话上下文，无法删除接收者已另存的副本。
+          </p>
+          <p>原图片会继续保留。服务器确认没有引用后，可另行选择「删除未引用图片」。</p>
+          <PlatformError message={messageError} />
         </ActionDialog>
       )}
     </section>

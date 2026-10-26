@@ -127,7 +127,7 @@ function ProtectedLayout() {
             <strong>共鸣</strong>
             <small>运营工作台</small>
           </span>
-          <span className="brand-version">1.0</span>
+          <span className="brand-version">0.10</span>
         </Link>
         <div className="sidebar-label">
           工作空间 <span>WORKSPACE</span>
