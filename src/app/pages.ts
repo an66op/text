@@ -6,6 +6,9 @@ export const ServerWorldPage = lazy(() => import('@/features/platform/ServerWorl
 export const PlatformMessagesPage = lazy(() => import('@/features/platform/PlatformMessagesPage'));
 export const Web3LabPage = lazy(() => import('@/features/web3/Web3LabPage'));
 export const AccountSyncPage = lazy(() => import('@/features/sync/AccountSyncPage'));
+export const ContactsPage = lazy(() => import('@/features/people/ContactsPage'));
+export const UserProfilePage = lazy(() => import('@/features/people/UserProfilePage'));
+export const ServerPostPage = lazy(() => import('@/features/people/ServerPostPage'));
 
 export const SocialPage = lazy(() => import('@/features/social/SocialPage'));
 export const SocialRoutePage = lazy(() => import('@/features/social/SocialRoutePage'));

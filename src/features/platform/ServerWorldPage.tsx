@@ -164,6 +164,7 @@ export default function ServerWorldPage() {
         </div>
         {compose && user && (
           <WorldComposer
+            key={user.id}
             onClose={() => setCompose(false)}
             onPublished={() => {
               setCompose(false);
@@ -331,7 +332,7 @@ function WorldComposer({ onClose, onPublished }: { onClose: () => void; onPublis
   );
 }
 
-function WorldPost({
+export function WorldPost({
   post,
   onReplace,
   onDeleted,
@@ -394,10 +395,14 @@ function WorldPost({
       <header>
         <PlatformAvatar user={post.author} />
         <div>
-          <strong>{post.author.name}</strong>
+          <Link to={`/u/${encodeURIComponent(post.author.handle)}`}>
+            <strong>{post.author.name}</strong>
+          </Link>
           <small>
             @{post.author.handle} ·{' '}
-            <time dateTime={post.createdAt}>{shortTime(post.createdAt)}</time>
+            <Link to={`/world/p/${encodeURIComponent(post.id)}`} aria-label="打开动态详情">
+              <time dateTime={post.createdAt}>{shortTime(post.createdAt)}</time>
+            </Link>
           </small>
         </div>
         {post.topic && <span className="platform-topic-tag">{post.topic}</span>}

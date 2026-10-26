@@ -58,6 +58,7 @@ func run() error {
 		return err
 	}
 	app := platform.NewApp(store, cfg)
+	defer app.CloseStreams()
 	if err = app.CheckProductionData(startup); err != nil {
 		return err
 	}
@@ -71,6 +72,7 @@ func run() error {
 		}
 	}
 	server := &http.Server{Addr: platform.Env("API_ADDR", "127.0.0.1:8080"), Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	server.RegisterOnShutdown(app.CloseStreams)
 	errCh := make(chan error, 1)
 	go func() {
 		slog.Info("API ready", "address", server.Addr, "environment", environment, "storage", "postgresql")

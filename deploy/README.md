@@ -79,7 +79,7 @@ docker compose --env-file deploy/.env.production -f deploy/compose.yaml exec -T 
 # 在独立数据库执行 pg_restore 验证；不要未经审查覆盖正在服务的生产库。
 ```
 
-单机 Compose 没有自动异地备份、自动证书管理、滚动发布、生产监控或灾备编排。当前后端还以 **单 JSONB 状态行 + PostgreSQL 行锁事务** 存储业务；这是可运行持久化版本，全部写入串行，不能承诺生产高并发或作为大流量最终架构。拆表、索引/游标、独立消息服务、不可变复式账本、对象存储/审核、分布式限流和可观测性需要后续验证。详见 `server/README.md`。
+单机 Compose 没有自动异地备份、自动证书管理、滚动发布、生产监控或灾备编排。当前后端已将主数据迁移到规范化关系表，普通 handler 仍进行全域快照读取并按实体增量写入，存在读放大；WebSocket outbox 另有窄 SQL 查询。按域 SQL、独立消息服务、金融级复式账本、对象存储/审核、分布式限流、压测和可观测性需要后续推进。升级前须备份并停止旧版写入；schema v2 迁移保留旧表，不支持旧 API 直接回写。详见 `server/README.md`。
 
 ## 本次配置检查记录
 
@@ -88,3 +88,5 @@ docker compose --env-file deploy/.env.production -f deploy/compose.yaml exec -T 
 未执行：Docker build、容器内 `nginx -t`、Compose `config`/健康启动、HTTPS ingress 联调、镜像运行安全扫描。部署时应执行上面的步骤，发现失败必须修复后再上线。
 
 参考：[Docker Compose 服务配置](https://docs.docker.com/reference/compose-file/services/)、[Nginx proxy](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)、[官方 PostgreSQL 镜像](https://hub.docker.com/_/postgres)。
+
+WebSocket 需要外层 ingress 和内部静态 Nginx 同时透传 Upgrade/Connection，并保持代理读超时大于服务端心跳周期；本目录已配置，但仍需实际容器/TLS 验收。参考 [Nginx WebSocket 代理说明](https://nginx.org/en/docs/http/websocket.html)。

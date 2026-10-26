@@ -12,6 +12,7 @@ import { Link } from 'react-router';
 import { paths } from '@/shared/config/paths';
 import { avatar } from '@/shared/lib/media';
 import { useProfile } from '@/features/profile/useProfile';
+import { useAuth } from '@/features/platform/useAuth';
 import type { PrimarySection } from './types';
 
 const items = [
@@ -32,6 +33,8 @@ export default function Navigation({
   showBottomNav: boolean;
 }) {
   const { profile } = useProfile();
+  const { user } = useAuth();
+  const identity = user ?? profile;
   return (
     <>
       <aside className="sidebar">
@@ -63,10 +66,10 @@ export default function Navigation({
             设置与帮助
           </Link>
           <Link className="account" to={paths.me}>
-            <img src={profile.avatar || avatar(49)} alt="我的头像" />
+            <img src={identity.avatar || avatar(49)} alt="我的头像" />
             <span>
-              <strong>{profile.name}</strong>
-              <small>@{profile.handle || 'orange_soda'}</small>
+              <strong>{identity.name}</strong>
+              <small>@{identity.handle || 'orange_soda'}</small>
             </span>
             <ChevronRight size={16} />
           </Link>

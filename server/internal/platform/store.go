@@ -3,10 +3,14 @@ package platform
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand/v2"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -35,60 +39,93 @@ func OpenPostgres(ctx context.Context, dsn string) (*PostgresStore, error) {
 	}
 	return s, nil
 }
-func (s *PostgresStore) Close()                         { s.pool.Close() }
-func (s *PostgresStore) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
-func (s *PostgresStore) Migrate(ctx context.Context) error {
-	_, err := s.pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS gongming_schema_migrations (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS gongming_app_state (id smallint PRIMARY KEY CHECK (id=1), value jsonb NOT NULL, revision bigint NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now()); INSERT INTO gongming_schema_migrations(version) VALUES (1) ON CONFLICT DO NOTHING;`)
-	if err != nil {
-		return err
-	}
-	b, err := json.Marshal(NewState())
-	if err != nil {
-		return err
-	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO gongming_app_state(id,value) VALUES (1,$1::jsonb) ON CONFLICT DO NOTHING`, string(b))
-	return err
-}
+func (s *PostgresStore) Close()                            { s.pool.Close() }
+func (s *PostgresStore) Ping(ctx context.Context) error    { return s.pool.Ping(ctx) }
+func (s *PostgresStore) Migrate(ctx context.Context) error { return migrateNormalized(ctx, s.pool) }
 func (s *PostgresStore) Read(ctx context.Context, fn func(*State) error) error {
-	var raw []byte
-	if err := s.pool.QueryRow(ctx, `SELECT value FROM gongming_app_state WHERE id=1`).Scan(&raw); err != nil {
-		return err
-	}
-	state := NewState()
-	if err := json.Unmarshal(raw, state); err != nil {
-		return fmt.Errorf("decode stored state: %w", err)
-	}
-	return fn(state)
-}
-func (s *PostgresStore) Update(ctx context.Context, fn func(*State) error) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	var raw []byte
-	if err = tx.QueryRow(ctx, `SELECT value FROM gongming_app_state WHERE id=1 FOR UPDATE`).Scan(&raw); err != nil {
-		return err
-	}
-	state := NewState()
-	if err = json.Unmarshal(raw, state); err != nil {
+	state, err := loadNormalized(ctx, tx)
+	if err != nil {
 		return err
 	}
 	if err = fn(state); err != nil {
 		return err
 	}
-	raw, err = json.Marshal(state)
+	return tx.Commit(ctx)
+}
+func (s *PostgresStore) Update(ctx context.Context, fn func(*State) error) error {
+	// SERIALIZABLE detects lost updates, write skew and predicate conflicts. Retry
+	// the entire callback against a fresh snapshot, never an old computed patch.
+	// Callbacks must be replayable and must not perform external side effects.
+	for attempt := 0; attempt < 20; attempt++ {
+		err := s.updateOnce(ctx, fn)
+		if err == nil {
+			return nil
+		}
+		if !retryableTransaction(err) {
+			return err
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		delay := time.Duration(min(150, 5*(attempt+1))+rand.IntN(15)) * time.Millisecond
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+	return &APIError{503, "transaction_conflict", "操作繁忙，请稍后重试"}
+}
+func (s *PostgresStore) updateOnce(ctx context.Context, fn func(*State) error) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE gongming_app_state SET value=$1::jsonb,revision=revision+1,updated_at=now() WHERE id=1`, string(raw)); err != nil {
+	defer tx.Rollback(ctx)
+	state, err := loadNormalized(ctx, tx)
+	if err != nil {
+		return err
+	}
+	raw, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	before := NewState()
+	if err = json.Unmarshal(raw, before); err != nil {
+		return err
+	}
+	if err = fn(state); err != nil {
+		return err
+	}
+	if err = persistNormalized(ctx, tx, before, state); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+func retryableTransaction(err error) bool {
+	var database *pgconn.PgError
+	if !errors.As(err, &database) {
+		return false
+	}
+	return database.Code == "40001" || database.Code == "40P01" || database.Code == "23505"
 }
 func Env(name, otherwise string) string {
 	if value := os.Getenv(name); value != "" {
 		return value
 	}
 	return otherwise
+}
+func cloneLegacy(raw []byte) (*State, error) {
+	s := NewState()
+	if err := json.Unmarshal(raw, s); err != nil {
+		return nil, fmt.Errorf("decode legacy state: %w", err)
+	}
+	return s, nil
 }

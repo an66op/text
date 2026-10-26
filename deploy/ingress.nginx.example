@@ -1,6 +1,11 @@
 # Host-level HTTPS ingress example, outside the Compose network.
 # Replace domains and install valid certificates first. Both origins must match
 # APP_ORIGIN / ADMIN_ORIGIN in the deployment environment file exactly.
+# Include this file inside the nginx http block.
+map $http_upgrade $gongming_connection_upgrade {
+    default upgrade;
+    '' close;
+}
 server {
     listen 80;
     server_name app.example.com admin.example.com;
@@ -16,9 +21,12 @@ server {
     client_max_body_size 1m;
     location / {
         proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $gongming_connection_upgrade;
         proxy_set_header Host $host;
         proxy_set_header Origin $http_origin;
-        proxy_read_timeout 30s;
+        proxy_read_timeout 75s;
     }
 }
 server {
@@ -31,8 +39,11 @@ server {
     client_max_body_size 1m;
     location / {
         proxy_pass http://127.0.0.1:8082;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $gongming_connection_upgrade;
         proxy_set_header Host $host;
         proxy_set_header Origin $http_origin;
-        proxy_read_timeout 30s;
+        proxy_read_timeout 75s;
     }
 }

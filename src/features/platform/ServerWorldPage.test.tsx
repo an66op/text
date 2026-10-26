@@ -5,7 +5,7 @@ import { platformApi } from '@/shared/api/platformApi';
 import { ApiError } from '@/shared/api/client';
 import { AuthContext } from './auth-context';
 import ServerWorldPage from './ServerWorldPage';
-import { member, post, signedIn } from './platform-test-fixtures';
+import { member, otherMember, post, signedIn } from './platform-test-fixtures';
 
 beforeEach(() => {
   vi.spyOn(platformApi, 'posts').mockResolvedValue({ items: [post], total: 1 });
@@ -25,6 +25,24 @@ const view = (authenticated = true) =>
   );
 
 describe('server-backed world interactions', () => {
+  it('discards the old publishing draft when the active account changes', async () => {
+    const layout = (who: typeof member) => (
+      <MemoryRouter>
+        <AuthContext.Provider value={signedIn(who)}>
+          <ServerWorldPage />
+        </AuthContext.Provider>
+      </MemoryRouter>
+    );
+    const rendered = render(layout(member));
+    await screen.findByText(post.body);
+    fireEvent.click(screen.getByRole('button', { name: '发布世界帖子' }));
+    fireEvent.change(screen.getByLabelText('世界帖子内容'), {
+      target: { value: '上个账号的私人草稿' },
+    });
+    rendered.rerender(layout(otherMember));
+    expect(screen.getByLabelText('世界帖子内容')).toHaveValue('');
+    expect(screen.queryByDisplayValue('上个账号的私人草稿')).not.toBeInTheDocument();
+  });
   it('lets guests browse server posts but sends write actions to internal login', async () => {
     view(false);
     await screen.findByText(post.body);

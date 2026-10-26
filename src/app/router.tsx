@@ -20,6 +20,9 @@ import {
   PlatformMessagesPage,
   Web3LabPage,
   AccountSyncPage,
+  ContactsPage,
+  UserProfilePage,
+  ServerPostPage,
   SocialRoutePage,
   DiscoveryPage,
   MomentsPage,
@@ -71,6 +74,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to={paths.social} replace /> },
       page(paths.social, <SocialPage />, '社交', 'social', 'social', 'primary'),
+      page('/social/demo', <SocialPage demo />, '本机消息', 'social', 'social'),
       page('/social/chat/:conversationId', <SocialPage />, '聊天', 'social', 'social'),
       page(paths.channelCreate, <SocialChannelPage kind="create" />, '创建频道', 'social'),
       page(
@@ -92,7 +96,9 @@ export const appRoutes: RouteObject[] = [
         '频道评论',
         'social',
       ),
-      page(paths.contacts, <SocialPage view="通讯录" />, '通讯录', 'contacts', 'social', 'primary'),
+      page(paths.contacts, <ContactsPage />, '通讯录', 'contacts', 'social', 'primary'),
+      page('/contacts/demo', <SocialPage view="通讯录" demo />, '本机通讯录', 'contacts', 'social'),
+      page('/u/:handle', <UserProfilePage />, '成员资料', 'contacts'),
       ...(
         [
           ['/contacts/search', 'friendSearch', '添加朋友', 'contacts'],
@@ -158,6 +164,7 @@ export const appRoutes: RouteObject[] = [
       page(paths.messages, <PlatformMessagesPage />, '在线会话', 'social'),
       page(paths.web3, <Web3LabPage />, 'Web3', 'me'),
       page('/world/posts/:postId', <ContentDetailPage kind="post" />, '动态详情'),
+      page('/world/p/:postId', <ServerPostPage />, '动态详情'),
       ...[
         [paths.live, '直播'],
         [paths.videos, '视频'],

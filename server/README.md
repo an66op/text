@@ -68,14 +68,19 @@ Vite 前台 5173 / 管理后台 5174 代理 `/api` 到 8080，同源 cookie 自�
 
 列表返回 `{items,total}`，默认 limit=30，范围 1–100，offset 为非负整数且最多 100000。`q` 搜索不区分大小写。动态 `topic` 精确匹配。后台 users 支持 status/role，posts 和 reports 支持 status；这些枚举参数非法返回 400。
 
-消息列表默认取最近 limit 条，并按时间升序返回；offset 表示从最新消息起跳过多少条，可用于向上加载更早历史。目录以及动态/评论的 author、消息的 sender 均仅返回 id/handle/name/avatar/bio，不包含邮箱、角色或密码；auth/me 和运营用户管理保留完整 User。
+消息列表默认取最近 limit 条，并按会话 seq 升序返回；beforeSeq/beforeId 加载更早记录，afterSeq 补收更新，返回 hasMore/nextBeforeId/nextBeforeSeq。兼容 offset 从最新消息起跳过若干条，但不与游标混用。发送 clientId 在同发送人/会话中幂等，改变消息正文复用 ID 返回 409；已读标记只前进。目录以及动态/评论的 author、消息的 sender 均仅返回 id/handle/name/avatar/bio，不包含邮箱、角色或密码；auth/me 和运营用户管理保留完整 User。
 
 ## 数据存储与演进边界
 
-第一版将域模型持久化于 `gongming_app_state` 单行 JSONB。所有写入用数据库事务 + `SELECT ... FOR UPDATE`，覆盖多连接并发；revision 与 updated_at 由数据库同步更新。读取不修改持久状态。该设计让整个社交、账号、审核和账本在当前端到端产品中保持真实、可验证的持久性与原子性。
+当前 Schema v2 已将用户、会话摘要、动态、点赞、评论、会话、成员、消息、个人文档、举报、审计、钱包、不可变账本、幂等请求、已读标记、消息 outbox 和事件序列持久化为 **权威规范化表**。读取不依赖聚合 JSONB；动态图片为 PostgreSQL 数组，只有文档未知值与幂等响应快照使用 JSONB。用户名/邮箱、成员关系、消息 clientId/会话 seq、幂等键均有唯一约束，实体关系有外键，动态/消息历史/审核/过期会话/事件重放有索引。
 
-它会串行化全部写请求，不是大流量的最终数据库布局。扩容前应将 accounts/sessions、posts/comments/likes、conversations/members/messages、documents、reports/audits、wallets/ledger/idempotency 拆为规范化表，加入唯一约束、外键、索引、游标分页及分域事务；钱包需要不可变复式分录/总账平衡校验，消息需要 WebSocket/outbox 和投递确认；媒体上传需要对象存储及内容审核。迁移需保留现有实体 ID、权限不变量和幂等键，并用集成测试验证并发转账与审计一致性。
+数据库约束也保护财务与审核历史：wallet balance 必须等于不可变 ledger 分录之和；同 transfer entry ID 必须有两个不同钱包的一出一入，金额合计为零；faucet 只能单条发行 100000 最小单位。审计、账本和钱包幂等响应在 SQL 层禁止改删。延期约束在事务提交时检查，允许余额、双边分录与幂等结果在同一事务内整体提交或回滚。
 
+迁移在 schema 范围 advisory lock 下执行，只有 schema 迁移使用此锁。存在旧 `gongming_app_state` 时一次性导入原实体 ID、token 摘要、资料 revision、账本、幂等快照与审计；历史消息补会话序号。旧表更名为 `gongming_legacy_state_v1`，精确保留原 payload 供审计与离线回退，运行时绝不读写，旧二进制也无法继续写原表名。数据、DDL、迁移版本和更名在同一事务；任意失败全部回滚。重复成功迁移不重复导入。**正式迁移前必须备份并停止所有旧 API 进程。** 回退需恢复经过验证的完整备份和对应二进制，不能覆盖正在服务的规范化表。迁移说明见 `migrations/002_normalized.md`。
+
+当前 `State` handler 接口作为过渡保留：读取在 `REPEATABLE READ` 一致快照，写入在 `SERIALIZABLE` 快照中执行业务、比较前后实体、只 INSERT/UPDATE/DELETE 变更行；序列化冲突、死锁及唯一键竞态会用新快照重跑整个回调，写请求体可重放。没有全站状态行的排他锁，没有每次重写所有表。幂等消息与测试转账在多连接并发下受到唯一约束及事务保护。
+
+这仍不是大流量最终数据库访问方式：普通 handler 仍加载跨域 State 快照，数据量增大后会有读放大和 SERIALIZABLE predicate 冲突。下一步应将 handler 改成按域 SQL repository、限定用户/会话的索引查询和游标分页，再做负载测试与容量规划；不能仅增加 API 实例就宣称高并发。WebSocket 的 dispatcher 已使用专用 `ReadStream` SQL，仅查询在线会话/对应成员关系/限量 outbox/事件游标，不会每 250ms 扫描动态、全部消息或钱包。消息事件持久化后才投递，重启可按游标重放；成员权限和会话撤销在每次快照重新验证。
 当前数据保留全部审计与账本，钱包 API 仅展示最近 100 条。需在量产前配置备份恢复演练、归档/保留策略、可观测性及请求级审计追踪。没有真实资产接入、链上签名认证、链上交易、支付清算、邮件验证或找回密码；不要将测试钱包描述为可托管资产的钱包。
 
 ## 验证
@@ -89,6 +94,6 @@ GOTOOLCHAIN=go1.27.3 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 TEST_DATABASE_URL='postgres://gongming:gongming_dev@127.0.0.1:55432/gongming?sslmode=disable' go test -race ./...
 ```
 
-测试覆盖会话摘要/过期/撤销、Origin/body/限流、隐藏动态、幂等点赞、频道发布权限、成员读取隔离、目录字段隐私、revision 冲突、管理员限制、封禁撤销会话、审核+审计原子性、账本幂等与并发余额守恒。真实 PostgreSQL 集成测试创建独立临时 schema，再连接两个 pool 验证持久性、并发事务和失败回滚；测试结束清理 schema，不修改应用 schema。未提供 TEST_DATABASE_URL/DATABASE_URL 时此项明确跳过，不表示已验证 PostgreSQL。
+测试覆盖会话摘要/过期/撤销、Origin/body/限流、隐藏动态、幂等点赞、频道发布权限、成员读取隔离、目录字段隐私、revision 冲突、管理员限制、封禁撤销会话、审核+审计原子性、账本幂等与并发余额守恒。真实 PostgreSQL 集成测试创建独立临时 schema，验证旧 blob 一次迁移/失败全回滚、删除旧备份表后规范表仍为唯一权威、未变行 xmin 不动、外键/唯一约束/不可变历史/双边账本、并发转账与消息幂等、已读/事件重开恢复、隔离与 session 撤销。专用流查询在动态表 ACCESS EXCLUSIVE 锁期间仍成功，证明不会回到全站 State 读。测试结束清理 schema，不修改应用 schema。未提供 TEST_DATABASE_URL/DATABASE_URL 时此项明确跳过，不表示已验证 PostgreSQL。
 
 实现参考：[Go net/http](https://pkg.go.dev/net/http)、[pgxpool](https://pkg.go.dev/github.com/jackc/pgx/v5/pgxpool)、[bcrypt](https://pkg.go.dev/golang.org/x/crypto/bcrypt)。

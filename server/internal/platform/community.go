@@ -14,10 +14,17 @@ func (a *App) posts(s *State, u *User, r *http.Request) (any, error) {
 		viewer = u.ID
 	}
 	topic := strings.TrimSpace(r.URL.Query().Get("topic"))
+	author := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("author")))
+	if author != "" && !handlePattern.MatchString(author) {
+		return nil, bad("作者用户名格式无效")
+	}
 	if utf8.RuneCountInString(topic) > 40 {
 		return nil, bad("话题筛选最多 40 字")
 	}
 	for _, p := range s.Posts {
+		if author != "" && s.Accounts[p.AuthorID].User.Handle != author {
+			continue
+		}
 		if p.Status == "published" && (topic == "" || p.Topic == topic) && matches(r, p.Body+" "+p.Topic+" "+s.Accounts[p.AuthorID].User.Name) {
 			items = append(items, s.post(p, viewer))
 		}

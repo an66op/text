@@ -17,11 +17,14 @@ const conversation: Conversation = {
   createdAt: '2026-10-27T08:00:00Z',
 };
 beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal('WebSocket', undefined);
   vi.spyOn(platformApi, 'conversations').mockResolvedValue({ items: [conversation], total: 1 });
   vi.spyOn(platformApi, 'messages').mockResolvedValue({
     items: [
       {
         id: 'message-one',
+        seq: 1,
         conversationId: conversation.id,
         sender: otherMember,
         body: '欢迎加入频道',
@@ -34,6 +37,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 const view = (route = '/messages', user = member) =>
@@ -80,11 +84,17 @@ describe('account communications', () => {
       target: { value: '新的播报' },
     });
     fireEvent.click(screen.getByRole('button', { name: '发送服务器消息' }));
-    await screen.findByText('没有发布权限');
-    expect(screen.getByRole('textbox', { name: '服务器消息内容' })).toHaveValue('新的播报');
-    expect(screen.queryByText('新的播报')).not.toBeInTheDocument();
+    await screen.findByRole('alert');
+    expect(screen.getByRole('textbox', { name: '服务器消息内容' })).toHaveValue('');
+    expect(screen.getByRole('article', { name: '消息尚未确认' })).toHaveTextContent('新的播报');
+    expect(
+      screen.queryByText('新的播报', { selector: 'article:not(.pending) p' }),
+    ).not.toBeInTheDocument();
+    const clientId = send.mock.calls[0][2];
     send.mockResolvedValueOnce({
       id: 'message-two',
+      seq: 2,
+      clientId,
       conversationId: conversation.id,
       sender: otherMember,
       body: '新的播报',
@@ -94,6 +104,8 @@ describe('account communications', () => {
       items: [
         {
           id: 'message-two',
+          seq: 2,
+          clientId,
           conversationId: conversation.id,
           sender: otherMember,
           body: '新的播报',
@@ -102,10 +114,10 @@ describe('account communications', () => {
       ],
       total: 1,
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送服务器消息' }));
-    await screen.findByText('新的播报', { selector: 'p' });
+    fireEvent.click(screen.getByRole('button', { name: '重试发送：新的播报' }));
+    await screen.findByText('新的播报', { selector: 'article:not(.pending) p' });
     expect(screen.getByRole('textbox', { name: '服务器消息内容' })).toHaveValue('');
-    expect(send).toHaveBeenLastCalledWith(conversation.id, '新的播报');
+    expect(send).toHaveBeenLastCalledWith(conversation.id, '新的播报', clientId);
   });
 
   it('creates a group from server directory identities', async () => {

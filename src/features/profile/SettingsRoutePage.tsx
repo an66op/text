@@ -9,6 +9,8 @@ import {
   SecuritySettingsPage,
 } from './SettingsSecurityPages';
 import './profile.css';
+import { Navigate } from 'react-router';
+import { useAuth } from '@/features/platform/useAuth';
 
 export default function SettingsRoutePage({
   kind,
@@ -23,9 +25,10 @@ export default function SettingsRoutePage({
     | 'blocked'
     | 'devices';
 }) {
+  const { user } = useAuth();
   switch (kind) {
     case 'account':
-      return <AccountSettingsPage />;
+      return user ? <Navigate to="/account" replace /> : <AccountSettingsPage />;
     case 'security':
       return <SecuritySettingsPage />;
     case 'privacy':

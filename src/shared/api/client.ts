@@ -1,4 +1,5 @@
 const API_BASE = '/api/v1';
+import { accountChanged, accountEpoch, expectedAccount } from './account-guard';
 const unauthorizedListeners = new Set<() => void>();
 
 export class ApiError extends Error {
@@ -31,6 +32,10 @@ export function apiErrorMessage(error: unknown) {
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
+  const guarded = !['/auth/me', '/auth/login', '/auth/register'].includes(path.split('?')[0]);
+  const requestAccount = expectedAccount();
+  const requestEpoch = accountEpoch();
+  if (guarded && requestAccount) headers.set('X-Gongming-Account', requestAccount);
   headers.set('Accept', 'application/json');
   if (init.body) headers.set('Content-Type', 'application/json');
   let response: Response;
@@ -40,7 +45,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (isAbort(error)) throw error;
     throw new ApiError('无法连接服务，请检查网络或启动 Go 服务', 'NETWORK_ERROR', 0);
   }
-  if (response.status === 401 && !path.startsWith('/auth/')) {
+  const changedDuringRequest = () =>
+    requestEpoch !== accountEpoch() || requestAccount !== expectedAccount();
+  if (guarded && changedDuringRequest())
+    throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
+  if (response.status === 401 && guarded) {
     unauthorizedListeners.forEach((listener) => listener());
   }
   let envelope: unknown;
@@ -49,8 +58,12 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   } catch {
     throw new ApiError('服务返回了无法识别的内容', 'INVALID_RESPONSE', response.status);
   }
+  if (guarded && response.status !== 401 && changedDuringRequest()) {
+    throw new ApiError('账号状态已更新，请重新确认后再操作', 'ACCOUNT_CHANGED', 409);
+  }
   if (!response.ok) {
     const serverError = (envelope as { error?: { message?: string; code?: string } })?.error;
+    if (response.status === 409 && serverError?.code === 'account_changed') accountChanged();
     throw new ApiError(
       serverError?.message || (response.status === 401 ? '请先登录，再继续操作' : '服务请求失败'),
       serverError?.code || `HTTP_${response.status}`,

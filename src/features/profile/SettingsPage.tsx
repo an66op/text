@@ -11,6 +11,7 @@ import { Link } from 'react-router';
 import { paths } from '@/shared/config/paths';
 import PageHeader from '@/shared/ui/PageHeader';
 import { useProfile } from './useProfile';
+import { useAuth } from '@/features/platform/useAuth';
 import { usePreferences } from './preferences';
 import SettingsSwitch from './SettingsSwitch';
 import './profile.css';
@@ -30,7 +31,7 @@ const links = [
   },
   {
     title: '隐私权限',
-    description: '动态范围、好友验证与黑名单',
+    description: '本机动态范围、验证偏好与黑名单',
     icon: LockKeyhole,
     href: '/settings/privacy',
   },
@@ -50,13 +51,14 @@ const links = [
 ];
 export default function SettingsPage() {
   const { profile } = useProfile();
+  const { user } = useAuth();
   const [preferences, setPreferences] = usePreferences();
   return (
     <div className="settings-page">
       <PageHeader title="设置" backTo={paths.me} />
       <div className="settings-content">
         <section className="settings-group">
-          <h2>{profile.name}的设置</h2>
+          <h2>{user?.name ?? profile.name}的设置</h2>
           <div className="settings-card">
             {links.map(({ title, description, icon: Icon, href }) => (
               <Link className="settings-nav-row" to={href} key={href}>
@@ -65,7 +67,9 @@ export default function SettingsPage() {
                 </span>
                 <span className="settings-row-copy">
                   <strong>{title}</strong>
-                  <small>{description}</small>
+                  <small>
+                    {user && href === '/settings/account' ? '当前账号资料与个人备份' : description}
+                  </small>
                 </span>
                 <ChevronRight size={18} />
               </Link>
@@ -93,7 +97,11 @@ export default function SettingsPage() {
             />
           </div>
         </section>
-        <p className="settings-hint">修改自动保存在本机 · 前端演示版本</p>
+        <p className="settings-hint">
+          {user
+            ? '本机偏好保存在此浏览器 · 账号资料由服务器保存'
+            : '修改自动保存在本机 · 前端演示版本'}
+        </p>
       </div>
     </div>
   );

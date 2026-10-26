@@ -14,6 +14,7 @@ const services = [
 export default function ProfilePage() {
   const { profile } = useProfile();
   const { user } = useAuth();
+  const identity = user ?? profile;
   return (
     <div className="profile-home">
       <div className="profile-home-content">
@@ -22,19 +23,28 @@ export default function ProfilePage() {
             <Settings size={22} />
           </Link>
           <div className="profile-identity-heading">
-            <img src={profile.avatar || avatar(49)} alt={profile.name} />
+            <img src={identity.avatar || avatar(49)} alt={identity.name} />
             <div>
-              <h1>{profile.name}</h1>
-              <p>@{profile.handle || 'orange_soda'}</p>
+              <h1>{identity.name}</h1>
+              <p>@{identity.handle || 'orange_soda'}</p>
             </div>
           </div>
-          <p className="profile-identity-bio">{profile.bio || '在这里，遇见有趣的生活。'}</p>
+          <p className="profile-identity-bio">{identity.bio || '在这里，遇见有趣的生活。'}</p>
           <div className="profile-identity-footer">
             <span>
-              <MapPin size={14} />
-              {(profile.location ?? '杭州') || '未设置地区'}
+              {user ? (
+                <>
+                  <Cloud size={14} />
+                  共鸣成员
+                </>
+              ) : (
+                <>
+                  <MapPin size={14} />
+                  {(profile.location ?? '杭州') || '未设置地区'}
+                </>
+              )}
             </span>
-            <Link to={paths.editProfile}>
+            <Link to={user ? paths.account : paths.editProfile}>
               编辑资料 <ChevronRight size={16} />
             </Link>
           </div>

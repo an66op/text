@@ -3,14 +3,21 @@ package platform
 import (
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 )
 
 func (a *App) conversations(s *State, u *User, r *http.Request) (any, error) {
+	normalizeMessageSequences(s)
 	items := []Conversation{}
+	unreadTotal := 0
 	for _, c := range s.Conversations {
-		if member(c, u.ID) && matches(r, c.Title) {
-			items = append(items, s.conversation(c))
+		if member(c, u.ID) {
+			item := s.conversation(c, u.ID)
+			unreadTotal += item.UnreadCount
+			if matches(r, c.Title) {
+				items = append(items, item)
+			}
 		}
 	}
 	newest(items, func(c Conversation) time.Time {
@@ -19,7 +26,12 @@ func (a *App) conversations(s *State, u *User, r *http.Request) (any, error) {
 		}
 		return c.CreatedAt
 	})
-	return list(r, items)
+	result, err := list(r, items)
+	if err != nil {
+		return nil, err
+	}
+	result.(map[string]any)["unreadTotal"] = unreadTotal
+	return result, nil
 }
 func (a *App) createConversation(s *State, u *User, r *http.Request) (any, error) {
 	var input struct {
@@ -58,13 +70,14 @@ func (a *App) createConversation(s *State, u *User, r *http.Request) (any, error
 	if input.Kind == "direct" {
 		for _, c := range s.Conversations {
 			if c.Kind == "direct" && len(c.Members) == 2 && member(c, members[0]) && member(c, members[1]) {
-				return s.conversation(c), nil
+				return s.conversation(c, u.ID), nil
 			}
 		}
 	}
 	c := StoredConversation{newID("conversation_"), title, input.Kind, members, u.ID, a.now()}
 	s.Conversations[c.ID] = c
-	return s.conversation(c), nil
+	appendMessageEvent(s, "conversation.created", c.ID, "", "", a.now())
+	return s.conversation(c, u.ID), nil
 }
 func getConversation(s *State, u *User, id string) (StoredConversation, error) {
 	c, exists := s.Conversations[id]
@@ -78,21 +91,83 @@ func (a *App) messages(s *State, u *User, r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	items := []Message{}
-	for _, m := range s.Messages {
-		if m.ConversationID == c.ID && matches(r, m.Body) {
-			items = append(items, s.message(m))
+	normalizeMessageSequences(s)
+	query := r.URL.Query()
+	before, after := int64(0), int64(0)
+	var parseErr error
+	for key, target := range map[string]*int64{"beforeSeq": &before, "afterSeq": &after} {
+		if value := query.Get(key); value != "" {
+			*target, parseErr = strconv.ParseInt(value, 10, 64)
+			if parseErr != nil || *target < 0 || *target > maxMessageSequence || key == "beforeSeq" && *target == 0 {
+				return nil, bad(key + " 必须为有效消息游标")
+			}
 		}
 	}
-	newest(items, func(m Message) time.Time { return m.CreatedAt })
-	result, err := list(r, items)
-	if err != nil {
-		return nil, err
+	if id := query.Get("beforeId"); id != "" {
+		if before != 0 {
+			return nil, bad("beforeId 与 beforeSeq 不能同时使用")
+		}
+		message, exists := s.Messages[id]
+		if !exists || message.ConversationID != c.ID {
+			return nil, missing("历史消息游标不存在")
+		}
+		before = message.Seq
 	}
-	page := result.(map[string]any)
-	messages := page["items"].([]Message)
-	sort.SliceStable(messages, func(i, j int) bool { return messages[i].CreatedAt.Before(messages[j].CreatedAt) })
-	return page, nil
+	if before > 0 && query.Get("afterSeq") != "" {
+		return nil, bad("不能同时向前和向后翻页")
+	}
+	if (before > 0 || query.Get("afterSeq") != "") && query.Get("offset") != "" && query.Get("offset") != "0" {
+		return nil, bad("游标分页不能与 offset 混用")
+	}
+	limit := 30
+	if value := query.Get("limit"); value != "" {
+		limit, parseErr = strconv.Atoi(value)
+		if parseErr != nil || limit < 1 || limit > 100 {
+			return nil, bad("limit 必须为 1 到 100")
+		}
+	}
+	items := []Message{}
+	total := 0
+	for _, m := range s.Messages {
+		if m.ConversationID == c.ID && matches(r, m.Body) {
+			total++
+			if (before == 0 || m.Seq < before) && (query.Get("afterSeq") == "" || m.Seq > after) {
+				items = append(items, s.message(m))
+			}
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Seq < items[j].Seq })
+	offset := 0
+	if value := query.Get("offset"); value != "" {
+		offset, parseErr = strconv.Atoi(value)
+		if parseErr != nil || offset < 0 || offset > 100000 {
+			return nil, bad("offset 不正确")
+		}
+	}
+	if offset > len(items) {
+		offset = len(items)
+	}
+	if query.Get("afterSeq") == "" {
+		items = items[:len(items)-offset]
+		start := len(items) - limit
+		if start < 0 {
+			start = 0
+		}
+		hasMore := start > 0
+		items = items[start:]
+		var nextID any
+		var nextSeq any
+		if hasMore && len(items) > 0 {
+			nextID = items[0].ID
+			nextSeq = items[0].Seq
+		}
+		return map[string]any{"items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nextID, "nextBeforeSeq": nextSeq}, nil
+	}
+	hasMore := len(items) > limit
+	if hasMore {
+		items = items[:limit]
+	}
+	return map[string]any{"items": items, "total": total, "hasMore": hasMore, "nextBeforeId": nil, "nextBeforeSeq": nil}, nil
 }
 func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	c, err := getConversation(s, u, r.PathValue("id"))
@@ -103,7 +178,8 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 		return nil, forbidden("频道仅允许频道主或管理员发布")
 	}
 	var input struct {
-		Body string `json:"body"`
+		Body     string `json:"body"`
+		ClientID string `json:"clientId"`
 	}
 	if err = decode(r, &input); err != nil {
 		return nil, err
@@ -112,8 +188,31 @@ func (a *App) sendMessage(s *State, u *User, r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := StoredMessage{newID("message_"), c.ID, u.ID, body, a.now()}
+	if input.ClientID != "" && !requestPattern.MatchString(input.ClientID) {
+		return nil, bad("clientId 需为 8–100 位字母、数字、下划线或短横线")
+	}
+	normalizeMessageSequences(s)
+	seq := int64(0)
+	for _, existing := range s.Messages {
+		if existing.ConversationID != c.ID {
+			continue
+		}
+		if input.ClientID != "" && existing.ClientID == input.ClientID && existing.SenderID == u.ID {
+			if existing.Body != body {
+				return nil, conflict("clientId 已用于不同的消息内容")
+			}
+			return s.message(existing), nil
+		}
+		if existing.Seq > seq {
+			seq = existing.Seq
+		}
+	}
+	if seq >= maxMessageSequence {
+		return nil, conflict("会话消息序列已达到上限")
+	}
+	m := StoredMessage{ID: newID("message_"), ConversationID: c.ID, SenderID: u.ID, Body: body, CreatedAt: a.now(), Seq: seq + 1, ClientID: input.ClientID}
 	s.Messages[m.ID] = m
+	appendMessageEvent(s, "message.created", c.ID, m.ID, "", a.now())
 	return s.message(m), nil
 }
 func (a *App) directory(s *State, _ *User, r *http.Request) (any, error) {
@@ -127,10 +226,19 @@ func (a *App) directory(s *State, _ *User, r *http.Request) (any, error) {
 	items := []entry{}
 	for _, account := range s.Accounts {
 		u := account.User
-		if u.Status == "active" && matches(r, u.Name+" "+u.Handle) {
+		if u.Status == "active" && matches(r, u.ID+" "+u.Name+" "+u.Handle) {
 			items = append(items, entry{u.ID, u.Handle, u.Name, u.Avatar, u.Bio})
 		}
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Handle < items[j].Handle })
 	return list(r, items)
+}
+
+func (a *App) userProfile(s *State, _ *User, r *http.Request) (any, error) {
+	for _, account := range s.Accounts {
+		if account.User.Handle == r.PathValue("handle") && account.User.Status == "active" {
+			return publicUser(account.User), nil
+		}
+	}
+	return nil, missing("用户不存在或已停用")
 }

@@ -1,6 +1,9 @@
 export const paths = {
   social: '/social',
   contacts: '/contacts',
+  localContacts: '/contacts/demo',
+  localSocial: '/social/demo',
+  user: (handle: string) => `/u/${encodeURIComponent(handle)}`,
   discover: '/discover',
   ai: '/ai',
   aiHistory: '/ai/history',

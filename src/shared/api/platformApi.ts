@@ -4,11 +4,13 @@ import type {
   ConversationKind,
   Health,
   ListResult,
+  MessagePage,
   PlatformComment,
   PlatformMessage,
   PlatformPost,
   PlatformUser,
   PublicUser,
+  ReadMark,
   Session,
 } from './types';
 
@@ -56,13 +58,25 @@ export const platformApi = {
     apiRequest<ListResult<Conversation>>('/conversations?limit=100', { signal }),
   createConversation: (value: { title: string; kind: ConversationKind; memberIds: string[] }) =>
     apiRequest<Conversation>('/conversations', { method: 'POST', body: body(value) }),
-  messages: (id: string, signal?: AbortSignal) =>
-    apiRequest<ListResult<PlatformMessage>>(`/conversations/${idPath(id)}/messages?limit=100`, {
-      signal,
-    }),
-  sendMessage: (id: string, text: string) =>
+  messages: (
+    id: string,
+    signal?: AbortSignal,
+    query: { beforeSeq?: number; afterSeq?: number; beforeId?: string; limit?: number } = {},
+  ) =>
+    apiRequest<MessagePage>(
+      `/conversations/${idPath(id)}/messages${apiQuery({ limit: 50, ...query })}`,
+      {
+        signal,
+      },
+    ),
+  sendMessage: (id: string, text: string, clientId?: string) =>
     apiRequest<PlatformMessage>(`/conversations/${idPath(id)}/messages`, {
       method: 'POST',
-      body: body({ body: text }),
+      body: body({ body: text, ...(clientId ? { clientId } : {}) }),
+    }),
+  markConversationRead: (id: string, messageId: string) =>
+    apiRequest<ReadMark>(`/conversations/${idPath(id)}/read`, {
+      method: 'POST',
+      body: body({ messageId }),
     }),
 };

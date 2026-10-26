@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { Camera } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
+import { useAuth } from '@/features/platform/useAuth';
 import { paths } from '@/shared/config/paths';
 import { avatar } from '@/shared/lib/media';
 import { writeStorage } from '@/shared/lib/storage';
@@ -12,6 +13,17 @@ import { useProfile } from './useProfile';
 import './profile.css';
 
 export default function EditProfilePage() {
+  const { user, status } = useAuth();
+  if (status === 'checking')
+    return (
+      <div className="route-status" role="status">
+        正在验证账号…
+      </div>
+    );
+  return user ? <Navigate to={paths.account} replace /> : <LocalEditProfilePage />;
+}
+
+function LocalEditProfilePage() {
   const { profile, setProfile } = useProfile();
   const [name, setName] = useState(profile.name);
   const [bio, setBio] = useState(profile.bio);

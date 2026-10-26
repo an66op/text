@@ -207,7 +207,11 @@ func (a *App) SeedDevelopment(ctx context.Context) error {
 		for _, c := range []StoredConversation{{"conversation_direct", "与周野的私聊", "direct", []string{demo.ID, friend.ID}, demo.ID, now.Add(-48 * time.Hour)}, {"conversation_group", "共鸣 · 周末出走", "group", []string{demo.ID, admin.ID, friend.ID}, admin.ID, now.Add(-24 * time.Hour)}, {"conversation_channel", "共鸣动态", "channel", []string{demo.ID, admin.ID, friend.ID}, admin.ID, now.Add(-24 * time.Hour)}} {
 			s.Conversations[c.ID] = c
 		}
-		for _, m := range []StoredMessage{{"message_direct", "conversation_direct", friend.ID, "周末要不要一起逛书店？", now.Add(-12 * time.Minute)}, {"message_group", "conversation_group", admin.ID, "欢迎来到周末出走群，分享一下你的城市计划吧。", now.Add(-30 * time.Minute)}, {"message_channel", "conversation_channel", admin.ID, "共鸣频道已上线。公告由频道主发布，订阅者可以在社区继续讨论。", now.Add(-time.Hour)}} {
+		for _, m := range []StoredMessage{
+			{ID: "message_direct", ConversationID: "conversation_direct", SenderID: friend.ID, Body: "周末要不要一起逛书店？", CreatedAt: now.Add(-12 * time.Minute), Seq: 1},
+			{ID: "message_group", ConversationID: "conversation_group", SenderID: admin.ID, Body: "欢迎来到周末出走群，分享一下你的城市计划吧。", CreatedAt: now.Add(-30 * time.Minute), Seq: 1},
+			{ID: "message_channel", ConversationID: "conversation_channel", SenderID: admin.ID, Body: "共鸣频道已上线。公告由频道主发布，订阅者可以在社区继续讨论。", CreatedAt: now.Add(-time.Hour), Seq: 1},
+		} {
 			s.Messages[m.ID] = m
 		}
 		s.Reports["report_demo"] = Report{"report_demo", demo.ID, "post", "post_review", "演示审核流程，请检查内容是否符合社区规则。", "open", "", now.Add(-10 * time.Minute)}

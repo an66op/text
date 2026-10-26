@@ -1,9 +1,61 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, apiQuery, apiRequest, onUnauthorized } from './client';
+import { setExpectedAccount } from './account-guard';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  setExpectedAccount('');
+});
 
 describe('Go API client', () => {
+  it('never invalidates a new account when an old request finally returns 401', async () => {
+    let finish!: (response: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    const listener = vi.fn();
+    const stop = onUnauthorized(listener);
+    setExpectedAccount('account-A');
+    const pending = apiRequest('/wallet');
+    setExpectedAccount('account-B');
+    finish(
+      new Response(JSON.stringify({ error: { code: 'unauthorized', message: 'old session' } }), {
+        status: 401,
+      }),
+    );
+    await expect(pending).rejects.toMatchObject({ code: 'ACCOUNT_CHANGED' });
+    expect(listener).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('guards logout against a changed cookie and discards stale successful private responses', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ data: { ok: true } })));
+    vi.stubGlobal('fetch', fetchMock);
+    setExpectedAccount('account-A');
+    await apiRequest('/auth/logout', { method: 'POST' });
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('X-Gongming-Account')).toBe(
+      'account-A',
+    );
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = apiRequest('/documents');
+    setExpectedAccount('account-B');
+    finish(new Response(JSON.stringify({ data: { privateDraft: 'A draft' } })));
+    await expect(pending).rejects.toMatchObject({ code: 'ACCOUNT_CHANGED' });
+  });
   it('uses same-origin cookie credentials and encoded query values', async () => {
     const fetchMock = vi
       .fn()

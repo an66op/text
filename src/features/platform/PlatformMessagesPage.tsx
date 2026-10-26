@@ -1,29 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import {
-  ArrowLeft,
-  ChevronRight,
-  Hash,
-  MessageCircle,
-  Plus,
-  Radio,
-  Search,
-  Send,
-  Users,
-  X,
-} from 'lucide-react';
+import { ChevronRight, Hash, MessageCircle, Plus, Radio, Search, Users, X } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
 import AppTopbar from '@/shared/ui/AppTopbar';
-import { ApiError, apiErrorMessage, isAbort } from '@/shared/api/client';
+import { apiErrorMessage, isAbort } from '@/shared/api/client';
 import { platformApi } from '@/shared/api/platformApi';
-import type {
-  Conversation,
-  ConversationKind,
-  PlatformMessage,
-  PublicUser,
-} from '@/shared/api/types';
+import type { Conversation, ConversationKind, PublicUser } from '@/shared/api/types';
 import { useAuth } from './useAuth';
 import { LoginNotice, PlatformAvatar, PlatformError } from './PlatformUi';
 import { shortTime } from './platform-format';
+import MessageThread from './messages/MessageThread';
+import ConnectionStatus from './messages/ConnectionStatus';
+import { useConversationFeed } from './messages/useConversationFeed';
+import { usePlatformStream } from './messages/usePlatformStream';
+import { messagesChanged } from './messages/message-drafts';
 import './platform.css';
 
 const kindNames: Record<ConversationKind, string> = {
@@ -34,11 +23,14 @@ const kindNames: Record<ConversationKind, string> = {
 
 export default function PlatformMessagesPage() {
   const auth = useAuth();
+  const [params] = useSearchParams();
   return (
-    <section className="platform-page platform-messages-page">
+    <section
+      className={`platform-page platform-messages-page ${auth.user && params.get('conversation') ? 'is-selected' : ''}`}
+    >
       {!auth.user ? (
         <>
-          <AppTopbar title="通讯" />
+          <AppTopbar title="消息" />
           <div className="platform-content">
             <div className="platform-message-welcome">
               <span>
@@ -55,7 +47,7 @@ export default function PlatformMessagesPage() {
               <LoginNotice returnTo="/messages" text="登录后，查看服务器上的会话" />
             )}
             <PlatformError message={auth.error} retry={() => void auth.refresh()} />
-            <Link className="platform-text-link" to="/social">
+            <Link className="platform-text-link" to="/social/demo">
               查看本机社交演示
             </Link>
           </div>
@@ -71,48 +63,27 @@ function SignedInMessages() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('conversation') ?? '';
-  const [items, setItems] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
+  const feed = useConversationFeed(user!.id);
+  const [messageUpdate, setMessageUpdate] = useState(0);
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState('');
-  const [kind, setKind] = useState<'all' | ConversationKind>('all');
-  const selected = items.find((item) => item.id === selectedId);
-  useEffect(() => {
-    let active = true;
-    let timeout = 0;
-    let controller: AbortController | null = null;
-    const load = async () => {
-      if (!active) return;
-      if (document.hidden) {
-        timeout = window.setTimeout(() => void load(), 5000);
-        return;
-      }
-      controller = new AbortController();
-      try {
-        const result = await platformApi.conversations(controller.signal);
-        if (active) {
-          setItems(result.items);
-          setError('');
-        }
-      } catch (caught) {
-        if (active && !isAbort(caught)) setError(apiErrorMessage(caught));
-      } finally {
-        if (active) {
-          setLoading(false);
-          timeout = window.setTimeout(() => void load(), 5000);
-        }
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-      controller?.abort();
-      window.clearTimeout(timeout);
-    };
-  }, [revision]);
-  const visible = items.filter(
+  const [kind, setKind] = useState<'all' | ConversationKind>(() =>
+    params.get('type') === 'groups'
+      ? 'group'
+      : params.get('type') === 'channels'
+        ? 'channel'
+        : 'all',
+  );
+  const streamStatus = usePlatformStream(user!.id, (event) => {
+    feed.refresh();
+    if (
+      event.type !== 'conversation.read' &&
+      (!event.conversationId || event.conversationId === selectedId)
+    )
+      setMessageUpdate((value) => value + 1);
+  });
+  const selected = feed.items.find((item) => item.id === selectedId);
+  const visible = feed.items.filter(
     (item) =>
       (kind === 'all' || item.kind === kind) &&
       `${item.title} ${item.lastMessage?.body ?? ''}`
@@ -120,13 +91,16 @@ function SignedInMessages() {
         .includes(query.trim().toLocaleLowerCase()),
   );
   const choose = (id: string) => {
-    setParams(id ? { conversation: id } : {});
+    const next = new URLSearchParams(params);
+    if (id) next.set('conversation', id);
+    else next.delete('conversation');
+    setParams(next);
     setCreating(false);
   };
   return (
     <>
       <AppTopbar
-        title="通讯"
+        title="消息"
         actions={
           <button type="button" aria-label="创建会话" onClick={() => setCreating(true)}>
             <Plus size={23} />
@@ -136,11 +110,8 @@ function SignedInMessages() {
       <div className={`platform-messages-layout ${selectedId ? 'has-conversation' : ''}`}>
         <aside className="platform-conversations">
           <div className="platform-message-mode">
-            <span>
-              <i />
-              账号通讯
-            </span>
-            <Link to="/social">
+            <ConnectionStatus status={streamStatus} />
+            <Link to="/social/demo">
               本机演示
               <ChevronRight size={13} />
             </Link>
@@ -149,7 +120,7 @@ function SignedInMessages() {
             <Search size={17} />
             <input
               aria-label="搜索服务器会话"
-              placeholder="搜索会话"
+              placeholder="搜索消息或联系人"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -167,8 +138,8 @@ function SignedInMessages() {
               </button>
             ))}
           </div>
-          <PlatformError message={error} retry={() => setRevision((value) => value + 1)} />
-          {loading ? (
+          <PlatformError message={feed.error} retry={feed.refresh} />
+          {feed.loading ? (
             <p className="platform-empty" role="status">
               正在加载会话…
             </p>
@@ -201,11 +172,16 @@ function SignedInMessages() {
                         `${kindNames[item.kind]} · ${item.members.length} 位成员`}
                     </small>
                   </span>
+                  {!!item.unreadCount && (
+                    <b className="platform-unread" aria-label={`${item.unreadCount} 条未读消息`}>
+                      {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                    </b>
+                  )}
                 </button>
               ))}
             </div>
           ) : (
-            !error && (
+            !feed.error && (
               <div className="platform-empty">
                 <MessageCircle size={30} />
                 <h2>{query ? '没有找到会话' : '从一句你好开始'}</h2>
@@ -224,18 +200,15 @@ function SignedInMessages() {
         <div className="platform-conversation-detail">
           {selected ? (
             <MessageThread
-              key={selected.id}
+              key={`${user!.id}:${selected.id}`}
               conversation={selected}
               onBack={() => choose('')}
-              onSent={(message) =>
-                setItems((previous) =>
-                  previous.map((item) =>
-                    item.id === message.conversationId ? { ...item, lastMessage: message } : item,
-                  ),
-                )
-              }
+              onSent={() => feed.refresh()}
+              onRead={feed.read}
+              updateVersion={messageUpdate}
+              streamStatus={streamStatus}
             />
-          ) : selectedId && !loading && !error ? (
+          ) : selectedId && !feed.loading && !feed.error ? (
             <div className="platform-empty">
               <h2>会话不可访问</h2>
               <p>会话可能不存在，或者你不是这个会话的成员。</p>
@@ -265,9 +238,10 @@ function SignedInMessages() {
           <CreateConversation
             onClose={() => setCreating(false)}
             onCreated={(item) => {
-              setItems((previous) => [item, ...previous.filter((value) => value.id !== item.id)]);
+              feed.upsert(item);
               choose(item.id);
-              setRevision((value) => value + 1);
+              feed.refresh();
+              messagesChanged();
             }}
           />
         </div>
@@ -284,6 +258,13 @@ function CreateConversation({
   onCreated: (item: Conversation) => void;
 }) {
   const { user } = useAuth();
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   const [kind, setKind] = useState<ConversationKind>('direct');
   const [title, setTitle] = useState('');
   const [directory, setDirectory] = useState<PublicUser[]>([]);
@@ -332,20 +313,19 @@ function CreateConversation({
     setBusy(true);
     setError('');
     try {
-      onCreated(
-        await platformApi.createConversation({
-          kind,
-          memberIds: members,
-          title:
-            kind === 'direct'
-              ? (directory.find((item) => item.id === members[0])?.name ?? '私聊')
-              : title.trim(),
-        }),
-      );
+      const conversation = await platformApi.createConversation({
+        kind,
+        memberIds: members,
+        title:
+          kind === 'direct'
+            ? (directory.find((item) => item.id === members[0])?.name ?? '私聊')
+            : title.trim(),
+      });
+      if (active.current) onCreated(conversation);
     } catch (caught) {
-      setError(apiErrorMessage(caught));
+      if (active.current) setError(apiErrorMessage(caught));
     } finally {
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   };
   return (
@@ -457,185 +437,5 @@ function CreateConversation({
         <ChevronRight size={17} />
       </button>
     </form>
-  );
-}
-
-function MessageThread({
-  conversation,
-  onBack,
-  onSent,
-}: {
-  conversation: Conversation;
-  onBack: () => void;
-  onSent: (message: PlatformMessage) => void;
-}) {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState<PlatformMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [sendError, setSendError] = useState('');
-  const [text, setText] = useState('');
-  const [revision, setRevision] = useState(0);
-  const [accessDenied, setAccessDenied] = useState(false);
-  const end = useRef<HTMLDivElement>(null);
-  const scroll = useRef<HTMLDivElement>(null);
-  const following = useRef(true);
-  const canSend =
-    !accessDenied &&
-    (conversation.kind !== 'channel' ||
-      conversation.ownerId === user?.id ||
-      user?.role === 'admin');
-  useEffect(() => {
-    if (busy || accessDenied) return;
-    let active = true;
-    let timeout = 0;
-    let controller: AbortController | null = null;
-    const load = async () => {
-      if (!active) return;
-      if (document.hidden) {
-        timeout = window.setTimeout(() => void load(), 3500);
-        return;
-      }
-      controller = new AbortController();
-      try {
-        const result = await platformApi.messages(conversation.id, controller.signal);
-        if (active) {
-          setMessages([...result.items].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
-          setError('');
-        }
-      } catch (caught) {
-        if (active && !isAbort(caught)) {
-          setError(apiErrorMessage(caught));
-          if (caught instanceof ApiError && [403, 404].includes(caught.status)) {
-            setAccessDenied(true);
-            setMessages([]);
-          }
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-          timeout = window.setTimeout(() => void load(), 3500);
-        }
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-      controller?.abort();
-      window.clearTimeout(timeout);
-    };
-  }, [conversation.id, busy, revision, accessDenied]);
-  useEffect(() => {
-    if (following.current) end.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
-  }, [messages]);
-  const send = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!text.trim() || busy || !canSend) return;
-    const messageText = text.trim();
-    setBusy(true);
-    setSendError('');
-    try {
-      const message = await platformApi.sendMessage(conversation.id, messageText);
-      following.current = true;
-      setMessages((previous) => [...previous.filter((item) => item.id !== message.id), message]);
-      setText('');
-      onSent(message);
-    } catch (caught) {
-      setSendError(apiErrorMessage(caught));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="platform-thread">
-      <header className="platform-thread-header">
-        <button type="button" aria-label="返回服务器会话" onClick={onBack}>
-          <ArrowLeft size={21} />
-        </button>
-        <div>
-          <h2>{conversation.title}</h2>
-          <small>
-            {kindNames[conversation.kind]} · {conversation.members.length} 位成员
-          </small>
-        </div>
-        {conversation.kind === 'channel' ? <Radio size={20} /> : <Users size={20} />}
-      </header>
-      <div
-        className="platform-thread-messages"
-        ref={scroll}
-        onScroll={() => {
-          const area = scroll.current;
-          if (area)
-            following.current = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
-        }}
-      >
-        <PlatformError
-          message={error}
-          retry={() => {
-            setAccessDenied(false);
-            setRevision((value) => value + 1);
-          }}
-        />
-        {loading ? (
-          <p className="platform-empty" role="status">
-            正在读取消息…
-          </p>
-        ) : messages.length ? (
-          <>
-            <p className="platform-message-boundary">最近 {messages.length} 条消息</p>
-            {messages.map((message) => (
-              <article
-                key={message.id}
-                className={`platform-message ${message.sender.id === user?.id ? 'mine' : ''}`}
-              >
-                <PlatformAvatar user={message.sender} />
-                <div>
-                  <strong>
-                    {conversation.kind === 'channel' ? conversation.title : message.sender.name}
-                  </strong>
-                  <p>{message.body}</p>
-                  <time dateTime={message.createdAt}>{shortTime(message.createdAt)}</time>
-                </div>
-              </article>
-            ))}
-          </>
-        ) : (
-          !error && (
-            <div className="platform-empty">
-              <MessageCircle size={29} />
-              <h2>
-                {conversation.kind === 'channel'
-                  ? '第一条播报，从这里开始'
-                  : '你们的故事，还未开篇'}
-              </h2>
-              <p>{canSend ? '发送一条消息，开启交流。' : '等待频道主的第一条更新。'}</p>
-            </div>
-          )
-        )}
-        <div ref={end} />
-      </div>
-      <div className="platform-thread-footer">
-        <PlatformError message={sendError} />
-        {canSend ? (
-          <form onSubmit={(event) => void send(event)}>
-            <input
-              aria-label="服务器消息内容"
-              value={text}
-              maxLength={5000}
-              onChange={(event) => setText(event.target.value)}
-              placeholder={conversation.kind === 'channel' ? '发布频道消息…' : '发送消息…'}
-            />
-            <button type="submit" aria-label="发送服务器消息" disabled={busy || !text.trim()}>
-              <Send size={19} />
-            </button>
-          </form>
-        ) : (
-          <p>
-            {accessDenied ? '当前无法访问这个会话' : '你已加入频道，只有频道主和管理员可以发布消息'}
-          </p>
-        )}
-      </div>
-    </div>
   );
 }

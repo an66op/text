@@ -15,6 +15,7 @@ function Probe() {
       <p>{auth.error}</p>
       <button onClick={() => void auth.login('demo@gongming.local', 'Demo2026!')}>登录</button>
       <button onClick={() => void auth.logout()}>退出</button>
+      <button onClick={() => void auth.refresh()}>重查</button>
     </>
   );
 }
@@ -26,6 +27,21 @@ afterEach(() => {
 });
 
 describe('server authentication lifecycle', () => {
+  it('keeps an authenticated account during a temporary validation network failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(response(session)).mockRejectedValue(new TypeError('offline')),
+    );
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText('authenticated:示例成员');
+    fireEvent.click(screen.getByRole('button', { name: '重查' }));
+    await screen.findByText(/无法连接服务/);
+    expect(screen.getByText('authenticated:示例成员')).toBeInTheDocument();
+  });
   it('checks cookie session and stays guest without automatically using demo credentials', async () => {
     const fetchMock = vi
       .fn()

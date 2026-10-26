@@ -1,4 +1,4 @@
-export type ListResult<T> = { items: T[]; total: number };
+export type ListResult<T> = { items: T[]; total: number; unreadTotal?: number };
 export type PlatformUser = {
   id: string;
   handle: string;
@@ -38,6 +38,8 @@ export type PlatformMessage = {
   sender: PublicUser;
   body: string;
   createdAt: string;
+  seq?: number;
+  clientId?: string;
 };
 export type Conversation = {
   id: string;
@@ -47,5 +49,19 @@ export type Conversation = {
   ownerId: string;
   createdAt: string;
   lastMessage?: PlatformMessage;
+  unreadCount?: number;
+  readSeq?: number;
+  lastReadMessageId?: string;
+};
+export type MessagePage = ListResult<PlatformMessage> & {
+  hasMore?: boolean;
+  nextBeforeId?: string | null;
+  nextBeforeSeq?: number | null;
+};
+export type ReadMark = {
+  conversationId: string;
+  lastReadMessageId: string;
+  readSeq: number;
+  unreadCount: number;
 };
 export type Health = { status: string; [key: string]: unknown };

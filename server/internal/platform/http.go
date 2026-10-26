@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -20,7 +21,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.1.0"
+const Version = "0.2.0"
 const cookieName = "gongming_session"
 
 type Config struct {
@@ -57,6 +58,7 @@ type App struct {
 	now       func() time.Time
 	limiter   *rateLimiter
 	dummyHash string
+	streamHub *messageHub
 }
 type APIError struct {
 	Status  int    `json:"-"`
@@ -79,6 +81,7 @@ func NewApp(store Store, cfg Config) *App {
 	}
 	a := &App{store: store, cfg: cfg, started: time.Now(), now: time.Now, limiter: &rateLimiter{buckets: map[string]rateBucket{}}}
 	a.dummyHash = hashPassword("timing-equivalent-unknown-user", cfg.BcryptCost)
+	a.streamHub = newMessageHub(a)
 	return a
 }
 func (a *App) Handler() http.Handler {
@@ -114,7 +117,11 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
-		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+		ctx := r.Context()
+		cancel := func() {}
+		if r.URL.Path != "/api/v1/stream" {
+			ctx, cancel = context.WithTimeout(ctx, 12*time.Second)
+		}
 		defer cancel()
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -167,7 +174,22 @@ func decode(r *http.Request, dst any) error {
 }
 func (a *App) execute(r *http.Request, write bool, permission string, fn func(*State, *User) (any, error)) (any, error) {
 	var result any
+	var body []byte
+	if write && r.Body != nil {
+		var err error
+		body, err = io.ReadAll(r.Body)
+		if err != nil {
+			var max *http.MaxBytesError
+			if errors.As(err, &max) {
+				return nil, &APIError{413, "body_too_large", "请求内容过大"}
+			}
+			return nil, bad("无法读取请求内容")
+		}
+	}
 	run := func(s *State) error {
+		if write {
+			r.Body = io.NopCloser(bytes.NewReader(body))
+		}
 		var user *User
 		if cookie, err := r.Cookie(cookieName); err == nil {
 			if session, exists := s.Sessions[tokenHash(cookie.Value)]; exists && session.ExpiresAt.After(a.now()) {
@@ -176,6 +198,9 @@ func (a *App) execute(r *http.Request, write bool, permission string, fn func(*S
 					user = &u
 				}
 			}
+		}
+		if expected := r.Header.Get("X-Gongming-Account"); expected != "" && r.URL.Path != "/api/v1/auth/me" && (user == nil || expected != user.ID) {
+			return &APIError{409, "account_changed", "账号已切换，请重新确认后再操作"}
 		}
 		if permission != "" && user == nil {
 			return unauthorized()
